@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -45,6 +44,7 @@
     .btn-success { background: #2ECC71; color: #FFF; border: none; }
     .btn-success:hover { background: #27AE60; transform: translateY(-2px); }
     .btn-danger { background: #E74C3C; color: #FFF; border: none; }
+    .btn-danger:hover { background: #C0392B; transform: translateY(-2px); }
 
     .container { max-width: 800px; margin: 0 auto; padding: 70px 16px 100px; display: none; }
     .container.active { display: block; }
@@ -89,6 +89,9 @@
     .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 400; backdrop-filter: blur(5px); }
     .modal-content { background: rgba(255,255,255,0.95); backdrop-filter: blur(30px); border-radius: 28px; padding: 24px; max-width: 400px; width: 90%; max-height: 80vh; overflow-y: auto; border: 1px solid rgba(255,255,255,0.9); position: relative; }
     .modal-close { position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 28px; color: #666; cursor: pointer; }
+
+    .form-row { display: flex; gap: 10px; }
+    .form-row .btn { flex: 1; }
 </style>
 </head>
 <body>
@@ -107,13 +110,13 @@
             <h2 id="authTitle">Se connecter</h2>
 
         <!-- LOGIN FORM -->
-        <div id="loginForm" style="display: block;">
+        <div id="loginForm">
             <div class="form-group">
                 <label>Numéro de téléphone</label>
                 <input type="tel" id="loginPhone" placeholder="+242 06 XXX XXXX" />
             </div>
             <div id="recaptchaContainer"></div>
-            <button class="btn btn-primary" onclick="sendPhoneOTP()">Envoyer le code</button>
+            <button class="btn btn-primary" id="btnSendOTP">Envoyer le code</button>
         </div>
 
         <!-- OTP FORM -->
@@ -122,8 +125,8 @@
                 <label>Code SMS (6 chiffres)</label>
                 <input type="text" id="otpCode" placeholder="000000" maxlength="6" />
             </div>
-            <button class="btn btn-primary" onclick="verifyOTP()">Vérifier</button>
-            <button class="btn btn-primary" style="margin-top: 8px; background: transparent; color: #666; border-color: #ccc;" onclick="resetOTP()">Retour</button>
+            <button class="btn btn-primary" id="btnVerifyOTP">Vérifier</button>
+            <button class="btn btn-primary" id="btnResetOTP" style="margin-top: 8px; background: transparent; color: #666; border-color: #ccc;">Retour</button>
         </div>
 
         <!-- SIGNUP FORM -->
@@ -137,13 +140,13 @@
                 <input type="tel" id="signupPhone" placeholder="+242 06 XXX XXXX" />
             </div>
             <div id="signupRecaptchaContainer"></div>
-            <button class="btn btn-primary" onclick="sendSignupOTP()">S'inscrire</button>
-            <button class="btn btn-primary" style="margin-top: 8px; background: transparent; color: #666; border-color: #ccc;" onclick="toggleForms()">Connexion</button>
+            <button class="btn btn-primary" id="btnSendSignupOTP">S'inscrire</button>
+            <button class="btn btn-primary" id="btnBackToLogin" style="margin-top: 8px; background: transparent; color: #666; border-color: #ccc;">Connexion</button>
         </div>
 
         <div class="toggle-form">
             <span id="toggleText">Pas de compte? </span>
-            <button type="button" onclick="toggleForms()">S'inscrire</button>
+            <button type="button" id="btnToggleForms">S'inscrire</button>
         </div>
     </div>
 </div>
@@ -207,7 +210,7 @@
     </div>
     <div class="glass-container">
         <input type="text" id="messageInput" placeholder="Message..." style="margin-bottom: 10px; width: 100%;" />
-        <button class="btn btn-success" onclick="sendMessage()" style="padding: 10px;">Envoyer</button>
+        <button class="btn btn-success" id="btnSendMessage" style="padding: 10px;">Envoyer</button>
     </div>
 </div>
 
@@ -237,22 +240,22 @@
         <div class="glass-container">
             <h3 style="color: #2ECC71;">Wallet BLK</h3>
             <p style="margin: 16px 0; font-size: 28px; font-weight: 800; color: #2ECC71;"><span id="walletBalance">0</span> FCFA</p>
-            <button class="btn btn-success" onclick="toggleDepositForm()" style="margin-bottom: 8px;">Ajouter argent</button>
-            <button class="btn btn-primary" onclick="toggleWithdrawForm()">Retirer</button>
+            <button class="btn btn-success" id="btnToggleDeposit" style="margin-bottom: 8px;">Ajouter argent</button>
+            <button class="btn btn-primary" id="btnToggleWithdraw">Retirer</button>
         </div>
 
         <div id="depositForm" class="glass-container" style="display: none;">
             <h3>Dépôt</h3>
             <input type="number" id="depositAmount" placeholder="Montant" style="margin-bottom: 10px;" />
-            <button class="btn btn-success" onclick="initiateDeposit()" style="padding: 10px;">Payer</button>
-            <button class="btn btn-primary" style="margin-top: 8px; padding: 10px;" onclick="toggleDepositForm()">Annuler</button>
+            <button class="btn btn-success" id="btnInitiateDeposit" style="padding: 10px;">Payer</button>
+            <button class="btn btn-primary" id="btnCancelDeposit" style="margin-top: 8px; padding: 10px;">Annuler</button>
         </div>
 
         <div id="withdrawForm" class="glass-container" style="display: none;">
             <h3>Retrait</h3>
             <input type="number" id="withdrawAmount" placeholder="Montant" style="margin-bottom: 10px;" />
-            <button class="btn btn-danger" onclick="initiateWithdraw()" style="padding: 10px;">Demander</button>
-            <button class="btn btn-primary" style="margin-top: 8px; padding: 10px;" onclick="toggleWithdrawForm()">Annuler</button>
+            <button class="btn btn-danger" id="btnInitiateWithdraw" style="padding: 10px;">Demander</button>
+            <button class="btn btn-primary" id="btnCancelWithdraw" style="margin-top: 8px; padding: 10px;">Annuler</button>
         </div>
     </div>
 </div>
@@ -260,30 +263,17 @@
 
 <!-- TABS -->
 <nav class="tabs" id="tabs" style="display: none;">
-    <button class="tab-btn active" data-page="homePage" onclick="switchPage(this)">
-        <div class="tab-icon">🏠</div>
-        <div>Accueil</div>
-    </button>
-    <button class="tab-btn" data-page="sellPage" onclick="switchPage(this)">
-        <div class="tab-icon">📤</div>
-        <div>Vendre</div>
-    </button>
-    <button class="tab-btn" data-page="messagesPage" onclick="switchPage(this)">
-        <div class="tab-icon">💬</div>
-        <div>Chat</div>
-    </button>
-    <button class="tab-btn" data-page="ordersPage" onclick="switchPage(this)">
-        <div class="tab-icon">📦</div>
-        <div>Commandes</div>
-    </button>
-    <button class="tab-btn" data-page="profilePage" onclick="switchPage(this)">
-        <div class="tab-icon">👤</div>
-        <div>Profil</div>
-    </button>
+    <button class="tab-btn active" data-page="homePage" id="tabHome">🏠 Accueil</button>
+    <button class="tab-btn" data-page="sellPage" id="tabSell">📤 Vendre</button>
+    <button class="tab-btn" data-page="messagesPage" id="tabMessages">💬 Chat</button>
+    <button class="tab-btn" data-page="ordersPage" id="tabOrders">📦 Commandes</button>
+    <button class="tab-btn" data-page="profilePage" id="tabProfile">👤 Profil</button>
 </nav>
 
 <script>
-// = FIREBASE CONFIG =
+// 
+// 1. CONFIGURATION FIREBASE
+// 
 const firebaseConfig = {
   apiKey: "AIzaSyA210LGSiktib7iFT82s2HZR1IcSMqmf38",
   authDomain: "blk-congo.firebaseapp.com",
@@ -298,94 +288,20 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 const BACKEND_URL = 'https://blk-marketplace-7vig.onrender.com';
 
-let confirmationResult, phoneNumber = '';
+let confirmationResult = null;
+let pendingPhoneNumber = '';
 
-// = AUTH FUNCTIONS =
-function sendPhoneOTP() {
-    phoneNumber = document.getElementById('loginPhone').value;
-    if (!phoneNumber) { showAlert('Entre ton numéro', 'error'); return; }
-    
-    const appVerifier = new firebase.auth.RecaptchaVerifier('recaptchaContainer', {'size': 'normal'});
-    auth.signInWithPhoneNumber(phoneNumber, appVerifier)
-        .then(result => {
-            confirmationResult = result;
-            document.getElementById('loginForm').style.display = 'none';
-            document.getElementById('otpForm').style.display = 'block';
-            showAlert('Code SMS envoyé', 'success');
-        })
-        .catch(e => showAlert(e.message, 'error'));
-}
+// 
+// 2. FONCTIONS AUTHENTIFICATION
+// 
 
-function verifyOTP() {
-    const otp = document.getElementById('otpCode').value;
-    if (!otp || otp.length ! 6) { showAlert('Code invalide', 'error'); return; }
-    
-    confirmationResult.confirm(otp)
-        .then(() => {
-            showAlert('Connecté! 👋', 'success');
-            setTimeout(() => showMainApp(), 500);
-        })
-        .catch(() => showAlert('Code invalide', 'error'));
-}
-
-function resetOTP() {
-    document.getElementById('otpCode').value = '';
-    document.getElementById('loginForm').style.display = 'block';
-    document.getElementById('otpForm').style.display = 'none';
-}
-
-function sendSignupOTP() {
-    const name = document.getElementById('signupName').value;
-    const phone = document.getElementById('signupPhone').value;
-    if (!name || !phone) { showAlert('Complète tous les champs', 'error'); return; }
-    
-    phoneNumber = phone;
-    const appVerifier = new firebase.auth.RecaptchaVerifier('signupRecaptchaContainer', {'size': 'normal'});
-    auth.signInWithPhoneNumber(phone, appVerifier)
-        .then(result => {
-            confirmationResult = result;
-            document.getElementById('signupForm').innerHTML = `
-                <div class="form-group">
-                    <label>Code SMS</label>
-                    <input type="text" id="signupOtp" placeholder="000000" maxlength="6" />
-                </div>
-                <button class="btn btn-primary" onclick="verifySignupOTP('${name}')">Créer le compte</button>
-                <button class="btn btn-primary" style="margin-top: 8px; background: transparent; color: #666; border-color: #ccc;" onclick="toggleForms()">Retour</button>
-            `;
-            showAlert('Code SMS envoyé', 'success');
-        })
-        .catch(e => showAlert(e.message, 'error'));
-}
-
-function verifySignupOTP(name) {
-    const otp = document.getElementById('signupOtp').value;
-    if (!otp || otp.length ! 6) { showAlert('Code invalide', 'error'); return; }
-    
-    confirmationResult.confirm(otp)
-        .then(result => {
-            db.collection('users').doc(result.user.uid).set({
-                name, phone: phoneNumber, walletBalance: 0, flames: 0, createdAt: new Date()
-            });
-            showAlert('Compte créé! 🎉', 'success');
-            setTimeout(() => showMainApp(), 500);
-        })
-        .catch(() => showAlert('Code invalide', 'error'));
-}
-
-function toggleForms() {
-    const isLogin = document.getElementById('loginForm').style.display ! 'none';
-    document.getElementById('loginForm').style.display = isLogin ? 'none' : 'block';
-    document.getElementById('signupForm').style.display = isLogin ? 'block' : 'none';
-    document.getElementById('authTitle').textContent = isLogin ? 'S\'inscrire' : 'Se connecter';
-    document.getElementById('loginContainer').className = isLogin ? 'auth-page signup' : 'auth-page login';
-}
-
-// = UI FUNCTIONS =
-function showAlert(msg, type = 'success') {
+function showAlert(message, type = 'success') {
     const box = document.getElementById('alertBox');
-    box.textContent = msg;
+    if (!box) return;
+    box.textContent = message;
     box.className = `alert alert-${type} active`;
-    setTimeout(() => box.classList.remove('active'), 4000);
+    clearTimeout(box._timeout);
+    box._timeout = setTimeout(() => box.classList.remove('active'), 4000);
 }
 
 function showMainApp() {
@@ -407,27 +323,196 @@ function hideMainApp() {
     document.getElementById('tabs').style.display = 'none';
 }
 
-function switchPage(btn) {
-    const pageId = btn.dataset.page;
+// ---- Connexion ----
+function sendPhoneOTP() {
+    const phone = document.getElementById('loginPhone').value.trim();
+    if (!phone) {
+        showAlert('Entre ton numéro de téléphone', 'error');
+        return;
+    }
+
+    try {
+        const appVerifier = new firebase.auth.RecaptchaVerifier('recaptchaContainer', { size: 'normal' });
+        
+        auth.signInWithPhoneNumber(phone, appVerifier)
+            .then(result => {
+                confirmationResult = result;
+                pendingPhoneNumber = phone;
+                document.getElementById('loginForm').style.display = 'none';
+                document.getElementById('otpForm').style.display = 'block';
+                showAlert('📱 Code SMS envoyé !', 'success');
+            })
+            .catch(error => {
+                console.error('Erreur Firebase:', error);
+                showAlert('Erreur: ' + error.message, 'error');
+            });
+    } catch (error) {
+        showAlert('ReCAPTCHA non chargé, recharge la page', 'error');
+    }
+}
+
+function verifyOTP() {
+    const code = document.getElementById('otpCode').value.trim();
+    if (!code || code.length < 6) {
+        showAlert('Entre les 6 chiffres du code', 'error');
+        return;
+    }
+
+    if (!confirmationResult) {
+        showAlert('Demande un nouveau code', 'error');
+        return;
+    }
+
+    confirmationResult.confirm(code)
+        .then(result => {
+            const user = result.user;
+            showAlert('✅ Connecté !', 'success');
+            document.getElementById('otpForm').style.display = 'none';
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('otpCode').value = '';
+            showMainApp();
+        })
+        .catch(error => {
+            console.error('Erreur vérification:', error);
+            showAlert('❌ Code invalide ou expiré', 'error');
+        });
+}
+
+function resetOTP() {
+    document.getElementById('otpCode').value = '';
+    document.getElementById('otpForm').style.display = 'none';
+    document.getElementById('loginForm').style.display = 'block';
+}
+
+// ---- Inscription ----
+function sendSignupOTP() {
+    const name = document.getElementById('signupName').value.trim();
+    const phone = document.getElementById('signupPhone').value.trim();
+
+    if (!name) {
+        showAlert('Entre ton nom complet', 'error');
+        return;
+    }
+    if (!phone) {
+        showAlert('Entre ton numéro de téléphone', 'error');
+        return;
+    }
+
+    try {
+        const appVerifier = new firebase.auth.RecaptchaVerifier('signupRecaptchaContainer', { size: 'normal' });
+        
+        auth.signInWithPhoneNumber(phone, appVerifier)
+            .then(result => {
+                confirmationResult = result;
+                pendingPhoneNumber = phone;
+                document.getElementById('signupForm').innerHTML = `
+                    <div class="form-group">
+                        <label>Code SMS (6 chiffres)</label>
+                        <input type="text" id="signupOtp" placeholder="000000" maxlength="6" />
+                    </div>
+                    <button class="btn btn-primary" id="btnVerifySignup">Créer le compte</button>
+                    <button class="btn btn-primary" id="btnSignupBack" style="margin-top: 8px; background: transparent; color: #666; border-color: #ccc;">Retour</button>
+                `;
+                document.getElementById('btnVerifySignup').addEventListener('click', function() {
+                    verifySignupOTP(name);
+                });
+                document.getElementById('btnSignupBack').addEventListener('click', function() {
+                    toggleForms();
+                });
+                showAlert('📱 Code SMS envoyé !', 'success');
+            })
+            .catch(error => {
+                console.error('Erreur Firebase:', error);
+                showAlert('Erreur: ' + error.message, 'error');
+            });
+    } catch (error) {
+        showAlert('ReCAPTCHA non chargé, recharge la page', 'error');
+    }
+}
+
+function verifySignupOTP(name) {
+    const code = document.getElementById('signupOp')?.value.trim();
+    if (!code || code.length < 6) {
+        showAlert('Entre les 6 chiffres du code', 'error');
+        return;
+    }
+
+    if (!confirmationResult) {
+        showAlert('Demande un nouveau code', 'error');
+        return;
+    }
+
+    confirmationResult.confirm(code)
+        .then(result => {
+            const user = result.user;
+            return db.collection('users').doc(user.uid).set({
+                name: name,
+                phone: pendingPhoneNumber,
+                walletBalance: 0,
+                flames: 0,
+                createdAt: new Date()
+            }).then(() => {
+                showAlert('🎉 Compte créé avec succès !', 'success');
+                showMainApp();
+            });
+        })
+        .catch(error => {
+            console.error('Erreur création compte:', error);
+            showAlert('❌ Code invalide ou expiré', 'error');
+        });
+}
+
+// ---- Basculer Connexion/Inscription ----
+function toggleForms() {
+    const loginForm = document.getElementById('loginForm');
+    const signupForm = document.getElementById('signupForm');
+    const title = document.getElementById('authTitle');
+    const container = document.getElementById('loginContainer');
+
+    if (loginForm.style.display ! 'none') {
+        loginForm.style.display = 'none';
+        signupForm.style.display = 'block';
+        title.textContent = "S'inscrire";
+        container.className = 'auth-page signup';
+        document.getElementById('toggleText').textContent = 'Déjà un compte? ';
+        document.getElementById('btnToggleForms').textContent = 'Se connecter';
+    } else {
+        loginForm.style.display = 'block';
+        signupForm.style.display = 'none';
+        title.textContent = 'Se connecter';
+        container.className = 'auth-page login';
+        document.getElementById('toggleText').textContent = 'Pas de compte? ';
+        document.getElementById('btnToggleForms').textContent = 'S\'inscrire';
+    }
+}
+
+// ---- Navigation ----
+function switchPage(pageId) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById(pageId).classList.add('active');
-    btn.classList.add('active');
+    const btn = document.querySelector(`.tab-btn[data-page="${pageId}"]`);
+    if (btn) btn.classList.add('active');
 }
 
-// = PRODUCTS =
+// 
+// 3. FONCTIONS PRODUITS
+// 
+
 async function loadProducts() {
     try {
         const response = await fetch(`${BACKEND_URL}/api/articles`);
         const data = await response.json();
         const grid = document.getElementById('productsGrid');
+        const empty = document.getElementById('emptyHome');
         
         if (!data.data || data.data.length = 0) {
             grid.innerHTML = '';
-            document.getElementById('emptyHome').style.display = 'block';
+            empty.style.display = 'block';
             return;
         }
 
+        empty.style.display = 'none';
         grid.innerHTML = '';
         data.data.forEach(product => {
             const card = document.createElement('div');
@@ -435,17 +520,16 @@ async function loadProducts() {
             card.innerHTML = `
                 ${product.image ? `<img src="${product.image}" class="product-img" />` : `<div class="product-img"></div>`}
                 <div class="product-info">
-                    <div class="product-title">${product.title}</div>
-                    <div class="product-price">${product.price} FCFA</div>
+                    <div class="product-title">${product.title || 'Sans titre'}</div>
+                    <div class="product-price">${product.price || 0} FCFA</div>
                 </div>
             `;
-            card.onclick = () => showProductModal(product);
+            card.addEventListener('click', () => showProductModal(product));
             grid.appendChild(card);
         });
-        document.getElementById('emptyHome').style.display = 'none';
-    } catch (e) {
-        console.error(e);
-        showAlert('Erreur chargement', 'error');
+    } catch (error) {
+        console.error('Erreur chargement produits:', error);
+        showAlert('Erreur chargement des articles', 'error');
     }
 }
 
@@ -454,35 +538,55 @@ function showProductModal(product) {
     modal.className = 'modal';
     modal.innerHTML = `
         <div class="modal-content">
-            <button class="modal-close" onclick="this.closest('.modal').remove()">✕</button>
+            <button class="modal-close" id="modalCloseBtn">✕</button>
             ${product.image ? `<img src="${product.image}" style="width: 100%; height: 240px; object-fit: cover; border-radius: 12px; margin-bottom: 16px;" />` : ''}
-            <h3>${product.title}</h3>
-            <p style="color: rgba(0,0,0,0.6); margin: 12px 0;">${product.description}</p>
-            <p style="font-size: 24px; font-weight: 800; color: #FFA500;">${product.price} FCFA</p>
-            <button class="btn btn-success" onclick="addToCart('${product.id}', '${product.title}', ${product.price}); this.closest('.modal').remove();">Ajouter au panier</button>
+            <h3>${product.title || 'Sans titre'}</h3>
+            <p style="color: rgba(0,0,0,0.6); margin: 12px 0;">${product.description || 'Aucune description'}</p>
+            <p style="font-size: 24px; font-weight: 800; color: #FFA500;">${product.price || 0} FCFA</p>
+            <button class="btn btn-success" id="modalAddToCart">Ajouter au panier</button>
         </div>
     `;
     document.body.appendChild(modal);
-    modal.onclick = (e) => e.target = modal && modal.remove();
+    
+    document.getElementById('modalCloseBtn').addEventListener('click', () => modal.remove());
+    document.getElementById('modalAddToCart').addEventListener('click', () => {
+        addToCart(product);
+        modal.remove();
+    });
+    modal.addEventListener('click', (e) => {
+        if (e.target = modal) modal.remove();
+    });
 }
 
 let cart = [];
-function addToCart(id, title, price) {
-    cart.push({id, title, price, quantity: 1});
-    showAlert(`"${title}" ajouté`, 'success');
+
+function addToCart(product) {
+    cart.push(product);
+    showAlert(`"${product.title}" ajouté au panier`, 'success');
 }
 
-// = PUBLISH ARTICLE =
+// 
+// 4. FONCTIONS PUBLICATION
+// 
+
 document.getElementById('publishForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const user = auth.currentUser;
-    if (!user) { showAlert('Connecte-toi', 'error'); return; }
+    if (!user) {
+        showAlert('Connecte-toi pour publier', 'error');
+        return;
+    }
 
-    const title = document.getElementById('articleTitle').value;
-    const desc = document.getElementById('articleDesc').value;
+    const title = document.getElementById('articleTitle').value.trim();
+    const desc = document.getElementById('articleDesc').value.trim();
     const price = document.getElementById('articlePrice').value;
     const category = document.getElementById('articleCategory').value;
     const imageFile = document.getElementById('articleImage').files[0];
+
+    if (!title || !desc || !price) {
+        showAlert('Remplis tous les champs', 'error');
+        return;
+    }
 
     let imageUrl = '';
     if (imageFile) {
@@ -496,12 +600,14 @@ document.getElementById('publishForm').addEventListener('submit', async (e) => {
                 });
                 const data = await res.json();
                 imageUrl = data.url || '';
-                publishArticle(title, desc, price, category, imageUrl, user);
-            } catch (e) { showAlert('Erreur upload', 'error'); }
+                await publishArticle(title, desc, price, category, imageUrl, user);
+            } catch (error) {
+                showAlert('Erreur upload image', 'error');
+            }
         };
         reader.readAsDataURL(imageFile);
     } else {
-        publishArticle(title, desc, price, category, '', user);
+        await publishArticle(title, desc, price, category, '', user);
     }
 });
 
@@ -510,17 +616,33 @@ async function publishArticle(title, desc, price, category, imageUrl, user) {
         const res = await fetch(`${BACKEND_URL}/api/articles`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title, description: desc, price: parseInt(price), category, image: imageUrl, sellerId: user.uid, sellerName: user.displayName || 'Anonyme' })
+            body: JSON.stringify({
+                title,
+                description: desc,
+                price: parseInt(price),
+                category,
+                image: imageUrl,
+                sellerId: user.uid,
+                sellerName: user.displayName || 'Anonyme'
+            })
         });
         if (res.ok) {
-            showAlert('Article publié! 🎉', 'success');
+            showAlert('🎉 Article publié !', 'success');
             document.getElementById('publishForm').reset();
             loadProducts();
+        } else {
+            const error = await res.json();
+            showAlert('Erreur: ' + error.message, 'error');
         }
-    } catch (e) { showAlert('Erreur', 'error'); }
+    } catch (error) {
+        showAlert('Erreur publication', 'error');
+    }
 }
 
-// = WALLET =
+// 
+// 5. FONCTIONS PORTEFEUILLE
+// 
+
 async function loadUserBalance() {
     const user = auth.currentUser;
     if (!user) return;
@@ -528,61 +650,96 @@ async function loadUserBalance() {
         const res = await fetch(`${BACKEND_URL}/api/wallet/${user.uid}`);
         const data = await res.json();
         document.getElementById('walletBalance').textContent = data.balance || 0;
-    } catch (e) { console.log(e); }
+    } catch (error) {
+        console.error('Erreur solde:', error);
+    }
 }
 
 function toggleDepositForm() {
-    document.getElementById('depositForm').style.display = document.getElementById('depositForm').style.display = 'none' ? 'block' : 'none';
+    const form = document.getElementById('depositForm');
+    form.style.display = form.style.display = 'none' ? 'block' : 'none';
 }
 
 function toggleWithdrawForm() {
-    document.getElementById('withdrawForm').style.display = document.getElementById('withdrawForm').style.display = 'none' ? 'block' : 'none';
+    const form = document.getElementById('withdrawForm');
+    form.style.display = form.style.display = 'none' ? 'block' : 'none';
 }
 
 async function initiateDeposit() {
     const user = auth.currentUser;
-    if (!user) { showAlert('Connecte-toi', 'error'); return; }
+    if (!user) {
+        showAlert('Connecte-toi', 'error');
+        return;
+    }
     const amount = document.getElementById('depositAmount').value;
-    if (!amount) { showAlert('Entre un montant', 'error'); return; }
+    if (!amount || parseInt(amount) <= 0) {
+        showAlert('Entre un montant valide', 'error');
+        return;
+    }
 
     try {
         const res = await fetch(`${BACKEND_URL}/api/payment/initiate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ amount: parseInt(amount), phone: user.phoneNumber || '', userId: user.uid, type: 'deposit' })
+            body: JSON.stringify({
+                amount: parseInt(amount),
+                phone: user.phoneNumber || '',
+                userId: user.uid,
+                type: 'deposit'
+            })
         });
         const data = await res.json();
         if (data.success) {
-            showAlert('Paiement initié! Confirme sur ton mobile', 'success');
+            showAlert('💳 Paiement initié !', 'success');
             document.getElementById('depositAmount').value = '';
             toggleDepositForm();
+        } else {
+            showAlert('Erreur: ' + data.message, 'error');
         }
-    } catch (e) { showAlert('Erreur', 'error'); }
+    } catch (error) {
+        showAlert('Erreur paiement', 'error');
+    }
 }
 
 async function initiateWithdraw() {
     const user = auth.currentUser;
-    if (!user) { showAlert('Connecte-toi', 'error'); return; }
+    if (!user) {
+        showAlert('Connecte-toi', 'error');
+        return;
+    }
     const amount = document.getElementById('withdrawAmount').value;
-    if (!amount) { showAlert('Entre un montant', 'error'); return; }
+    if (!amount || parseInt(amount) <= 0) {
+        showAlert('Entre un montant valide', 'error');
+        return;
+    }
 
     try {
         const res = await fetch(`${BACKEND_URL}/api/wallet/withdraw`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: user.uid, amount: parseInt(amount) })
+            body: JSON.stringify({
+                userId: user.uid,
+                amount: parseInt(amount)
+            })
         });
         const data = await res.json();
         if (data.success) {
-            showAlert('Retrait demandé!', 'success');
+            showAlert('💰 Retrait demandé !', 'success');
             document.getElementById('withdrawAmount').value = '';
             toggleWithdrawForm();
             loadUserBalance();
+        } else {
+            showAlert('Erreur: ' + data.message, 'error');
         }
-    } catch (e) { showAlert('Erreur', 'error'); }
+    } catch (error) {
+        showAlert('Erreur retrait', 'error');
+    }
 }
 
-// = MESSAGES =
+// 
+// 6. FONCTIONS MESSAGES
+// 
+
 function setupMessageListener() {
     const user = auth.currentUser;
     if (!user) return;
@@ -593,14 +750,15 @@ function setupMessageListener() {
         .limit(50)
         .onSnapshot(snapshot => {
             const list = document.getElementById('messagesList');
+            const empty = document.getElementById('emptyMessages');
             list.innerHTML = '';
             
             if (snapshot.empty) {
-                document.getElementById('emptyMessages').style.display = 'block';
+                empty.style.display = 'block';
                 return;
             }
 
-            document.getElementById('emptyMessages').style.display = 'none';
+            empty.style.display = 'none';
             snapshot.forEach(doc => {
                 const msg = doc.data();
                 const item = document.createElement('div');
@@ -611,29 +769,42 @@ function setupMessageListener() {
                 `;
                 list.appendChild(item);
             });
+        }, error => {
+            console.error('Erreur messages:', error);
         });
 }
 
 async function sendMessage() {
     const user = auth.currentUser;
-    if (!user) { showAlert('Connecte-toi', 'error'); return; }
-    const text = document.getElementById('messageInput').value;
-    if (!text) return;
+    if (!user) {
+        showAlert('Connecte-toi', 'error');
+        return;
+    }
+    const text = document.getElementById('messageInput').value.trim();
+    if (!text) {
+        showAlert('Écris un message', 'error');
+        return;
+    }
 
     try {
         await db.collection('messages').add({
             senderId: user.uid,
             senderName: user.displayName || 'Anonyme',
             receiverId: 'admin',
-            text,
+            text: text,
             createdAt: new Date()
         });
         document.getElementById('messageInput').value = '';
-        showAlert('Message envoyé', 'success');
-    } catch (e) { showAlert('Erreur', 'error'); }
+        showAlert('💬 Message envoyé', 'success');
+    } catch (error) {
+        showAlert('Erreur envoi message', 'error');
+    }
 }
 
-// = FLAMES =
+// 
+// 7. FONCTIONS FLAMES & ORDRES
+// 
+
 async function loadFlames() {
     const user = auth.currentUser;
     if (!user) return;
@@ -641,10 +812,11 @@ async function loadFlames() {
         const res = await fetch(`${BACKEND_URL}/api/seller/${user.uid}/flames`);
         const data = await res.json();
         document.getElementById('flamesCount').textContent = data.flames || 0;
-    } catch (e) { console.log(e); }
+    } catch (error) {
+        console.error('Erreur flames:', error);
+    }
 }
 
-// = ORDERS =
 async function loadOrders() {
     const user = auth.currentUser;
     if (!user) return;
@@ -653,14 +825,15 @@ async function loadOrders() {
         const res = await fetch(`${BACKEND_URL}/api/orders/${user.uid}`);
         const orders = await res.json();
         const list = document.getElementById('ordersList');
+        const empty = document.getElementById('emptyOrders');
         
         if (!orders || orders.length = 0) {
-            document.getElementById('emptyOrders').style.display = 'block';
+            empty.style.display = 'block';
             list.innerHTML = '';
             return;
         }
 
-        document.getElementById('emptyOrders').style.display = 'none';
+        empty.style.display = 'none';
         list.innerHTML = '';
         
         orders.forEach(order => {
@@ -675,65 +848,156 @@ async function loadOrders() {
             card.className = 'card';
             card.innerHTML = `
                 <h3>Commande #${order.id.slice(0, 8)}</h3>
-                <p style="font-size: 12px; color: rgba(0,0,0,0.5);">Status: <strong>${order.status}</strong></p>
-                <p style="font-size: 14px; color: #FFA500; font-weight: 700;">${order.total} FCFA</p>
+                <p style="font-size: 12px; color: rgba(0,0,0,0.5);">Status: <strong>${order.status || 'En cours'}</strong></p>
+                <p style="font-size: 14px; color: #FFA500; font-weight: 700;">${order.total || 0} FCFA</p>
                 <div class="timer ${isDanger ? 'danger' : ''}">${hours}h ${mins}m</div>
                 <div style="display: flex; gap: 8px; margin-top: 12px;">
-                    <button class="btn btn-danger" style="flex: 1; padding: 10px; font-size: 12px;" onclick="cancelOrder('${order.id}')">Annuler</button>
-                    <button class="btn btn-success" style="flex: 1; padding: 10px; font-size: 12px;" onclick="extendOrder('${order.id}')">Prolonger</button>
+                    <button class="btn btn-danger cancel-order-btn" data-id="${order.id}" style="flex: 1; padding: 10px; font-size: 12px;">Annuler</button>
+                    <button class="btn btn-success extend-order-btn" data-id="${order.id}" style="flex: 1; padding: 10px; font-size: 12px;">Prolonger</button>
                 </div>
             `;
             list.appendChild(card);
+
+            card.querySelector('.cancel-order-btn').addEventListener('click', () => cancelOrder(order.id));
+            card.querySelector('.extend-order-btn').addEventListener('click', () => extendOrder(order.id));
         });
-    } catch (e) { console.error(e); }
+    } catch (error) {
+        console.error('Erreur chargement commandes:', error);
+    }
 }
 
 async function cancelOrder(id) {
     try {
         const res = await fetch(`${BACKEND_URL}/api/orders/${id}/cancel`, { method: 'POST' });
-        if (res.ok) { showAlert('Annulée', 'success'); loadOrders(); }
-    } catch (e) { showAlert('Erreur', 'error'); }
+        if (res.ok) {
+            showAlert('Commande annulée', 'success');
+            loadOrders();
+        } else {
+            const error = await res.json();
+            showAlert('Erreur: ' + error.message, 'error');
+        }
+    } catch (error) {
+        showAlert('Erreur annulation', 'error');
+    }
 }
 
 async function extendOrder(id) {
     try {
         const res = await fetch(`${BACKEND_URL}/api/orders/${id}/extend`, { method: 'POST' });
-        if (res.ok) { showAlert('Prolongée de 24h', 'success'); loadOrders(); }
-    } catch (e) { showAlert('Erreur', 'error'); }
+        if (res.ok) {
+            showAlert('Prolongée de 24h', 'success');
+            loadOrders();
+        } else {
+            const error = await res.json();
+            showAlert('Erreur: ' + error.message, 'error');
+        }
+    } catch (error) {
+        showAlert('Erreur prolongation', 'error');
+    }
 }
 
-// = AUTH STATE =
-document.getElementById('btnLogout').addEventListener('click', () => {
-    auth.signOut().then(() => {
-        showAlert('Déconnecté', 'success');
-        hideMainApp();
-        location.reload();
+// 
+// 8. RECHERCHE
+// 
+
+document.getElementById('searchInput').addEventListener('input', (e) => {
+    const query = e.target.value.toLowerCase().trim();
+    document.querySelectorAll('.product-card').forEach(card => {
+        const title = card.querySelector('.product-title')?.textContent?.toLowerCase() || '';
+        card.style.display = title.includes(query) ? 'block' : 'none';
     });
 });
 
+// 
+// 9. GESTION DE L'ÉTAT D'AUTHENTIFICATION
+// 
+
 auth.onAuthStateChanged(user => {
     if (user) {
-        document.getElementById('userNameHeader').textContent = user.displayName || user.phoneNumber || 'User';
-        document.getElementById('profileName').textContent = user.displayName || 'Anonyme';
+        const name = user.displayName || user.phoneNumber || 'User';
+        document.getElementById('userNameHeader').textContent = name;
+        document.getElementById('profileName').textContent = name;
         document.getElementById('profilePhone').textContent = user.phoneNumber || '';
         document.getElementById('profileAuth').style.display = 'block';
         document.getElementById('profileNotAuth').style.display = 'none';
         showMainApp();
     } else {
         hideMainApp();
+        document.getElementById('profileAuth').style.display = 'none';
+        document.getElementById('profileNotAuth').style.display = 'block';
+        confirmationResult = null;
     }
 });
 
-// = SEARCH ===
-document.getElementById('searchInput').addEventListener('input', (e) => {
-    const query = e.target.value.toLowerCase();
-    document.querySelectorAll('.product-card').forEach(card => {
-        const title = card.querySelector('.product-title').textContent.toLowerCase();
-        card.style.display = title.includes(query) ? 'block' : 'none';
+document.getElementById('btnLogout').addEventListener('click', () => {
+    auth.signOut().then(() => {
+        showAlert('Déconnecté', 'success');
+        hideMainApp();
+        document.getElementById('profileAuth').style.display = 'none';
+        document.getElementById('profileNotAuth').style.display = 'block';
     });
 });
-</script>
 
+// 
+// 10. ATTACHEMENT DES ÉCOUTEURS D'ÉVÉNEMENTS
+// 
+
+// ---- Authentification ----
+document.getElementById('btnSendOTP').addEventListener('click', sendPhoneOTP);
+document.getElementById('btnVerifyOTP').addEventListener('click', verifyOTP);
+document.getElementById('btnResetOTP').addEventListener('click', resetOTP);
+document.getElementById('btnSendSignupOTP').addEventListener('click', sendSignupOTP);
+document.getElementById('btnBackToLogin').addEventListener('click', toggleForms);
+document.getElementById('btnToggleForms').addEventListener('click', toggleForms);
+
+// ---- Navigation ----
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const pageId = this.dataset.page;
+        if (pageId) switchPage(pageId);
+    });
+});
+
+// ---- Portefeuille ----
+document.getElementById('btnToggleDeposit').addEventListener('click', toggleDepositForm);
+document.getElementById('btnToggleWithdraw').addEventListener('click', toggleWithdrawForm);
+document.getElementById('btnInitiateDeposit').addEventListener('click', initiateDeposit);
+document.getElementById('btnInitiateWithdraw').addEventListener('click', initiateWithdraw);
+document.getElementById('btnCancelDeposit').addEventListener('click', toggleDepositForm);
+document.getElementById('btnCancelWithdraw').addEventListener('click', toggleWithdrawForm);
+
+// ---- Messages ----
+document.getElementById('btnSendMessage').addEventListener('click', sendMessage);
+document.getElementById('messageInput').addEventListener('keypress', (e) => {
+    if (e.key = 'Enter') sendMessage();
+});
+
+// 
+// 11. EXPOSITION GLOBALE DES FONCTIONS (POUR LES ONCLICK RESTANTS)
+// 
+
+window.sendPhoneOTP = sendPhoneOTP;
+window.verifyOTP = verifyOTP;
+window.resetOTP = resetOTP;
+window.sendSignupOTP = sendSignupOTP;
+window.verifySignupOTP = verifySignupOTP;
+window.toggleForms = toggleForms;
+window.switchPage = switchPage;
+window.addToCart = addToCart;
+window.sendMessage = sendMessage;
+window.cancelOrder = cancelOrder;
+window.extendOrder = extendOrder;
+window.toggleDepositForm = toggleDepositForm;
+window.toggleWithdrawForm = toggleWithdrawForm;
+window.initiateDeposit = initiateDeposit;
+window.initiateWithdraw = initiateWithdraw;
+window.loadProducts = loadProducts;
+window.loadUserBalance = loadUserBalance;
+window.loadFlames = loadFlames;
+window.loadOrders = loadOrders;
+
+console.log('✅ BLK Marketplace chargé !');
+</script>
 
 </body>
 </html>
