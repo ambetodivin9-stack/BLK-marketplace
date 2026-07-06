@@ -65,7 +65,6 @@ app.post('/api/upload', async (req, res) => {
 try { 
 const { base64 } = req.body; 
 // Pour l'instant, on retourne juste l'image en base64 
-// Dans une vraie app, tu uploaderais sur Firebase Storage 
 res.json({ success: true, url: base64 }); 
 } catch (error) { 
 res.status(500).json({ success: false, message: error.message }); 
@@ -112,8 +111,6 @@ res.status(500).json({ success: false, message: error.message });
 app.post('/api/payment/initiate', async (req, res) => { 
 try { 
 const { amount, phone, userId, type } = req.body; 
-// Simuler un paiement 
-// Dans la vraie vie, tu appellerais l'API Orange Money ici 
 const userRef = db.collection('users').doc(userId); 
 const doc = await userRef.get(); 
 const currentBalance = doc.data()?.walletBalance || 0;
@@ -179,6 +176,7 @@ res.status(500).json({ success: false, message: error.message });
 } 
 });
 
+// Démarrer le serveur 
 app.listen(PORT, () => { 
 console.log(✅ BLK API running on port ${PORT}); 
 });
