@@ -2,8 +2,7 @@ const express = require('express');
 const cors = require('cors'); 
 const admin = require('firebase-admin'); 
 const axios = require('axios'); 
-const FormData = require('form-data'); 
-const cron = require('node-cron');
+const FormData = require('form-data');
 
 const app = express(); 
 const PORT = process.env.PORT || 10000;
@@ -11,20 +10,15 @@ const PORT = process.env.PORT || 10000;
 app.use(cors()); 
 app.use(express.json({ limit: '10mb' }));
 
-//  
 // FIREBASE 
-//  
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT); 
 admin.initializeApp({ 
 credential: admin.credential.cert(serviceAccount) 
 }); 
 const db = admin.firestore();
 
-//  
 // CONFIGURATION 
-//  
 const IMG_BB_KEY = process.env.IMG_BB_KEY; 
-const YABETOO_PUBLIC = process.env.YABETOO_PUBLIC_KEY; 
 const YABETOO_SECRET = process.env.YABETOO_SECRET_KEY; 
 const ADMIN_PHONE = process.env.ADMIN_PHONE || '065918166';
 
@@ -40,64 +34,11 @@ const ALLOWED_CATEGORIES = [
 ];
 
 console.log('✅ BLK Marketplace - 100% RÉEL'); 
-console.log(✅ Admin Phone: ${ADMIN_PHONE}); 
-console.log(✅ ImgBB: ${IMG_BB_KEY ? 'OK' : 'MANQUANT'}); 
-console.log(✅ Yabetoo: ${YABETOO_SECRET ? 'OK' : 'MANQUANT'});
+console.log('✅ Admin Phone: ' + ADMIN_PHONE); 
+console.log('✅ ImgBB: ' + (IMG_BB_KEY ? 'OK' : 'MANQUANT')); 
+console.log('✅ Yabetoo: ' + (YABETOO_SECRET ? 'OK' : 'MANQUANT'));
 
-//  
-// CRON - REMBOURSEMENT 12h 
-//  
-cron.schedule('0 * * * *', async () => { 
-console.log('⏰ Vérification des commandes expirées...'); 
-try { 
-const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000); 
-const snapshot = await db.collection('orders') 
-.where('status', '', 'en attente de confirmation') 
-.where('createdAt', '<=', twelveHoursAgo) 
-.get();
-
-for (const doc of snapshot.docs) {
-  const order = doc.data();
-  console.log(`🔄 Remboursement commande ${doc.id}`);
-  await refundOrder(doc.id, order);
-}
-} catch (error) { 
-console.error('❌ Cron Error:', error.message); 
-} 
-});
-
-async function refundOrder(orderId, order) { 
-try { 
-const buyerRef = db.collection('users').doc(order.buyerId); 
-const buyerDoc = await buyerRef.get(); 
-const buyerBalance = buyerDoc.data()?.walletBalance || 0;
-
-await buyerRef.update({
-  walletBalance: buyerBalance + order.totalAmount
-});
-
-await db.collection('orders').doc(orderId).update({
-  status: 'remboursé',
-  refundedAt: new Date()
-});
-
-await db.collection('notifications').add({
-  userId: order.buyerId,
-  message: `💰 Remboursement de ${order.totalAmount} FCFA pour la commande #${orderId.slice(0, 8)}`,
-  type: 'refund',
-  read: false,
-  createdAt: new Date()
-});
-
-console.log(`✅ Remboursement effectué pour ${orderId}`);
-} catch (error) { 
-console.error(❌ Erreur remboursement ${orderId}:, error.message); 
-} 
-}
-
-//  
 // ROUTE PRINCIPALE 
-//  
 app.get('/', (req, res) => { 
 res.json({ 
 status: 'OK', 
@@ -110,16 +51,12 @@ firebase: '✅'
 }); 
 });
 
-//  
 // CATÉGORIES 
-//  
 app.get('/api/categories', (req, res) => { 
 res.json({ success: true, data: ALLOWED_CATEGORIES }); 
 });
 
-//  
 // ARTICLES 
-//  
 app.get('/api/articles', async (req, res) => { 
 try { 
 const snapshot = await db.collection('articles') 
@@ -160,7 +97,7 @@ const { title, description, price, category, image, sellerId, sellerName, seller
 if (!ALLOWED_CATEGORIES.includes(category)) {
   return res.status(400).json({
     success: false,
-    message: `Catégorie non autorisée. Autorise: ${ALLOWED_CATEGORIES.join(', ')}`
+    message: 'Catégorie non autorisée. Autorise: ' + ALLOWED_CATEGORIES.join(', ')
   });
 }
 
@@ -195,21 +132,7 @@ res.status(500).json({ success: false, message: error.message });
 } 
 });
 
-app.post('/api/articles/view/:id', async (req, res) => { 
-try { 
-const { id } = req.params; 
-const doc = await db.collection('articles').doc(id).get(); 
-const views = (doc.data()?.views || 0) + 1; 
-await db.collection('articles').doc(id).update({ views }); 
-res.json({ success: true, views }); 
-} catch (error) { 
-res.status(500).json({ success: false, message: error.message }); 
-} 
-});
-
-//  
 // UPLOAD IMAGE (ImgBB) 
-//  
 app.post('/api/upload', async (req, res) => { 
 try { 
 const { base64 } = req.body; 
@@ -236,9 +159,7 @@ res.status(500).json({ success: false, message: 'Erreur upload' });
 } 
 });
 
-//  
 // UTILISATEURS 
-//  
 app.get('/api/users/:userId', async (req, res) => { 
 try { 
 const { userId } = req.params; 
@@ -279,9 +200,7 @@ res.status(500).json({ success: false, message: error.message });
 } 
 });
 
-//  
 // WALLET 
-//  
 app.get('/api/wallet/:userId', async (req, res) => { 
 try { 
 const { userId } = req.params; 
@@ -303,17 +222,17 @@ if (!YABETOO_SECRET) {
   return res.status(500).json({ success: false, message: 'Yabetoo non configuré' });
 }
 
-const reference = `DEP-${userId.slice(0, 8)}-${Date.now().toString().slice(-6)}`;
+const reference = 'DEP-' + userId.slice(0, 8) + '-' + Date.now().toString().slice(-6);
 
 const yabResponse = await axios.post('https://api.yabetoo.com/v1/payment/initiate', {
   amount: parseInt(amount),
   phone: phone,
   reference: reference,
   description: 'Dépôt BLK Wallet',
-  callback_url: `https://blk-marketplace2.0.onrender.com/api/payment/callback`
+  callback_url: 'https://blk-marketplace2.0.onrender.com/api/payment/callback'
 }, {
   headers: {
-    'Authorization': `Bearer ${YABETOO_SECRET}`,
+    'Authorization': 'Bearer ' + YABETOO_SECRET,
     'Content-Type': 'application/json'
   }
 });
@@ -371,16 +290,16 @@ if (currentBalance < amount) {
   return res.status(400).json({ success: false, message: 'Solde insuffisant' });
 }
 
-const reference = `WTH-${userId.slice(0, 8)}-${Date.now().toString().slice(-6)}`;
+const reference = 'WTH-' + userId.slice(0, 8) + '-' + Date.now().toString().slice(-6);
 
 const yabResponse = await axios.post('https://api.yabetoo.com/v1/withdraw', {
   amount: parseInt(amount),
   phone: phone,
   reference: reference,
-  callback_url: `https://blk-marketplace2.0.onrender.com/api/payment/callback`
+  callback_url: 'https://blk-marketplace2.0.onrender.com/api/payment/callback'
 }, {
   headers: {
-    'Authorization': `Bearer ${YABETOO_SECRET}`,
+    'Authorization': 'Bearer ' + YABETOO_SECRET,
     'Content-Type': 'application/json'
   }
 });
@@ -422,9 +341,7 @@ message: error.response?.data?.message || 'Erreur retrait'
 } 
 });
 
-//  
-// PAIEMENT CALLBACK (Webhook Yabetoo) 
-//  
+// CALLBACK YABETOO 
 app.post('/api/payment/callback', async (req, res) => { 
 try { 
 const { reference, status, transaction_id } = req.body;
@@ -472,9 +389,7 @@ res.status(500).json({ success: false, message: error.message });
 } 
 });
 
-//  
 // ORDRES 
-//  
 app.post('/api/orders/create', async (req, res) => { 
 try { 
 const { articleId, buyerId, sellerId, amount, buyerPhone } = req.body;
@@ -526,7 +441,7 @@ const orderId = orderRef.id;
 
 await db.collection('notifications').add({
   userId: sellerId,
-  message: `🛒 Nouvelle commande #${orderId.slice(0, 8)} - ${amount} FCFA`,
+  message: '🛒 Nouvelle commande #' + orderId.slice(0, 8) + ' - ' + amount + ' FCFA',
   type: 'new_order',
   read: false,
   orderId: orderId,
@@ -611,19 +526,19 @@ await articleRef.update({
 
 if (ADMIN_PHONE && adminTotal > 0) {
   try {
-    const adminRef = `ADMIN-${Date.now().toString().slice(-6)}`;
+    const adminRef = 'ADMIN-' + Date.now().toString().slice(-6);
     await axios.post('https://api.yabetoo.com/v1/withdraw', {
       amount: adminTotal,
       phone: ADMIN_PHONE,
-      reference: `COM-${orderId.slice(0, 8)}-${adminRef}`,
-      callback_url: `https://blk-marketplace2.0.onrender.com/api/payment/callback`
+      reference: 'COM-' + orderId.slice(0, 8) + '-' + adminRef,
+      callback_url: 'https://blk-marketplace2.0.onrender.com/api/payment/callback'
     }, {
       headers: {
-        'Authorization': `Bearer ${YABETOO_SECRET}`,
+        'Authorization': 'Bearer ' + YABETOO_SECRET,
         'Content-Type': 'application/json'
       }
     });
-    console.log(`✅ Commission ${adminTotal} FCFA envoyée à ${ADMIN_PHONE}`);
+    console.log('✅ Commission ' + adminTotal + ' FCFA envoyée à ' + ADMIN_PHONE);
   } catch (error) {
     console.error('❌ Erreur envoi commission:', error.message);
   }
@@ -640,7 +555,7 @@ await orderRef.update({
 
 await db.collection('notifications').add({
   userId: order.sellerId,
-  message: `💰 Vente confirmée ! ${amountToSeller} FCFA crédités sur ton wallet.`,
+  message: '💰 Vente confirmée ! ' + amountToSeller + ' FCFA crédités sur ton wallet.',
   type: 'sale_confirmed',
   read: false,
   orderId: orderId,
@@ -649,7 +564,7 @@ await db.collection('notifications').add({
 
 await db.collection('notifications').add({
   userId: order.buyerId,
-  message: `✅ Commande #${orderId.slice(0, 8)} confirmée avec succès.`,
+  message: '✅ Commande #' + orderId.slice(0, 8) + ' confirmée avec succès.',
   type: 'order_confirmed',
   read: false,
   orderId: orderId,
@@ -800,9 +715,7 @@ res.status(500).json({ success: false, message: error.message });
 } 
 });
 
-//  
 // FLAMMES 
-//  
 app.post('/api/flames', async (req, res) => { 
 try { 
 const { sellerId, buyerId } = req.body;
@@ -847,9 +760,7 @@ res.status(500).json({ success: false, message: error.message });
 } 
 });
 
-//  
 // STATISTIQUES 
-//  
 app.get('/api/stats/:userId', async (req, res) => { 
 try { 
 const { userId } = req.params;
@@ -889,7 +800,7 @@ const history = {};
 ordersSnapshot.forEach(doc => {
   const order = doc.data();
   const date = order.createdAt?.toDate?.() || new Date(order.createdAt);
-  const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+  const month = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
   if (!history[month]) {
     history[month] = { ventes: 0, revenu: 0 };
   }
@@ -901,15 +812,17 @@ res.json({
   success: true,
   data: {
     totalArticles: articlesSnapshot.size,
-    totalSales,
+    totalSales: totalSales,
     totalRevenue: Math.round(totalRevenue),
-    totalPurchases,
-    totalSpent,
-    history: Object.keys(history).sort().map(month => ({
-      month,
-      ventes: history[month].ventes,
-      revenu: Math.round(history[month].revenu)
-    }))
+    totalPurchases: totalPurchases,
+    totalSpent: totalSpent,
+    history: Object.keys(history).sort().map(function(month) {
+      return {
+        month: month,
+        ventes: history[month].ventes,
+        revenu: Math.round(history[month].revenu)
+      };
+    })
   }
 });
 } catch (error) { 
@@ -917,9 +830,7 @@ res.status(500).json({ success: false, message: error.message });
 } 
 });
 
-//  
 // TRANSACTIONS 
-//  
 app.get('/api/transactions/:userId', async (req, res) => { 
 try { 
 const { userId } = req.params; 
@@ -946,7 +857,7 @@ ordersSnapshot.forEach(doc => {
   transactions.push({
     type: 'achat',
     amount: -order.totalAmount,
-    description: `Achat #${doc.id.slice(0, 8)} - ${order.amount} FCFA + commission`,
+    description: 'Achat #' + doc.id.slice(0, 8) + ' - ' + order.amount + ' FCFA + commission',
     date: order.createdAt,
     orderId: doc.id
   });
@@ -965,15 +876,15 @@ salesSnapshot.forEach(doc => {
   transactions.push({
     type: 'vente',
     amount: sellerReceived,
-    description: `Vente #${doc.id.slice(0, 8)} - ${order.amount} FCFA - commission ${Math.round(order.amount * COMMISSION_SELLER)} FCFA`,
+    description: 'Vente #' + doc.id.slice(0, 8) + ' - ' + order.amount + ' FCFA - commission ' + Math.round(order.amount * COMMISSION_SELLER) + ' FCFA',
     date: order.createdAt,
     orderId: doc.id
   });
 });
 
-transactions.sort((a, b) => {
-  const dateA = a.date?.toDate?.() || new Date(a.date);
-  const dateB = b.date?.toDate?.() || new Date(b.date);
+transactions.sort(function(a, b) {
+  var dateA = a.date?.toDate?.() || new Date(a.date);
+  var dateB = b.date?.toDate?.() || new Date(b.date);
   return dateB - dateA;
 });
 
@@ -983,9 +894,7 @@ res.status(500).json({ success: false, message: error.message });
 } 
 });
 
-//  
 // MESSAGES 
-//  
 app.get('/api/messages/:userId', async (req, res) => { 
 try { 
 const { userId } = req.params; 
@@ -1000,7 +909,8 @@ snapshot.forEach(doc => {
   messages.push({ id: doc.id, ...doc.data() });
 });
 
-for (const msg of messages) {
+for (var i = 0; i < messages.length; i++) {
+  var msg = messages[i];
   if (msg.receiverId === userId && !msg.read) {
     await db.collection('messages').doc(msg.id).update({ read: true });
   }
@@ -1021,9 +931,9 @@ if (!senderId || !receiverId || !text) {
 }
 
 const message = {
-  senderId,
-  receiverId,
-  text,
+  senderId: senderId,
+  receiverId: receiverId,
+  text: text,
   senderName: senderName || 'Anonyme',
   senderPhoto: senderPhoto || '',
   participants: [senderId, receiverId],
@@ -1035,7 +945,7 @@ const docRef = await db.collection('messages').add(message);
 
 await db.collection('notifications').add({
   userId: receiverId,
-  message: `💬 Nouveau message de ${senderName || 'Anonyme'}`,
+  message: '💬 Nouveau message de ' + (senderName || 'Anonyme'),
   type: 'new_message',
   read: false,
   messageId: docRef.id,
@@ -1048,14 +958,12 @@ res.status(500).json({ success: false, message: error.message });
 } 
 });
 
-//  
 // NOTIFICATIONS 
-//  
 app.get('/api/notifications/:userId', async (req, res) => { 
 try { 
 const { userId } = req.params; 
 const snapshot = await db.collection('notifications') 
-.where('userId', '', userId) 
+.where('userId', '==', userId) 
 .orderBy('createdAt', 'desc') 
 .limit(50) 
 .get();
@@ -1081,13 +989,11 @@ res.status(500).json({ success: false, message: error.message });
 } 
 });
 
-//  
 // DÉMARRAGE 
-//  
-app.listen(PORT, () => { 
-console.log(✅ BLK API running on port ${PORT}); 
-console.log(📦 Mode: 100% RÉEL); 
-console.log(💳 Paiement: MTN Mobile Money (Yabetoo)); 
-console.log(📱 Admin: ${ADMIN_PHONE}); 
-console.log(💰 Commissions: ${COMMISSION_BUYER*100}% (buyer) + ${COMMISSION_SELLER*100}% (seller)); 
+app.listen(PORT, function() { 
+console.log('✅ BLK API running on port ' + PORT); 
+console.log('📦 Mode: 100% RÉEL'); 
+console.log('💳 Paiement: MTN Mobile Money (Yabetoo)'); 
+console.log('📱 Admin: ' + ADMIN_PHONE); 
+console.log('💰 Commissions: ' + (COMMISSION_BUYER100) + '% (buyer) + ' + (COMMISSION_SELLER100) + '% (seller)'); 
 });
