@@ -1,20 +1,15 @@
 { 
-"name": "blk-marketplace-backend", 
+"name": "blk-test", 
 "version": "1.0.0", 
-"description": "BLK Marketplace Backend API - 100% Real", 
 "main": "server.js", 
 "scripts": { 
 "start": "node server.js" 
 }, 
 "dependencies": { 
 "express": "^4.18.2", 
-"cors": "^2.8.5", 
-"firebase-admin": "^11.8.0", 
-"axios": "^1.6.0", 
-"form-data": "^4.0.0" 
+"cors": "^2.8.5" 
 }, 
 "engines": { 
 "node": "24.x" 
-}, 
-"license": "MIT" 
+} 
 }
