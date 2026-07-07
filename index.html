@@ -12,7 +12,7 @@
         input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; }
         button { width: 100%; padding: 12px; background: #FFD700; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
         button:hover { background: #f5c400; }
-        .status { text-align: center; margin-top: 10px; font-size: 14px; color: green; }
+        .status { text-align: center; margin-top: 10px; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -25,44 +25,43 @@
     </div>
 
 <script>
-    // 🔥 URL EXACTE DE TON BACKEND RENDER
+    // 🔥 URL CODÉE EN DUR (LA BONNE)
     const BACKEND_URL = 'https://blk-marketplace2-0-1.onrender.com';
 
-    // ✅ Fonction pour mettre à jour le statut
     function setStatus(message, isError = false) {
         const statusEl = document.getElementById('status');
         statusEl.textContent = message;
         statusEl.style.color = isError ? 'red' : 'green';
     }
 
-    // ✅ Vérifier la connexion au backend
+    // ✅ Vérifier le backend
     async function checkBackend() {
         try {
             const response = await fetch(BACKEND_URL);
             if (response.ok) {
                 setStatus('✅ Backend connecté');
             } else {
-                setStatus('❌ Backend répond mais erreur', true);
+                setStatus('❌ Backend répond ' + response.status, true);
             }
         } catch (error) {
-            setStatus('❌ Backend indisponible : ' + error.message, true);
+            setStatus('❌ Backend indisponible', true);
         }
     }
 
-    // ✅ Gestion du clic sur "Se connecter"
+    // ✅ Connexion
     document.getElementById('loginBtn').addEventListener('click', async () => {
         const phone = document.getElementById('phone').value;
         const name = document.getElementById('name').value;
 
         if (!phone) {
-            setStatus('❌ Entre ton numéro de téléphone', true);
+            setStatus('❌ Entre ton numéro', true);
             return;
         }
 
         setStatus('⏳ Connexion en cours...');
 
         try {
-            const response = await fetch(`${BACKEND_URL}/api/login`, {
+            const response = await fetch(BACKEND_URL + '/api/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ phone, name })
@@ -75,11 +74,11 @@
                 setStatus('❌ ' + data.message, true);
             }
         } catch (error) {
-            setStatus('❌ Erreur : ' + error.message, true);
+            setStatus('❌ Erreur réseau', true);
         }
     });
 
-    // ✅ Vérification automatique au chargement
+    // Vérification au chargement
     checkBackend();
 </script>
 </body>
