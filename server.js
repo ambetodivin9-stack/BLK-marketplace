@@ -40,10 +40,12 @@ const ALLOWED_CATEGORIES = [
 ];
 
 console.log('✅ BLK Marketplace - 100% RÉEL'); 
-console.log(✅ Admin Phone: ${ADMIN_PHONE});
+console.log(✅ Admin Phone: ${ADMIN_PHONE}); 
+console.log(✅ ImgBB: ${IMG_BB_KEY ? 'OK' : 'MANQUANT'}); 
+console.log(✅ Yabetoo: ${YABETOO_SECRET ? 'OK' : 'MANQUANT'});
 
 //  
-// CRON - REMBOURSEMENT 12h (toutes les heures) 
+// CRON - REMBOURSEMENT 12h 
 //  
 cron.schedule('0 * * * *', async () => { 
 console.log('⏰ Vérification des commandes expirées...'); 
@@ -599,7 +601,6 @@ await sellerRef.update({
   walletBalance: sellerBalance + amountToSeller
 });
 
-// MARQUER L'ARTICLE COMME VENDU
 const articleRef = db.collection('articles').doc(order.articleId);
 await articleRef.update({
   status: 'sold',
@@ -777,7 +778,6 @@ await buyerRef.update({
   walletBalance: buyerBalance + order.totalAmount
 });
 
-// Restaurer l'article
 const articleRef = db.collection('articles').doc(order.articleId);
 await articleRef.update({
   status: 'active'
@@ -885,7 +885,6 @@ purchasesSnapshot.forEach(doc => {
   totalSpent += order.totalAmount || order.amount;
 });
 
-// Historique des ventes par mois (pour graphique)
 const history = {};
 ordersSnapshot.forEach(doc => {
   const order = doc.data();
@@ -919,7 +918,7 @@ res.status(500).json({ success: false, message: error.message });
 });
 
 //  
-// TRANSACTIONS (Historique dans le profil) 
+// TRANSACTIONS 
 //  
 app.get('/api/transactions/:userId', async (req, res) => { 
 try { 
@@ -935,7 +934,6 @@ snapshot.forEach(doc => {
   transactions.push({ id: doc.id, ...doc.data() });
 });
 
-// Ajouter les commandes comme transactions
 const ordersSnapshot = await db.collection('orders')
   .where('buyerId', '==', userId)
   .where('status', '==', 'livré')
