@@ -25,7 +25,7 @@
     </div>
 
 <script>
-    // 🔥 URL CODÉE EN DUR (LA BONNE)
+    // 🔥 URL DE TON BACKEND RENDER (sans le /ping)
     const BACKEND_URL = 'https://blk-marketplace2-0-1.onrender.com';
 
     function setStatus(message, isError = false) {
@@ -34,21 +34,23 @@
         statusEl.style.color = isError ? 'red' : 'green';
     }
 
-    // ✅ Vérifier le backend
     async function checkBackend() {
         try {
-            const response = await fetch(BACKEND_URL);
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 15000);
+            // ✅ On teste la même URL que le moniteur (avec /ping)
+            const response = await fetch(BACKEND_URL + '/ping', { signal: controller.signal });
+            clearTimeout(timeout);
             if (response.ok) {
                 setStatus('✅ Backend connecté');
             } else {
                 setStatus('❌ Backend répond ' + response.status, true);
             }
         } catch (error) {
-            setStatus('❌ Backend indisponible', true);
+            setStatus('❌ Backend indisponible (timeout)', true);
         }
     }
 
-    // ✅ Connexion
     document.getElementById('loginBtn').addEventListener('click', async () => {
         const phone = document.getElementById('phone').value;
         const name = document.getElementById('name').value;
