@@ -93,7 +93,7 @@ console.log(`✅ Remboursement effectué pour ${orderId}`);
 } catch (error) { 
 console.error(❌ Erreur remboursement ${orderId}:, error.message); 
 } 
-});
+}
 
 //  
 // ROUTE PRINCIPALE 
@@ -310,7 +310,7 @@ const yabResponse = await axios.post('https://api.yabetoo.com/v1/payment/initiat
   phone: phone,
   reference: reference,
   description: 'Dépôt BLK Wallet',
-  callback_url: `https://blk-marketplace-7vig.onrender.com/api/payment/callback`
+  callback_url: `https://blk-marketplace2.0.onrender.com/api/payment/callback`
 }, {
   headers: {
     'Authorization': `Bearer ${YABETOO_SECRET}`,
@@ -377,7 +377,7 @@ const yabResponse = await axios.post('https://api.yabetoo.com/v1/withdraw', {
   amount: parseInt(amount),
   phone: phone,
   reference: reference,
-  callback_url: `https://blk-marketplace-7vig.onrender.com/api/payment/callback`
+  callback_url: `https://blk-marketplace2.0.onrender.com/api/payment/callback`
 }, {
   headers: {
     'Authorization': `Bearer ${YABETOO_SECRET}`,
@@ -616,7 +616,7 @@ if (ADMIN_PHONE && adminTotal > 0) {
       amount: adminTotal,
       phone: ADMIN_PHONE,
       reference: `COM-${orderId.slice(0, 8)}-${adminRef}`,
-      callback_url: `https://blk-marketplace-7vig.onrender.com/api/payment/callback`
+      callback_url: `https://blk-marketplace2.0.onrender.com/api/payment/callback`
     }, {
       headers: {
         'Authorization': `Bearer ${YABETOO_SECRET}`,
