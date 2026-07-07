@@ -1251,3 +1251,1080 @@ BOTTOM TABS
         <span class="tab-label">Profil</span>
     </button>
 </nav>
+
+<script>
+    // ============================================================
+    // CONFIGURATION FIREBASE
+    // ============================================================
+    const firebaseConfig = {
+        apiKey: "AIzaSyA210LGSiktib7iFT82s2HZR1IcSMqmf38",
+        authDomain: "blk-congo.firebaseapp.com",
+        projectId: "blk-congo",
+        storageBucket: "blk-congo.firebasestorage.app",
+        messagingSenderId: "1067239289658",
+        appId: "1:1067239289658:web:a24aba40f2999201349603"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // ============================================================
+    // URL DU BACKEND (CORRIGÉE !)
+    // ============================================================
+    const BACKEND_URL = 'https://blk-marketplace2.0.onrender.com';
+
+    let currentUser = null;
+    let currentUserId = null;
+    let allProducts = [];
+    let selectedCategory = 'all';
+
+    // ============================================================
+    // AUTH - CONNEXION / INSCRIPTION
+    // ============================================================
+
+    // Connexion avec téléphone
+    document.getElementById('btnLogin').addEventListener('click', async () => {
+        const phone = document.getElementById('loginPhone').value.trim();
+        const name = document.getElementById('loginName').value.trim();
+
+        if (!phone) {
+            showAlert('Entre ton numéro de téléphone', 'error');
+            return;
+        }
+
+        try {
+            const snapshot = await db.collection('users')
+                .where('phone', '==', phone)
+                .get();
+
+            if (snapshot.empty) {
+                showAlert('❌ Aucun compte trouvé avec ce numéro', 'error');
+                return;
+            }
+
+            const userDoc = snapshot.docs[0];
+            const userData = userDoc.data();
+
+            if (name && userData.name !== name) {
+                await db.collection('users').doc(userDoc.id).update({ name: name });
+            }
+
+            showAlert('✅ Connexion réussie !', 'success');
+            setTimeout(() => {
+                checkUserAndShowApp(userDoc.id, userData);
+            }, 500);
+
+        } catch (error) {
+            showAlert('Erreur: ' + error.message, 'error');
+        }
+    });
+
+    // Inscription
+    document.getElementById('btnSignup').addEventListener('click', async () => {
+        const name = document.getElementById('signupName').value.trim();
+        const email = document.getElementById('signupEmail').value.trim();
+        const phone = document.getElementById('signupPhone').value.trim();
+
+        if (!name || !email || !phone) {
+            showAlert('Remplis tous les champs', 'error');
+            return;
+        }
+
+        try {
+            const userRef = await db.collection('users').add({
+                name: name,
+                email: email,
+                phone: phone,
+                photo: '',
+                flames: 0,
+                walletBalance: 0,
+                createdAt: new Date(),
+                isNew: true
+            });
+
+            showAlert('✅ Compte créé !', 'success');
+            setTimeout(() => {
+                checkUserAndShowApp(userRef.id, { name, email, phone, isNew: true });
+            }, 500);
+
+        } catch (error) {
+            showAlert('Erreur: ' + error.message, 'error');
+        }
+    });
+
+    // Google Auth
+    document.getElementById('btnGoogleLogin').addEventListener('click', () => {
+        googleAuth();
+    });
+    document.getElementById('btnGoogleSignup').addEventListener('click', () => {
+        googleAuth();
+    });
+
+    async function googleAuth() {
+        try {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            const result = await auth.signInWithPopup(provider);
+            const user = result.user;
+
+            const snapshot = await db.collection('users')
+                .where('email', '==', user.email)
+                .get();
+
+            let userId;
+            if (snapshot.empty) {
+                const userRef = await db.collection('users').add({
+                    name: user.displayName || 'Utilisateur',
+                    email: user.email,
+                    phone: user.phoneNumber || '',
+                    photo: user.photoURL || '',
+                    flames: 0,
+                    walletBalance: 0,
+                    createdAt: new Date(),
+                    isNew: true
+                });
+                userId = userRef.id;
+            } else {
+                userId = snapshot.docs[0].id;
+                const userData = snapshot.docs[0].data();
+                if (userData.isNew === undefined) {
+                    await db.collection('users').doc(userId).update({ isNew: false });
+                }
+            }
+
+            showAlert('✅ Connexion avec Google réussie !', 'success');
+            const userDoc = await db.collection('users').doc(userId).get();
+            checkUserAndShowApp(userId, userDoc.data());
+
+        } catch (error) {
+            showAlert('Erreur Google: ' + error.message, 'error');
+        }
+    }
+
+    // Basculer Connexion / Inscription
+    document.getElementById('btnShowSignup').addEventListener('click', () => {
+        document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('signupForm').style.display = 'block';
+        document.getElementById('authTitle').textContent = "S'inscrire";
+    });
+
+    document.getElementById('btnShowLogin').addEventListener('click', () => {
+        document.getElementById('loginForm').style.display = 'block';
+        document.getElementById('signupForm').style.display = 'none';
+        document.getElementById('authTitle').textContent = "Se connecter";
+    });
+
+    // ============================================================
+    // CHECK USER & SHOW APP
+    // ============================================================
+    function checkUserAndShowApp(userId, userData) {
+        currentUserId = userId;
+        currentUser = userData;
+
+        if (userData.isNew) {
+            document.getElementById('welcomeScreen').classList.add('active');
+            document.getElementById('authPage').style.display = 'none';
+
+            document.getElementById('welcomeBtn').addEventListener('click', () => {
+                document.getElementById('welcomeScreen').classList.remove('active');
+                db.collection('users').doc(userId).update({ isNew: false });
+                showMainApp();
+            });
+        } else {
+            document.getElementById('authPage').style.display = 'none';
+            showMainApp();
+        }
+    }
+
+    // ============================================================
+    // MAIN APP
+    // ============================================================
+    function showMainApp() {
+        document.getElementById('appContainer').classList.add('active');
+        document.getElementById('header').style.display = 'flex';
+        document.getElementById('tabs').classList.add('active');
+
+        document.getElementById('headerName').textContent = currentUser?.name || 'Utilisateur';
+        const avatar = document.getElementById('headerAvatar');
+        avatar.textContent = (currentUser?.name || 'U')[0].toUpperCase();
+
+        loadProducts();
+        loadUserData();
+        loadWallet();
+        loadStats();
+        loadOrders();
+        loadMessages();
+        loadTransactions();
+        listenNotifications();
+    }
+
+    // ============================================================
+    // ALERT
+    // ============================================================
+    function showAlert(message, type = 'success') {
+        const box = document.getElementById('alertBox');
+        box.textContent = message;
+        box.className = 'alert active alert-' + type;
+        setTimeout(() => {
+            box.classList.remove('active');
+        }, 4000);
+    }
+
+    // ============================================================
+    // TABS
+    // ============================================================
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            this.classList.add('active');
+            document.getElementById(this.dataset.page).classList.add('active');
+        });
+    });
+
+    // ============================================================
+    // LOAD PRODUCTS
+    // ============================================================
+    async function loadProducts() {
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/articles`);
+            const data = await response.json();
+
+            if (data.success && data.data) {
+                allProducts = data.data;
+                renderProducts(allProducts);
+            }
+        } catch (error) {
+            console.error('Erreur produits:', error);
+        }
+    }
+
+    function renderProducts(products) {
+        const grid = document.getElementById('productsGrid');
+        const empty = document.getElementById('emptyHome');
+
+        let filtered = products;
+        if (selectedCategory !== 'all') {
+            filtered = products.filter(p => p.category === selectedCategory);
+        }
+
+        const searchQuery = document.getElementById('searchInput').value.toLowerCase();
+        if (searchQuery) {
+            filtered = filtered.filter(p =>
+                p.title.toLowerCase().includes(searchQuery) ||
+                p.description?.toLowerCase().includes(searchQuery)
+            );
+        }
+
+        if (filtered.length === 0) {
+            grid.innerHTML = '';
+            empty.style.display = 'block';
+            return;
+        }
+
+        empty.style.display = 'none';
+        grid.innerHTML = '';
+
+        filtered.forEach(product => {
+            const card = document.createElement('div');
+            card.className = 'product-card';
+            card.innerHTML = `
+                <img src="${product.image || 'https://via.placeholder.com/150x150/F5F0E8/CCCCCC?text=BLK'}" class="img" />
+                <div class="info">
+                    <div class="title">${product.title}</div>
+                    <div class="price">${product.price} FCFA</div>
+                    <div class="seller">👤 ${product.sellerName || 'Anonyme'}</div>
+                </div>
+            `;
+            card.addEventListener('click', () => showProductDetail(product));
+            grid.appendChild(card);
+        });
+    }
+
+    // Filtres catégories
+    document.querySelectorAll('#categoryFilters .btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('#categoryFilters .btn').forEach(b => {
+                b.className = 'btn btn-outline';
+                b.style.width = 'auto';
+                b.style.padding = '6px 14px';
+                b.style.fontSize = '11px';
+            });
+            this.className = 'btn btn-primary';
+            this.style.width = 'auto';
+            this.style.padding = '6px 14px';
+            this.style.fontSize = '11px';
+            selectedCategory = this.dataset.cat;
+            renderProducts(allProducts);
+        });
+    });
+
+    // Recherche
+    document.getElementById('searchInput').addEventListener('input', () => {
+        renderProducts(allProducts);
+    });
+
+    // ============================================================
+    // PRODUCT DETAIL
+    // ============================================================
+    function showProductDetail(product) {
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(10px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1000; padding: 20px;
+        `;
+        modal.innerHTML = `
+            <div class="glass-lg" style="max-width: 400px; width: 100%; max-height: 90vh; overflow-y: auto;">
+                <img src="${product.image || 'https://via.placeholder.com/400x300/F5F0E8/CCCCCC?text=BLK'}" style="width: 100%; height: 200px; object-fit: cover; border-radius: var(--radius-sm); margin-bottom: 12px;" />
+                <h3>${product.title}</h3>
+                <p style="color: rgba(0,0,0,0.6); margin: 8px 0;">${product.description || 'Aucune description'}</p>
+                <p style="font-size: 24px; font-weight: 800; color: var(--primary);">${product.price} FCFA</p>
+                <p style="font-size: 12px; color: rgba(0,0,0,0.4); margin-top: 4px;">Vendeur: ${product.sellerName || 'Anonyme'}</p>
+                <div style="display: flex; gap: 8px; margin-top: 12px;">
+                    <button class="btn btn-primary" id="modalBuy">Acheter</button>
+                    <button class="btn btn-outline" id="modalClose">Fermer</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        document.getElementById('modalClose').addEventListener('click', () => modal.remove());
+        document.getElementById('modalBuy').addEventListener('click', async () => {
+            await buyProduct(product);
+            modal.remove();
+        });
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.remove();
+        });
+    }
+
+    // ============================================================
+    // BUY PRODUCT
+    // ============================================================
+    async function buyProduct(product) {
+        if (!currentUserId) {
+            showAlert('Connecte-toi d\'abord', 'error');
+            return;
+        }
+
+        try {
+            const buyerCommission = Math.round(product.price * 0.03);
+            const totalAmount = product.price + buyerCommission;
+
+            const walletResponse = await fetch(`${BACKEND_URL}/api/wallet/${currentUserId}`);
+            const walletData = await walletResponse.json();
+
+            if (walletData.balance < totalAmount) {
+                showAlert(`❌ Solde insuffisant. Il te manque ${totalAmount - walletData.balance} FCFA`, 'error');
+                return;
+            }
+
+            const response = await fetch(`${BACKEND_URL}/api/orders/create`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    articleId: product.id,
+                    buyerId: currentUserId,
+                    sellerId: product.sellerId,
+                    amount: product.price,
+                    buyerPhone: currentUser?.phone || ''
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showAlert(`✅ Commande créée ! ${data.message}`, 'success');
+                loadWallet();
+                loadOrders();
+                loadProducts();
+            } else {
+                showAlert('❌ ' + data.message, 'error');
+            }
+
+        } catch (error) {
+            showAlert('Erreur: ' + error.message, 'error');
+        }
+    }
+
+    // ============================================================
+    // LOAD WALLET
+    // ============================================================
+    async function loadWallet() {
+        if (!currentUserId) return;
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/wallet/${currentUserId}`);
+            const data = await response.json();
+            document.getElementById('walletBalance').textContent = data.balance || 0;
+        } catch (error) {
+            console.error('Erreur wallet:', error);
+        }
+    }
+
+    // ============================================================
+    // LOAD USER DATA
+    // ============================================================
+    async function loadUserData() {
+        if (!currentUserId) return;
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/users/${currentUserId}`);
+            const data = await response.json();
+
+            if (data.success) {
+                const user = data.data;
+                document.getElementById('profileName').textContent = user.name || 'Utilisateur';
+                document.getElementById('profileEmail').textContent = user.email || 'email@example.com';
+                document.getElementById('profilePhone').textContent = user.phone || '+242 06 XXX XXXX';
+                document.getElementById('profileFlames').textContent = user.flames || 0;
+                document.getElementById('profileAvatar').textContent = (user.name || 'U')[0].toUpperCase();
+            }
+        } catch (error) {
+            console.error('Erreur user data:', error);
+        }
+    }
+
+    // ============================================================
+    // LOAD STATS
+    // ============================================================
+    async function loadStats() {
+        if (!currentUserId) return;
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/stats/${currentUserId}`);
+            const data = await response.json();
+
+            if (data.success) {
+                const stats = data.data;
+                document.getElementById('statSales').textContent = stats.totalSales || 0;
+                document.getElementById('statOrders').textContent = stats.totalPurchases || 0;
+                document.getElementById('statArticles').textContent = stats.totalArticles || 0;
+
+                const container = document.getElementById('chartContainer');
+                container.innerHTML = '';
+                if (stats.history && stats.history.length > 0) {
+                    const max = Math.max(...stats.history.map(h => h.revenu), 1);
+                    stats.history.slice(-6).forEach(h => {
+                        const bar = document.createElement('div');
+                        const height = Math.max((h.revenu / max) * 100, 5);
+                        bar.style.cssText = `
+                            flex: 1; height: ${height}px;
+                            background: var(--primary);
+                            border-radius: 4px 4px 0 0;
+                            min-height: 4px;
+                            position: relative;
+                        `;
+                        bar.title = `${h.month}: ${h.revenu} FCFA (${h.ventes} ventes)`;
+                        container.appendChild(bar);
+                    });
+                } else {
+                    container.innerHTML = '<p style="color: rgba(0,0,0,0.3); font-size: 13px;">Aucune donnée</p>';
+                }
+
+                loadShopArticles();
+            }
+        } catch (error) {
+            console.error('Erreur stats:', error);
+        }
+    }
+
+    // ============================================================
+    // LOAD SHOP ARTICLES
+    // ============================================================
+    async function loadShopArticles() {
+        if (!currentUserId) return;
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/articles/seller/${currentUserId}`);
+            const data = await response.json();
+
+            const container = document.getElementById('shopArticles');
+            if (data.success && data.data && data.data.length > 0) {
+                container.innerHTML = data.data.map(a => `
+                    <div class="glass-sm" style="margin-bottom: 8px; display: flex; align-items: center; gap: 12px;">
+                        <img src="${a.image || 'https://via.placeholder.com/50x50/F5F0E8/CCCCCC?text=BLK'}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px;" />
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; font-size: 13px;">${a.title}</div>
+                            <div style="font-size: 12px; color: var(--primary); font-weight: 700;">${a.price} FCFA</div>
+                            <div style="font-size: 10px; color: rgba(0,0,0,0.4);">${a.status === 'active' ? '✅ En vente' : a.status === 'sold' ? '✅ Vendu' : '⏸ Inactif'}</div>
+                        </div>
+                        ${a.status === 'active' ? `<button class="btn btn-danger" style="width: auto; padding: 6px 12px; font-size: 11px;" onclick="deleteArticle('${a.id}')">Supprimer</button>` : ''}
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<p style="color: rgba(0,0,0,0.3); font-size: 13px;">Aucun article publié</p>';
+            }
+        } catch (error) {
+            console.error('Erreur shop articles:', error);
+        }
+    }
+
+    // ============================================================
+    // DELETE ARTICLE
+    // ============================================================
+    async function deleteArticle(articleId) {
+        if (!confirm('Supprimer cet article ?')) return;
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/articles/${articleId}`, {
+                method: 'DELETE'
+            });
+            if (response.ok) {
+                showAlert('Article supprimé', 'success');
+                loadShopArticles();
+                loadStats();
+                loadProducts();
+            }
+        } catch (error) {
+            showAlert('Erreur suppression', 'error');
+        }
+    }
+
+    // ============================================================
+    // PUBLISH ARTICLE
+    // ============================================================
+    document.getElementById('btnPublish').addEventListener('click', () => {
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(10px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1000; padding: 20px;
+        `;
+        modal.innerHTML = `
+            <div class="glass-lg" style="max-width: 400px; width: 100%; max-height: 90vh; overflow-y: auto;">
+                <h3 style="margin-bottom: 16px;">📤 Publier un article</h3>
+                <div class="form-group">
+                    <label>Titre</label>
+                    <input type="text" id="pubTitle" placeholder="Robe vintage..." />
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="pubDesc" rows="3" placeholder="Décris l'article..." style="width: 100%; padding: 10px; border: 1px solid rgba(0,0,0,0.08); border-radius: var(--radius-sm);"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Prix (FCFA)</label>
+                    <input type="number" id="pubPrice" placeholder="5000" />
+                </div>
+                <div class="form-group">
+                    <label>Catégorie</label>
+                    <select id="pubCategory" style="width: 100%; padding: 10px; border: 1px solid rgba(0,0,0,0.08); border-radius: var(--radius-sm);">
+                        <option value="vêtements">👗 Vêtements</option>
+                        <option value="chaussures">👟 Chaussures</option>
+                        <option value="sacs">👜 Sacs</option>
+                        <option value="bijoux">💍 Bijoux</option>
+                        <option value="accessoires">🧣 Accessoires</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Photo</label>
+                    <input type="file" id="pubImage" accept="image/*" style="width: 100%; padding: 8px;" />
+                </div>
+                <button class="btn btn-primary" id="pubSubmit">Publier</button>
+                <button class="btn btn-outline" style="margin-top: 8px;" id="pubCancel">Annuler</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        document.getElementById('pubCancel').addEventListener('click', () => modal.remove());
+
+        document.getElementById('pubSubmit').addEventListener('click', async () => {
+            const title = document.getElementById('pubTitle').value.trim();
+            const description = document.getElementById('pubDesc').value.trim();
+            const price = document.getElementById('pubPrice').value;
+            const category = document.getElementById('pubCategory').value;
+            const imageFile = document.getElementById('pubImage').files[0];
+
+            if (!title || !description || !price) {
+                showAlert('Remplis tous les champs', 'error');
+                return;
+            }
+
+            let imageUrl = '';
+            if (imageFile) {
+                try {
+                    const reader = new FileReader();
+                    const base64 = await new Promise((resolve) => {
+                        reader.onload = () => resolve(reader.result);
+                        reader.readAsDataURL(imageFile);
+                    });
+
+                    const uploadResponse = await fetch(`${BACKEND_URL}/api/upload`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ base64 })
+                    });
+                    const uploadData = await uploadResponse.json();
+                    if (uploadData.success) {
+                        imageUrl = uploadData.url;
+                    }
+                } catch (error) {
+                    showAlert('Erreur upload image', 'error');
+                    return;
+                }
+            }
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/articles`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title,
+                        description,
+                        price: parseInt(price),
+                        category,
+                        image: imageUrl,
+                        sellerId: currentUserId,
+                        sellerName: currentUser?.name || 'Anonyme',
+                        sellerPhoto: currentUser?.photo || ''
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showAlert('✅ Article publié !', 'success');
+                    modal.remove();
+                    loadProducts();
+                    loadStats();
+                    loadShopArticles();
+                } else {
+                    showAlert('Erreur: ' + data.message, 'error');
+                }
+            } catch (error) {
+                showAlert('Erreur publication', 'error');
+            }
+        });
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.remove();
+        });
+    });
+
+    // ============================================================
+    // LOAD ORDERS
+    // ============================================================
+    async function loadOrders() {
+        if (!currentUserId) return;
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/orders/${currentUserId}`);
+            const orders = await response.json();
+
+            const container = document.getElementById('ordersList');
+            const empty = document.getElementById('emptyOrders');
+
+            if (!orders || orders.length === 0) {
+                container.innerHTML = '';
+                empty.style.display = 'block';
+                return;
+            }
+
+            empty.style.display = 'none';
+            container.innerHTML = '';
+
+            orders.forEach(order => {
+                const isBuyer = order.buyerId === currentUserId;
+                const isSeller = order.sellerId === currentUserId;
+                const otherPerson = isBuyer ? order.seller : order.buyer;
+
+                const expiresAt = order.expiresAt ? new Date(order.expiresAt) : null;
+                const now = new Date();
+                const timeLeft = expiresAt ? Math.max(0, Math.floor((expiresAt - now) / 1000)) : 0;
+                const hours = Math.floor(timeLeft / 3600);
+                const mins = Math.floor((timeLeft % 3600) / 60);
+                const isDanger = timeLeft < 3600 && order.status === 'en attente de confirmation';
+
+                const card = document.createElement('div');
+                card.className = 'order-card';
+                card.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <div style="font-weight: 700;">${order.article?.title || 'Article'}</div>
+                            <div style="font-size: 12px; color: rgba(0,0,0,0.4);">
+                                ${isBuyer ? '👤 Vendeur: ' + (otherPerson?.name || 'Inconnu') : '👤 Acheteur: ' + (otherPerson?.name || 'Inconnu')}
+                            </div>
+                        </div>
+                        <span class="status status-${order.status === 'livré' ? 'delivered' : order.status === 'annulé' ? 'cancelled' : order.status === 'remboursé' ? 'refunded' : 'pending'}">
+                            ${order.status === 'en attente de confirmation' ? '⏳ En attente' :
+                              order.status === 'livré' ? '✅ Livré' :
+                              order.status === 'annulé' ? '❌ Annulé' :
+                              order.status === 'remboursé' ? '💰 Remboursé' : order.status}
+                        </span>
+                    </div>
+                    <div style="font-size: 16px; font-weight: 700; color: var(--primary); margin: 8px 0;">
+                        ${order.totalAmount || order.amount} FCFA
+                    </div>
+                    ${order.status === 'en attente de confirmation' ? `
+                        <div class="timer-display ${isDanger ? 'danger' : ''}">
+                            ${String(hours).padStart(2, '0')}h ${String(mins).padStart(2, '0')}m
+                        </div>
+                        ${isBuyer ? `
+                            <div class="confirm-box">
+                                <label><input type="checkbox" class="confirm-check" data-key="recu" /> J'ai bien reçu le colis</label>
+                                <label><input type="checkbox" class="confirm-check" data-key="bon_etat" /> Le colis est en bon état</label>
+                                <label><input type="checkbox" class="confirm-check" data-key="confirme" /> Je confirme la réception</label>
+                                <button class="btn btn-success" style="margin-top: 8px;" onclick="confirmOrder('${order.id}')">✅ Confirmer la réception</button>
+                            </div>
+                        ` : `
+                            <div style="font-size: 12px; color: rgba(0,0,0,0.4);">En attente de confirmation par l'acheteur...</div>
+                        `}
+                    ` : ''}
+                    ${order.status === 'en attente de confirmation' && !isBuyer ? `
+                        <div style="font-size: 12px; color: rgba(0,0,0,0.4);">Le client doit confirmer la réception</div>
+                    ` : ''}
+                    ${order.status === 'livré' ? `
+                        <div style="font-size: 12px; color: var(--success);">
+                            ✅ Livré le ${order.buyerConfirmedAt ? new Date(order.buyerConfirmedAt).toLocaleDateString() : ''}
+                            ${order.sellerReceived ? `- Reçu ${order.sellerReceived} FCFA` : ''}
+                        </div>
+                        <div style="margin-top: 8px;">
+                            <button class="btn btn-primary" style="width: auto; padding: 6px 12px; font-size: 11px;" onclick="giveFlame('${order.sellerId}')">🔥 Donner une flamme</button>
+                        </div>
+                    ` : ''}
+                    ${order.status === 'en attente de confirmation' && new Date(order.createdAt) > new Date(Date.now() - 2 * 60 * 60 * 1000) ? `
+                        <button class="btn btn-danger" style="width: auto; padding: 6px 12px; font-size: 11px; margin-top: 8px;" onclick="cancelOrder('${order.id}')">❌ Annuler (2h max)</button>
+                    ` : ''}
+                `;
+                container.appendChild(card);
+            });
+        } catch (error) {
+            console.error('Erreur commandes:', error);
+        }
+    }
+
+    // ============================================================
+    // CONFIRM ORDER (3 cases)
+    // ============================================================
+    window.confirmOrder = async function(orderId) {
+        const checks = document.querySelectorAll('.confirm-check');
+        const confirmations = {};
+        let allChecked = true;
+
+        checks.forEach(cb => {
+            confirmations[cb.dataset.key] = cb.checked;
+            if (!cb.checked) allChecked = false;
+        });
+
+        if (!allChecked) {
+            showAlert('❌ Tu dois cocher les 3 cases', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/orders/confirm`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    orderId: orderId,
+                    buyerId: currentUserId,
+                    confirmations: confirmations
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                showAlert('✅ Commande confirmée !', 'success');
+                loadOrders();
+                loadWallet();
+                loadStats();
+                loadProducts();
+            } else {
+                showAlert('❌ ' + data.message, 'error');
+            }
+        } catch (error) {
+            showAlert('Erreur confirmation', 'error');
+        }
+    };
+
+    // ============================================================
+    // CANCEL ORDER
+    // ============================================================
+    window.cancelOrder = async function(orderId) {
+        if (!confirm('Annuler cette commande ?')) return;
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/orders/cancel/${orderId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: currentUserId })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                showAlert('✅ Commande annulée et remboursée', 'success');
+                loadOrders();
+                loadWallet();
+                loadProducts();
+            } else {
+                showAlert('❌ ' + data.message, 'error');
+            }
+        } catch (error) {
+            showAlert('Erreur annulation', 'error');
+        }
+    };
+
+    // ============================================================
+    // GIVE FLAME
+    // ============================================================
+    window.giveFlame = async function(sellerId) {
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/flames`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sellerId: sellerId,
+                    buyerId: currentUserId
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                showAlert(`🔥 Flamme donnée ! Total: ${data.flames}`, 'success');
+                loadUserData();
+            } else {
+                showAlert('❌ ' + data.message, 'error');
+            }
+        } catch (error) {
+            showAlert('Erreur flamme', 'error');
+        }
+    };
+
+    // ============================================================
+    // LOAD MESSAGES
+    // ============================================================
+    async function loadMessages() {
+        if (!currentUserId) return;
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/messages/${currentUserId}`);
+            const data = await response.json();
+
+            const container = document.getElementById('messagesList');
+            const empty = document.getElementById('emptyMessages');
+
+            if (!data.success || !data.data || data.data.length === 0) {
+                container.innerHTML = '';
+                empty.style.display = 'block';
+                return;
+            }
+
+            empty.style.display = 'none';
+            container.innerHTML = data.data.map(msg => `
+                <div class="message-item">
+                    <div class="avatar" style="background: ${msg.senderPhoto ? 'transparent' : 'var(--primary)'};">
+                        ${msg.senderPhoto ? `<img src="${msg.senderPhoto}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" />` : (msg.senderName || 'U')[0].toUpperCase()}
+                    </div>
+                    <div class="content">
+                        <div class="sender">${msg.senderName || 'Anonyme'}</div>
+                        <div class="text">${msg.text}</div>
+                    </div>
+                    <div class="time">${msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : ''}</div>
+                </div>
+            `).join('');
+        } catch (error) {
+            console.error('Erreur messages:', error);
+        }
+    }
+
+    // ============================================================
+    // SEND MESSAGE
+    // ============================================================
+    document.getElementById('btnSendMessage').addEventListener('click', async () => {
+        const receiverId = document.getElementById('chatReceiver').value.trim();
+        const text = document.getElementById('messageInput').value.trim();
+
+        if (!receiverId || !text) {
+            showAlert('Destinataire et message requis', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/messages`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    senderId: currentUserId,
+                    receiverId: receiverId,
+                    text: text,
+                    senderName: currentUser?.name || 'Anonyme',
+                    senderPhoto: currentUser?.photo || ''
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                document.getElementById('messageInput').value = '';
+                showAlert('✅ Message envoyé', 'success');
+                loadMessages();
+            } else {
+                showAlert('❌ ' + data.message, 'error');
+            }
+        } catch (error) {
+            showAlert('Erreur envoi', 'error');
+        }
+    });
+
+    // ============================================================
+    // LOAD TRANSACTIONS
+    // ============================================================
+    async function loadTransactions() {
+        if (!currentUserId) return;
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/transactions/${currentUserId}`);
+            const data = await response.json();
+
+            const container = document.getElementById('transactionsList');
+            const empty = document.getElementById('emptyTransactions');
+
+            if (!data.success || !data.data || data.data.length === 0) {
+                container.innerHTML = '';
+                empty.style.display = 'block';
+                return;
+            }
+
+            empty.style.display = 'none';
+            container.innerHTML = data.data.slice(0, 20).map(t => `
+                <div class="transaction-item">
+                    <div class="info">
+                        <div class="desc">${t.description || t.type}</div>
+                        <div class="date">${t.date ? new Date(t.date).toLocaleDateString() : ''}</div>
+                    </div>
+                    <div class="amount ${t.amount >= 0 ? 'positive' : 'negative'}">
+                        ${t.amount >= 0 ? '+' : ''}${t.amount} FCFA
+                    </div>
+                </div>
+            `).join('');
+        } catch (error) {
+            console.error('Erreur transactions:', error);
+        }
+    }
+
+    // ============================================================
+    // NOTIFICATIONS
+    // ============================================================
+    function listenNotifications() {
+        if (!currentUserId) return;
+        db.collection('notifications')
+            .where('userId', '==', currentUserId)
+            .where('read', '==', false)
+            .onSnapshot(snapshot => {
+                const count = snapshot.size;
+                document.getElementById('ordersBadge').textContent = count;
+                document.getElementById('ordersBadge').style.display = count > 0 ? 'block' : 'none';
+
+                snapshot.forEach(doc => {
+                    const notif = doc.data();
+                    showAlert(notif.message, 'info');
+                    db.collection('notifications').doc(doc.id).update({ read: true });
+                });
+            });
+    }
+
+    // ============================================================
+    // DEPOSIT / WITHDRAW
+    // ============================================================
+    document.getElementById('btnDeposit').addEventListener('click', () => {
+        const form = document.getElementById('depositForm');
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        document.getElementById('withdrawForm').style.display = 'none';
+    });
+
+    document.getElementById('btnWithdraw').addEventListener('click', () => {
+        const form = document.getElementById('withdrawForm');
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        document.getElementById('depositForm').style.display = 'none';
+    });
+
+    document.getElementById('btnCancelDeposit').addEventListener('click', () => {
+        document.getElementById('depositForm').style.display = 'none';
+    });
+
+    document.getElementById('btnCancelWithdraw').addEventListener('click', () => {
+        document.getElementById('withdrawForm').style.display = 'none';
+    });
+
+    document.getElementById('btnConfirmDeposit').addEventListener('click', async () => {
+        const amount = document.getElementById('depositAmount').value;
+        const phone = document.getElementById('depositPhone').value;
+
+        if (!amount || !phone) {
+            showAlert('Montant et téléphone requis', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/wallet/deposit`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: currentUserId,
+                    amount: parseInt(amount),
+                    phone: phone
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                showAlert('💰 ' + data.message, 'success');
+                document.getElementById('depositForm').style.display = 'none';
+                loadWallet();
+                loadTransactions();
+            } else {
+                showAlert('❌ ' + data.message, 'error');
+            }
+        } catch (error) {
+            showAlert('Erreur dépôt', 'error');
+        }
+    });
+
+    document.getElementById('btnConfirmWithdraw').addEventListener('click', async () => {
+        const amount = document.getElementById('withdrawAmount').value;
+        const phone = document.getElementById('withdrawPhone').value;
+
+        if (!amount || !phone) {
+            showAlert('Montant et téléphone requis', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/wallet/withdraw`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: currentUserId,
+                    amount: parseInt(amount),
+                    phone: phone
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                showAlert('💰 ' + data.message, 'success');
+                document.getElementById('withdrawForm').style.display = 'none';
+                loadWallet();
+                loadTransactions();
+            } else {
+                showAlert('❌ ' + data.message, 'error');
+            }
+        } catch (error) {
+            showAlert('Erreur retrait', 'error');
+        }
+    });
+
+    // ============================================================
+    // LOGOUT
+    // ============================================================
+    document.getElementById('btnLogout').addEventListener('click', async () => {
+        await auth.signOut();
+        location.reload();
+    });
+
+    // ============================================================
+    // INSTRUCTION POUR RECAPTCHA (placeholder)
+    // ============================================================
+    const recaptchaDiv = document.createElement('div');
+    recaptchaDiv.id = 'recaptchaContainer';
+    recaptchaDiv.style.display = 'none';
+    document.body.appendChild(recaptchaDiv);
+
+    console.log('✅ BLK Marketplace - 100% RÉEL');
+    console.log(`📦 Backend URL: ${BACKEND_URL}`);
+    console.log('🚀 Toutes les fonctionnalités sont actives');
+</script>
+</body>
+</html>
