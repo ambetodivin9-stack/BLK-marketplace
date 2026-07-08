@@ -135,7 +135,7 @@ app.get('/api/categories', (req, res) => {
 });
 
 // ============================================================
-// PRODUITS (collection "products")
+// ARTICLES (collection "products") – Version SIMPLE SANS INDEX
 // ============================================================
 app.get('/api/articles', async (req, res) => {
   if (!firebaseReady) {
@@ -149,14 +149,14 @@ app.get('/api/articles', async (req, res) => {
     });
   }
   try {
-    const snapshot = await db.collection('products')
-      .where('status', '==', 'active')
-      .orderBy('createdAt', 'desc')
-      .get();
+    const snapshot = await db.collection('products').get();
     const articles = [];
-    snapshot.forEach(doc => articles.push({ id: doc.id, ...doc.data() }));
+    snapshot.forEach(doc => {
+      articles.push({ id: doc.id, ...doc.data() });
+    });
     res.json({ success: true, data: articles });
   } catch (error) {
+    console.error('❌ Erreur articles:', error.message);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -175,7 +175,6 @@ app.get('/api/articles/seller/:sellerId', async (req, res) => {
     const { sellerId } = req.params;
     const snapshot = await db.collection('products')
       .where('sellerId', '==', sellerId)
-      .orderBy('createdAt', 'desc')
       .get();
     const articles = [];
     snapshot.forEach(doc => articles.push({ id: doc.id, ...doc.data() }));
