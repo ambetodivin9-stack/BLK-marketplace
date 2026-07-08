@@ -4,12 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>BLK Marketplace</title>
-    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebaseapp/10.5.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebaseapp/10.5.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebaseapp/10.5.0/firebase-firestore.js"></script>
     <style>
-        /* = TOUT LE STYLE (identique à la version précédente) = */
+        /* = STYLE COMPLET (identique) = */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root { --primary: #FFD700; --primary-dark: #F5C400; --success: #2ECC71; --danger: #E74C3C; --frosted: rgba(255,255,255,0.65); --frosted-border: rgba(255,255,255,0.4); --shadow: 0 8px 32px rgba(0,0,0,0.08); --radius: 24px; --radius-sm: 14px; --bg: #F5F0E8; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: #1a1a1a; min-height: 100vh; overflow-x: hidden; padding-bottom: 80px; }
@@ -313,7 +312,6 @@
     let currentUserId = null;
     let allProducts = [];
     let confirmationResult = null;
-    let useRealAuth = false; // deviendra true si Firebase Auth est utilisable
 
     // ============================================================
     // ALERT
@@ -327,21 +325,125 @@
     }
 
     // ============================================================
-    // AUTH – TENTATIVE SMS (si Firebase Auth est disponible)
+    // HANDLE FIREBASE USER (création/mise à jour dans Firestore)
+    // ============================================================
+    async function handleFirebaseUser(user, name) {
+        const phone = user.phoneNumber || '';
+        const email = user.email || '';
+        const photo = user.photoURL || '';
+        try {
+            const snapshot = await db.collection('users').where('email','==',email).get();
+            let userId;
+            if (snapshot.empty) {
+                const userRef = await db.collection('users').add({
+                    name: name || 'Utilisateur',
+                    email: email,
+                    phone: phone,
+                    photo: photo,
+                    flames: 0,
+                    walletBalance: 0,
+                    createdAt: new Date(),
+                    isNew: true
+                });
+                userId = userRef.id;
+                currentUser = { name: name || 'Utilisateur', email, phone, photo, flames: 0, walletBalance: 0, isNew: true };
+                document.getElementById('authPage').style.display = 'none';
+                document.getElementById('welcomeScreen').classList.add('active');
+                document.getElementById('welcomeBtn').addEventListener('click', () => {
+                    document.getElementById('welcomeScreen').classList.remove('active');
+                    db.collection('users').doc(userId).update({ isNew: false });
+                    currentUserId = userId;
+                    showMainApp();
+                    showAlert('🎉 Bienvenue ' + (name || 'Utilisateur') + ' !', 'success');
+                });
+            } else {
+                const doc = snapshot.docs[0];
+                userId = doc.id;
+                currentUserId = userId;
+                currentUser = doc.data();
+                document.getElementById('authPage').style.display = 'none';
+                showMainApp();
+                showAlert('✅ Bonjour ' + currentUser.name + ' !', 'success');
+            }
+        } catch (error) {
+            showAlert('Erreur Firestore: ' + error.message, 'error');
+            simulateLogin(name, phone);
+        }
+    }
+
+    // ============================================================
+    // SIMULATION (fallback)
+    // ============================================================
+    function simulateLogin(name, phone) {
+        const userName = name || 'Utilisateur';
+        const userPhone = phone || '+242 06 XXX XXXX';
+        currentUser = {
+            name: userName,
+            phone: userPhone,
+            email: 'user@example.com',
+            photo: '',
+            flames: 0,
+            walletBalance: 0,
+            isNew: false
+        };
+        currentUserId = 'mock_user_' + Date.now();
+        document.getElementById('authPage').style.display = 'none';
+        showMainApp();
+        showAlert('✅ Bonjour ' + userName + ' ! (mode simulation)', 'success');
+    }
+
+    // ============================================================
+    // GOOGLE AUTH (avec redirection)
+    // ============================================================
+    async function googleAuth() {
+        if (!firebaseReady || !auth) {
+            simulateLogin('Utilisateur Google', '+242 06 XXX XXXX');
+            return;
+        }
+        try {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            // ✅ Utilisation de signInWithRedirect (pas de pop-up)
+            await auth.signInWithRedirect(provider);
+            // La page sera redirigée vers Google, puis reviendra automatiquement
+        } catch (error) {
+            console.error('Erreur Google Redirect:', error);
+            showAlert('⚠️ Google non disponible, passage en simulation.', 'info');
+            simulateLogin('Utilisateur Google', '+242 06 XXX XXXX');
+        }
+    }
+
+    // ============================================================
+    // GESTION DU RETOUR DE REDIRECTION
+    // ============================================================
+    if (auth) {
+        auth.getRedirectResult().then((result) => {
+            if (result.user) {
+                // Connexion réussie
+                handleFirebaseUser(result.user, result.user.displayName);
+            }
+        }).catch((error) => {
+            console.error('Erreur retour redirect:', error);
+            // Si la redirection échoue, on passe en simulation
+            if (!currentUser) {
+                simulateLogin('Utilisateur Google', '+242 06 XXX XXXX');
+            }
+        });
+    }
+
+    // ============================================================
+    // AUTH – SMS (tentative, fallback simulation)
     // ============================================================
     document.getElementById('btnLogin').addEventListener('click', async () => {
         const phone = document.getElementById('loginPhone').value.trim();
         const name = document.getElementById('loginName').value.trim();
 
         if (!firebaseReady || !auth) {
-            // Fallback simulation
             simulateLogin(name, phone);
             return;
         }
 
         if (!phone) { showAlert('Entre ton numéro', 'error'); return; }
 
-        // Tentative SMS
         try {
             const otpContainer = document.createElement('div');
             otpContainer.id = 'otpContainer';
@@ -384,99 +486,7 @@
     });
 
     // ============================================================
-    // AUTH – GOOGLE (si Firebase Auth est disponible)
-    // ============================================================
-    async function googleAuth() {
-        if (!firebaseReady || !auth) {
-            simulateLogin('Utilisateur Google', '+242 06 XXX XXXX');
-            return;
-        }
-        try {
-            const provider = new firebase.auth.GoogleAuthProvider();
-            const result = await auth.signInWithPopup(provider);
-            const user = result.user;
-            await handleFirebaseUser(user, user.displayName);
-        } catch (error) {
-            showAlert('⚠️ Google Auth non disponible, passage en simulation.', 'info');
-            simulateLogin('Utilisateur Google', '+242 06 XXX XXXX');
-        }
-    }
-    document.getElementById('btnGoogleLogin').addEventListener('click', googleAuth);
-    document.getElementById('btnGoogleSignup').addEventListener('click', googleAuth);
-
-    // ============================================================
-    // HANDLE FIREBASE USER (création/mise à jour dans Firestore)
-    // ============================================================
-    async function handleFirebaseUser(user, name) {
-        const phone = user.phoneNumber || '';
-        const email = user.email || '';
-        const photo = user.photoURL || '';
-        try {
-            const snapshot = await db.collection('users').where('email','==',email).get();
-            let userId;
-            if (snapshot.empty) {
-                const userRef = await db.collection('users').add({
-                    name: name || 'Utilisateur',
-                    email: email,
-                    phone: phone,
-                    photo: photo,
-                    flames: 0,
-                    walletBalance: 0,
-                    createdAt: new Date(),
-                    isNew: true
-                });
-                userId = userRef.id;
-                currentUser = { name: name || 'Utilisateur', email, phone, photo, flames: 0, walletBalance: 0, isNew: true };
-                document.getElementById('authPage').style.display = 'none';
-                document.getElementById('welcomeScreen').classList.add('active');
-                document.getElementById('welcomeBtn').addEventListener('click', () => {
-                    document.getElementById('welcomeScreen').classList.remove('active');
-                    db.collection('users').doc(userId).update({ isNew: false });
-                    currentUserId = userId;
-                    useRealAuth = true;
-                    showMainApp();
-                    showAlert('🎉 Bienvenue ' + (name || 'Utilisateur') + ' !', 'success');
-                });
-            } else {
-                const doc = snapshot.docs[0];
-                userId = doc.id;
-                currentUserId = userId;
-                currentUser = doc.data();
-                document.getElementById('authPage').style.display = 'none';
-                useRealAuth = true;
-                showMainApp();
-                showAlert('✅ Bonjour ' + currentUser.name + ' !', 'success');
-            }
-        } catch (error) {
-            showAlert('Erreur Firestore: ' + error.message, 'error');
-            simulateLogin(name, phone);
-        }
-    }
-
-    // ============================================================
-    // SIMULATION (fallback)
-    // ============================================================
-    function simulateLogin(name, phone) {
-        const userName = name || 'Utilisateur';
-        const userPhone = phone || '+242 06 XXX XXXX';
-        currentUser = {
-            name: userName,
-            phone: userPhone,
-            email: 'user@example.com',
-            photo: '',
-            flames: 0,
-            walletBalance: 0,
-            isNew: false
-        };
-        currentUserId = 'mock_user_' + Date.now();
-        document.getElementById('authPage').style.display = 'none';
-        useRealAuth = false;
-        showMainApp();
-        showAlert('✅ Bonjour ' + userName + ' ! (mode simulation)', 'success');
-    }
-
-    // ============================================================
-    // BASCULE LOGIN / SIGNUP
+    // BASCOULE LOGIN / SIGNUP
     // ============================================================
     document.getElementById('btnShowSignup').addEventListener('click', () => {
         document.getElementById('loginForm').style.display = 'none';
@@ -497,10 +507,12 @@
             simulateLogin(name, phone);
             return;
         }
-        // Tentative d'inscription réelle (SMS ou Google)
-        // Pour l'exemple, on passe en simulation
+        // Pour l'inscription, on passe en simulation pour l'exemple
         simulateLogin(name, phone);
     });
+
+    document.getElementById('btnGoogleLogin').addEventListener('click', googleAuth);
+    document.getElementById('btnGoogleSignup').addEventListener('click', googleAuth);
 
     // ============================================================
     // MAIN APP
@@ -749,7 +761,7 @@
     recaptchaDiv.style.display = 'none';
     document.body.appendChild(recaptchaDiv);
 
-    console.log('✅ BLK Marketplace - Mode hybride (Firebase Auth + fallback simulation)');
+    console.log('✅ BLK Marketplace - Mode hybride (Google Redirect + fallback simulation)');
     console.log('🔗 Backend URL: '+BACKEND_URL);
 </script>
 </body>
