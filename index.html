@@ -8,6 +8,7 @@
     <script src="https://www.gstatic.com/firebaseapp/10.5.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebaseapp/10.5.0/firebase-firestore.js"></script>
     <style>
+        /* = TOUT LE STYLE (identique à la version précédente) = */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root { --primary: #FFD700; --primary-dark: #F5C400; --success: #2ECC71; --danger: #E74C3C; --frosted: rgba(255,255,255,0.65); --frosted-border: rgba(255,255,255,0.4); --shadow: 0 8px 32px rgba(0,0,0,0.08); --radius: 24px; --radius-sm: 14px; --bg: #F5F0E8; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: #1a1a1a; min-height: 100vh; overflow-x: hidden; padding-bottom: 80px; }
@@ -282,12 +283,30 @@
 
 <script>
     // ============================================================
-    // CONFIGURATION
+    // CONFIGURATION FIREBASE
+    // ============================================================
+    const firebaseConfig = {
+        apiKey: "AIzaSyA210LGSiktib7iFT82s2HZR1IcSMqmf38",
+        authDomain: "blk-congo.firebaseapp.com",
+        projectId: "blk-congo",
+        storageBucket: "blk-congo.firebasestorage.app",
+        messagingSenderId: "1067239289658",
+        appId: "1:1067239289658:web:a24aba40f2999201349603"
+    };
+    try { firebase.initializeApp(firebaseConfig); } catch(e) {}
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // ============================================================
+    // BACKEND URL
     // ============================================================
     const BACKEND_URL = 'https://blk-marketplace2.0-1.onrender.com';
+
     let currentUser = null;
-    let currentUserId = 'mock_user_' + Date.now();
+    let currentUserId = null;
     let allProducts = [];
+    let selectedCategory = 'all';
+    let confirmationResult = null;
 
     // ============================================================
     // ALERT
@@ -301,51 +320,132 @@
     }
 
     // ============================================================
-    // CONNEXION SIMPLIFIÉE (PASSE DIRECTEMENT À L'APPLICATION)
+    // AUTH – Connexion par SMS
     // ============================================================
-    document.getElementById('btnLogin').addEventListener('click', () => {
-        const name = document.getElementById('loginName').value.trim() || 'Utilisateur';
-        const phone = document.getElementById('loginPhone').value.trim() || '+242 06 XXX XXXX';
-        currentUser = { name, phone, email: 'user@example.com', photo: '', flames: 0, walletBalance: 0 };
-        document.getElementById('authPage').style.display = 'none';
-        showMainApp();
-        showAlert('✅ Bonjour ' + name + ' !', 'success');
+    document.getElementById('btnLogin').addEventListener('click', async () => {
+        const phone = document.getElementById('loginPhone').value.trim();
+        const name = document.getElementById('loginName').value.trim();
+        if (!phone) { showAlert('Entre ton numéro', 'error'); return; }
+
+        const otpContainer = document.createElement('div');
+        otpContainer.id = 'otpContainer';
+        otpContainer.innerHTML = `
+            <div class="form-group">
+                <label>Code SMS</label>
+                <input type="text" id="otpCode" placeholder="000000" maxlength="6" style="text-align:center;letter-spacing:4px;font-size:20px;" />
+            </div>
+            <button class="btn btn-success" id="verifyOtpBtn">Vérifier</button>
+            <button class="btn btn-outline" id="cancelOtpBtn" style="margin-top:8px;">Annuler</button>
+        `;
+        document.getElementById('loginForm').appendChild(otpContainer);
+
+        try {
+            const appVerifier = new firebase.auth.RecaptchaVerifier('recaptchaContainer', { size: 'normal' });
+            const result = await auth.signInWithPhoneNumber(phone, appVerifier);
+            confirmationResult = result;
+            showAlert('📱 Code SMS envoyé !', 'success');
+
+            document.getElementById('verifyOtpBtn').addEventListener('click', async () => {
+                const otp = document.getElementById('otpCode').value.trim();
+                if (!otp || otp.length !== 6) { showAlert('Code invalide', 'error'); return; }
+                try {
+                    const userCredential = await confirmationResult.confirm(otp);
+                    const user = userCredential.user;
+                    const snapshot = await db.collection('users').where('phone','==',phone).get();
+                    let userId;
+                    if (snapshot.empty) {
+                        const userRef = await db.collection('users').add({
+                            name: name || 'Utilisateur',
+                            phone: phone,
+                            email: '',
+                            photo: '',
+                            flames: 0,
+                            walletBalance: 0,
+                            createdAt: new Date(),
+                            isNew: true
+                        });
+                        userId = userRef.id;
+                        currentUser = { name: name || 'Utilisateur', phone, email: '', photo: '', flames: 0, walletBalance: 0, isNew: true };
+                        document.getElementById('authPage').style.display = 'none';
+                        document.getElementById('welcomeScreen').classList.add('active');
+                        document.getElementById('welcomeBtn').addEventListener('click', () => {
+                            document.getElementById('welcomeScreen').classList.remove('active');
+                            db.collection('users').doc(userId).update({ isNew: false });
+                            currentUserId = userId;
+                            showMainApp();
+                            showAlert('🎉 Bienvenue ' + (name || 'Utilisateur') + ' !', 'success');
+                        });
+                    } else {
+                        const doc = snapshot.docs[0];
+                        userId = doc.id;
+                        currentUserId = userId;
+                        currentUser = doc.data();
+                        document.getElementById('authPage').style.display = 'none';
+                        showMainApp();
+                        showAlert('✅ Bonjour ' + currentUser.name + ' !', 'success');
+                    }
+                } catch (error) {
+                    showAlert('❌ Code invalide ou expiré', 'error');
+                }
+            });
+
+            document.getElementById('cancelOtpBtn').addEventListener('click', () => {
+                document.getElementById('otpContainer').remove();
+            });
+
+        } catch (error) {
+            showAlert('Erreur: ' + error.message, 'error');
+            document.getElementById('otpContainer')?.remove();
+        }
     });
 
-    document.getElementById('btnSignup').addEventListener('click', () => {
-        const name = document.getElementById('signupName').value.trim() || 'Nouvel Utilisateur';
-        const email = document.getElementById('signupEmail').value.trim() || 'email@example.com';
-        const phone = document.getElementById('signupPhone').value.trim() || '+242 06 XXX XXXX';
-        currentUser = { name, email, phone, photo: '', flames: 0, walletBalance: 0, isNew: true };
-        document.getElementById('authPage').style.display = 'none';
-        document.getElementById('welcomeScreen').classList.add('active');
-        document.getElementById('welcomeBtn').addEventListener('click', () => {
-            document.getElementById('welcomeScreen').classList.remove('active');
-            showMainApp();
-            showAlert('🎉 Bienvenue ' + name + ' !', 'success');
-        });
-    });
+    // ============================================================
+    // GOOGLE AUTH
+    // ============================================================
+    async function googleAuth() {
+        try {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            const result = await auth.signInWithPopup(provider);
+            const user = result.user;
+            const snapshot = await db.collection('users').where('email','==',user.email).get();
+            let userId;
+            if (snapshot.empty) {
+                const userRef = await db.collection('users').add({
+                    name: user.displayName || 'Utilisateur',
+                    email: user.email,
+                    phone: user.phoneNumber || '',
+                    photo: user.photoURL || '',
+                    flames: 0,
+                    walletBalance: 0,
+                    createdAt: new Date(),
+                    isNew: true
+                });
+                userId = userRef.id;
+                currentUser = { name: user.displayName, email: user.email, phone: user.phoneNumber, photo: user.photoURL, isNew: true };
+                document.getElementById('authPage').style.display = 'none';
+                document.getElementById('welcomeScreen').classList.add('active');
+                document.getElementById('welcomeBtn').addEventListener('click', () => {
+                    document.getElementById('welcomeScreen').classList.remove('active');
+                    db.collection('users').doc(userId).update({ isNew: false });
+                    currentUserId = userId;
+                    showMainApp();
+                    showAlert('🎉 Bienvenue ' + user.displayName + ' !', 'success');
+                });
+            } else {
+                userId = snapshot.docs[0].id;
+                currentUserId = userId;
+                currentUser = snapshot.docs[0].data();
+                document.getElementById('authPage').style.display = 'none';
+                showMainApp();
+                showAlert('✅ Bonjour ' + currentUser.name + ' !', 'success');
+            }
+        } catch (error) {
+            showAlert('Erreur Google: ' + error.message, 'error');
+        }
+    }
+    document.getElementById('btnGoogleLogin').addEventListener('click', googleAuth);
+    document.getElementById('btnGoogleSignup').addEventListener('click', googleAuth);
 
-    document.getElementById('btnGoogleLogin').addEventListener('click', () => {
-        const name = 'Utilisateur Google';
-        currentUser = { name, email: 'google@example.com', phone: '+242 06 XXX XXXX', photo: '', flames: 0, walletBalance: 0 };
-        document.getElementById('authPage').style.display = 'none';
-        showMainApp();
-        showAlert('✅ Bonjour ' + name + ' ! (Google demo)', 'success');
-    });
-    document.getElementById('btnGoogleSignup').addEventListener('click', () => {
-        const name = 'Utilisateur Google';
-        currentUser = { name, email: 'google@example.com', phone: '+242 06 XXX XXXX', photo: '', flames: 0, walletBalance: 0, isNew: true };
-        document.getElementById('authPage').style.display = 'none';
-        document.getElementById('welcomeScreen').classList.add('active');
-        document.getElementById('welcomeBtn').addEventListener('click', () => {
-            document.getElementById('welcomeScreen').classList.remove('active');
-            showMainApp();
-            showAlert('🎉 Bienvenue ' + name + ' !', 'success');
-        });
-    });
-
-    // Basculer login/signup
     document.getElementById('btnShowSignup').addEventListener('click', () => {
         document.getElementById('loginForm').style.display = 'none';
         document.getElementById('signupForm').style.display = 'block';
@@ -367,13 +467,16 @@
 
         document.getElementById('headerName').textContent = currentUser?.name || 'Utilisateur';
         const avatar = document.getElementById('headerAvatar');
-        avatar.textContent = (currentUser?.name || 'U')[0].toUpperCase();
+        if (currentUser?.photo) avatar.innerHTML = '<img src="'+currentUser.photo+'" />';
+        else avatar.textContent = (currentUser?.name || 'U')[0].toUpperCase();
 
         document.getElementById('profileName').textContent = currentUser?.name || 'Utilisateur';
         document.getElementById('profileEmail').textContent = currentUser?.email || 'email@example.com';
         document.getElementById('profilePhone').textContent = currentUser?.phone || '+242 06 XXX XXXX';
         document.getElementById('profileFlames').textContent = currentUser?.flames || 0;
-        document.getElementById('profileAvatar').textContent = (currentUser?.name || 'U')[0].toUpperCase();
+        const pAvatar = document.getElementById('profileAvatar');
+        if (currentUser?.photo) pAvatar.innerHTML = '<img src="'+currentUser.photo+'" />';
+        else pAvatar.textContent = (currentUser?.name || 'U')[0].toUpperCase();
         document.getElementById('walletBalance').textContent = currentUser?.walletBalance || 0;
 
         loadProducts();
@@ -396,7 +499,7 @@
     });
 
     // ============================================================
-    // PRODUCTS
+    // PRODUCTS (appel réel au backend)
     // ============================================================
     async function loadProducts() {
         try {
@@ -405,19 +508,12 @@
             if (data.success && data.data) {
                 allProducts = data.data;
             } else {
-                allProducts = [
-                    { id: '1', title: 'Robe vintage', description: 'Belle robe des années 80', price: 15000, category: 'vêtements', image: '', sellerName: 'Marie K.', sellerId: 'seller1', status: 'active', createdAt: new Date() },
-                    { id: '2', title: 'Talons rouges', description: 'Escarpins en cuir rouge', price: 25000, category: 'chaussures', image: '', sellerName: 'Sophie L.', sellerId: 'seller2', status: 'active', createdAt: new Date() },
-                    { id: '3', title: 'Sac en cuir', description: 'Sac à main en cuir noir', price: 35000, category: 'sacs', image: '', sellerName: 'Jean P.', sellerId: 'seller3', status: 'active', createdAt: new Date() }
-                ];
+                allProducts = [];
             }
             renderProducts(allProducts);
         } catch(e) {
-            allProducts = [
-                { id: '1', title: 'Robe vintage', description: 'Belle robe des années 80', price: 15000, category: 'vêtements', image: '', sellerName: 'Marie K.', sellerId: 'seller1', status: 'active', createdAt: new Date() },
-                { id: '2', title: 'Talons rouges', description: 'Escarpins en cuir rouge', price: 25000, category: 'chaussures', image: '', sellerName: 'Sophie L.', sellerId: 'seller2', status: 'active', createdAt: new Date() },
-                { id: '3', title: 'Sac en cuir', description: 'Sac à main en cuir noir', price: 35000, category: 'sacs', image: '', sellerName: 'Jean P.', sellerId: 'seller3', status: 'active', createdAt: new Date() }
-            ];
+            console.error('Erreur chargement articles:', e);
+            allProducts = [];
             renderProducts(allProducts);
         }
     }
@@ -425,9 +521,9 @@
     function renderProducts(products) {
         const grid = document.getElementById('productsGrid');
         const empty = document.getElementById('emptyHome');
-        const query = document.getElementById('searchInput').value.toLowerCase();
         let filtered = products;
-        if (query) filtered = products.filter(p => p.title.toLowerCase().includes(query) || (p.description && p.description.toLowerCase().includes(query)));
+        const q = document.getElementById('searchInput').value.toLowerCase();
+        if (q) filtered = products.filter(p => p.title.toLowerCase().includes(q) || (p.description && p.description.toLowerCase().includes(q)));
         if (filtered.length === 0) { grid.innerHTML = ''; empty.style.display = 'block'; return; }
         empty.style.display = 'none';
         grid.innerHTML = '';
@@ -468,53 +564,125 @@
         `;
         document.body.appendChild(modal);
         document.getElementById('modalClose').addEventListener('click', () => modal.remove());
-        document.getElementById('modalBuy').addEventListener('click', () => {
-            showAlert('✅ Achat simulé !', 'success');
+        document.getElementById('modalBuy').addEventListener('click', async () => {
+            await buyProduct(product);
             modal.remove();
         });
         modal.addEventListener('click', (e) => { if(e.target===modal) modal.remove(); });
     }
 
     // ============================================================
-    // STATS (simulées)
+    // BUY PRODUCT (appel réel)
+    // ============================================================
+    async function buyProduct(product) {
+        if (!currentUserId) { showAlert('Connecte-toi d\'abord', 'error'); return; }
+        try {
+            const buyerCommission = Math.round(product.price * 0.03);
+            const totalAmount = product.price + buyerCommission;
+            const walletRes = await fetch(BACKEND_URL+'/api/wallet/'+currentUserId);
+            const walletData = await walletRes.json();
+            if (walletData.balance < totalAmount) {
+                showAlert('❌ Solde insuffisant. Il te manque '+(totalAmount - walletData.balance)+' FCFA', 'error');
+                return;
+            }
+            const res = await fetch(BACKEND_URL+'/api/orders/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    articleId: product.id,
+                    buyerId: currentUserId,
+                    sellerId: product.sellerId,
+                    amount: product.price,
+                    buyerPhone: currentUser?.phone || ''
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showAlert('✅ Commande créée ! '+data.message, 'success');
+                loadWallet(); loadOrders(); loadProducts();
+            } else { showAlert('❌ '+data.message, 'error'); }
+        } catch(error) { showAlert('Erreur: '+error.message, 'error'); }
+    }
+
+    // ============================================================
+    // WALLET (appel réel)
+    // ============================================================
+    async function loadWallet() {
+        if (!currentUserId) return;
+        try {
+            const res = await fetch(BACKEND_URL+'/api/wallet/'+currentUserId);
+            const data = await res.json();
+            document.getElementById('walletBalance').textContent = data.balance || 0;
+        } catch(e) { console.error(e); }
+    }
+
+    // ============================================================
+    // STATS (appel réel)
     // ============================================================
     async function loadStats() {
-        document.getElementById('statSales').textContent = '12';
-        document.getElementById('statOrders').textContent = '5';
-        document.getElementById('statArticles').textContent = '3';
-        const container = document.getElementById('chartContainer');
-        container.innerHTML = '';
-        const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun'];
-        months.forEach((m, i) => {
-            const bar = document.createElement('div');
-            bar.style.cssText = `flex:1;height:${20+i*12}px;background:var(--primary);border-radius:4px 4px 0 0;min-height:4px;`;
-            bar.title = m+': '+(100+i*50)+' FCFA';
-            container.appendChild(bar);
-        });
-        loadShopArticles();
+        if (!currentUserId) return;
+        try {
+            const res = await fetch(BACKEND_URL+'/api/stats/'+currentUserId);
+            const data = await res.json();
+            if (data.success) {
+                const stats = data.data;
+                document.getElementById('statSales').textContent = stats.totalSales || 0;
+                document.getElementById('statOrders').textContent = stats.totalPurchases || 0;
+                document.getElementById('statArticles').textContent = stats.totalArticles || 0;
+                const container = document.getElementById('chartContainer');
+                container.innerHTML = '';
+                if (stats.history && stats.history.length > 0) {
+                    const max = Math.max(...stats.history.map(h => h.revenu), 1);
+                    stats.history.slice(-6).forEach(h => {
+                        const bar = document.createElement('div');
+                        bar.style.cssText = `flex:1;height:${Math.max((h.revenu/max)*100,5)}px;background:var(--primary);border-radius:4px 4px 0 0;min-height:4px;`;
+                        bar.title = h.month+': '+h.revenu+' FCFA ('+h.ventes+' ventes)';
+                        container.appendChild(bar);
+                    });
+                } else { container.innerHTML = '<p style="color:rgba(0,0,0,0.3);font-size:13px;">Aucune donnée</p>'; }
+                loadShopArticles();
+            }
+        } catch(e) { console.error(e); }
     }
 
     // ============================================================
-    // SHOP ARTICLES (simulés)
+    // SHOP ARTICLES (appel réel)
     // ============================================================
-    function loadShopArticles() {
-        const container = document.getElementById('shopArticles');
-        container.innerHTML = `
-            <div class="glass-sm" style="margin-bottom:8px;display:flex;align-items:center;gap:12px;">
-                <img src="https://via.placeholder.com/50x50/F5F0E8/CCCCCC?text=BLK" style="width:50px;height:50px;object-fit:cover;border-radius:8px;" />
-                <div style="flex:1;"><div style="font-weight:600;font-size:13px;">Robe vintage</div><div style="font-size:12px;color:var(--primary);font-weight:700;">15 000 FCFA</div><div style="font-size:10px;color:rgba(0,0,0,0.4);">✅ En vente</div></div>
-                <button class="btn btn-danger btn-sm" onclick="showAlert('Article supprimé (simulation)', 'success')">Supprimer</button>
-            </div>
-            <div class="glass-sm" style="margin-bottom:8px;display:flex;align-items:center;gap:12px;">
-                <img src="https://via.placeholder.com/50x50/F5F0E8/CCCCCC?text=BLK" style="width:50px;height:50px;object-fit:cover;border-radius:8px;" />
-                <div style="flex:1;"><div style="font-weight:600;font-size:13px;">Talons rouges</div><div style="font-size:12px;color:var(--primary);font-weight:700;">25 000 FCFA</div><div style="font-size:10px;color:rgba(0,0,0,0.4);">✅ En vente</div></div>
-                <button class="btn btn-danger btn-sm" onclick="showAlert('Article supprimé (simulation)', 'success')">Supprimer</button>
-            </div>
-        `;
+    async function loadShopArticles() {
+        if (!currentUserId) return;
+        try {
+            const res = await fetch(BACKEND_URL+'/api/articles/seller/'+currentUserId);
+            const data = await res.json();
+            const container = document.getElementById('shopArticles');
+            if (data.success && data.data && data.data.length > 0) {
+                container.innerHTML = data.data.map(a => `
+                    <div class="glass-sm" style="margin-bottom:8px;display:flex;align-items:center;gap:12px;">
+                        <img src="${a.image || 'https://via.placeholder.com/50x50/F5F0E8/CCCCCC?text=BLK'}" style="width:50px;height:50px;object-fit:cover;border-radius:8px;" />
+                        <div style="flex:1;">
+                            <div style="font-weight:600;font-size:13px;">${a.title}</div>
+                            <div style="font-size:12px;color:var(--primary);font-weight:700;">${a.price} FCFA</div>
+                            <div style="font-size:10px;color:rgba(0,0,0,0.4);">${a.status === 'active' ? '✅ En vente' : a.status === 'sold' ? '✅ Vendu' : '⏸ Inactif'}</div>
+                        </div>
+                        ${a.status === 'active' ? `<button class="btn btn-danger btn-sm" onclick="deleteArticle('${a.id}')">Supprimer</button>` : ''}
+                    </div>
+                `).join('');
+            } else { container.innerHTML = '<p style="color:rgba(0,0,0,0.3);font-size:13px;">Aucun article publié</p>'; }
+        } catch(e) { console.error(e); }
     }
 
     // ============================================================
-    // PUBLISH (simulé)
+    // DELETE ARTICLE (appel réel)
+    // ============================================================
+    async function deleteArticle(articleId) {
+        if (!confirm('Supprimer cet article ?')) return;
+        try {
+            const res = await fetch(BACKEND_URL+'/api/articles/'+articleId, { method: 'DELETE' });
+            if (res.ok) { showAlert('Article supprimé', 'success'); loadShopArticles(); loadStats(); loadProducts(); }
+        } catch(e) { showAlert('Erreur suppression', 'error'); }
+    }
+
+    // ============================================================
+    // PUBLISH (appel réel)
     // ============================================================
     document.getElementById('btnPublish').addEventListener('click', () => {
         const modal = document.createElement('div');
@@ -535,91 +703,258 @@
         document.body.appendChild(modal);
         document.getElementById('pubClose').addEventListener('click', () => modal.remove());
         document.getElementById('pubCancel').addEventListener('click', () => modal.remove());
-        document.getElementById('pubSubmit').addEventListener('click', () => {
-            showAlert('✅ Article publié (simulation) !', 'success');
-            modal.remove();
+        document.getElementById('pubSubmit').addEventListener('click', async () => {
+            const title = document.getElementById('pubTitle').value.trim();
+            const description = document.getElementById('pubDesc').value.trim();
+            const price = document.getElementById('pubPrice').value;
+            const category = document.getElementById('pubCategory').value;
+            const imageFile = document.getElementById('pubImage').files[0];
+            if (!title || !description || !price) { showAlert('Remplis tous les champs', 'error'); return; }
+            let imageUrl = '';
+            if (imageFile) {
+                try {
+                    const reader = new FileReader();
+                    const base64 = await new Promise((resolve) => {
+                        reader.onload = () => resolve(reader.result);
+                        reader.readAsDataURL(imageFile);
+                    });
+                    const uploadRes = await fetch(BACKEND_URL+'/api/upload', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ base64 })
+                    });
+                    const uploadData = await uploadRes.json();
+                    if (uploadData.success) imageUrl = uploadData.url;
+                } catch(e) { showAlert('Erreur upload image', 'error'); return; }
+            }
+            try {
+                const res = await fetch(BACKEND_URL+'/api/articles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title, description, price: parseInt(price), category,
+                        image: imageUrl, sellerId: currentUserId,
+                        sellerName: currentUser?.name || 'Anonyme',
+                        sellerPhoto: currentUser?.photo || ''
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showAlert('✅ Article publié !', 'success');
+                    modal.remove();
+                    loadProducts(); loadStats(); loadShopArticles();
+                } else { showAlert('Erreur: '+data.message, 'error'); }
+            } catch(e) { showAlert('Erreur publication', 'error'); }
         });
+        modal.addEventListener('click', (e) => { if(e.target===modal) modal.remove(); });
     });
 
     // ============================================================
-    // ORDERS (simulées)
+    // ORDERS (appel réel)
     // ============================================================
-    function loadOrders() {
-        const container = document.getElementById('ordersList');
-        const empty = document.getElementById('emptyOrders');
-        empty.style.display = 'none';
-        container.innerHTML = `
-            <div class="order-card">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-                    <div><div style="font-weight:700;">Robe vintage</div><div style="font-size:12px;color:rgba(0,0,0,0.4);">👤 Vendeur: Marie K.</div></div>
-                    <span class="status status-pending">⏳ En attente</span>
-                </div>
-                <div style="font-size:16px;font-weight:700;color:var(--primary);margin:8px 0;">15 000 FCFA</div>
-                <div class="timer-display">08h 32m</div>
-                <div class="confirm-box">
-                    <label><input type="checkbox" class="confirm-check" data-key="recu" /> J'ai bien reçu le colis</label>
-                    <label><input type="checkbox" class="confirm-check" data-key="bon_etat" /> Le colis est en bon état</label>
-                    <label><input type="checkbox" class="confirm-check" data-key="confirme" /> Je confirme la réception</label>
-                    <button class="btn btn-success" style="margin-top:8px;" onclick="showAlert('✅ Commande confirmée !', 'success')">✅ Confirmer la réception</button>
-                </div>
-                <button class="btn btn-danger btn-sm" style="margin-top:8px;" onclick="showAlert('✅ Commande annulée', 'info')">❌ Annuler (2h max)</button>
-            </div>
-            <div class="order-card">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-                    <div><div style="font-weight:700;">Sac en cuir</div><div style="font-size:12px;color:rgba(0,0,0,0.4);">👤 Acheteur: Jean P.</div></div>
-                    <span class="status status-delivered">✅ Livré</span>
-                </div>
-                <div style="font-size:16px;font-weight:700;color:var(--primary);margin:8px 0;">35 000 FCFA</div>
-                <div style="font-size:12px;color:var(--success);">✅ Livré le 07/07/2025 - Reçu 33 600 FCFA</div>
-                <div style="margin-top:8px;"><button class="btn btn-primary btn-sm" onclick="showAlert('🔥 Flamme donnée !', 'success')">🔥 Donner une flamme</button></div>
-            </div>
-        `;
+    async function loadOrders() {
+        if (!currentUserId) return;
+        try {
+            const res = await fetch(BACKEND_URL+'/api/orders/'+currentUserId);
+            const orders = await res.json();
+            const container = document.getElementById('ordersList');
+            const empty = document.getElementById('emptyOrders');
+            if (!orders || orders.length === 0) { container.innerHTML = ''; empty.style.display = 'block'; return; }
+            empty.style.display = 'none';
+            container.innerHTML = '';
+            orders.forEach(order => {
+                const isBuyer = order.buyerId === currentUserId;
+                const isSeller = order.sellerId === currentUserId;
+                const otherPerson = isBuyer ? order.seller : order.buyer;
+                const expiresAt = order.expiresAt ? new Date(order.expiresAt) : null;
+                const now = new Date();
+                const timeLeft = expiresAt ? Math.max(0, Math.floor((expiresAt - now)/1000)) : 0;
+                const hours = Math.floor(timeLeft/3600);
+                const mins = Math.floor((timeLeft%3600)/60);
+                const isDanger = timeLeft < 3600 && order.status === 'en attente de confirmation';
+                const card = document.createElement('div');
+                card.className = 'order-card';
+                card.innerHTML = `
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                        <div><div style="font-weight:700;">${order.article?.title || 'Article'}</div><div style="font-size:12px;color:rgba(0,0,0,0.4);">${isBuyer ? '👤 Vendeur: '+(otherPerson?.name||'Inconnu') : '👤 Acheteur: '+(otherPerson?.name||'Inconnu')}</div></div>
+                        <span class="status status-${order.status === 'livré' ? 'delivered' : order.status === 'annulé' ? 'cancelled' : order.status === 'remboursé' ? 'refunded' : 'pending'}">${order.status === 'en attente de confirmation' ? '⏳ En attente' : order.status === 'livré' ? '✅ Livré' : order.status === 'annulé' ? '❌ Annulé' : order.status === 'remboursé' ? '💰 Remboursé' : order.status}</span>
+                    </div>
+                    <div style="font-size:16px;font-weight:700;color:var(--primary);margin:8px 0;">${order.totalAmount || order.amount} FCFA</div>
+                    ${order.status === 'en attente de confirmation' ? `
+                        <div class="timer-display ${isDanger ? 'danger' : ''}">${String(hours).padStart(2,'0')}h ${String(mins).padStart(2,'0')}m</div>
+                        ${isBuyer ? `
+                            <div class="confirm-box">
+                                <label><input type="checkbox" class="confirm-check" data-key="recu" /> J'ai bien reçu le colis</label>
+                                <label><input type="checkbox" class="confirm-check" data-key="bon_etat" /> Le colis est en bon état</label>
+                                <label><input type="checkbox" class="confirm-check" data-key="confirme" /> Je confirme la réception</label>
+                                <button class="btn btn-success" style="margin-top:8px;" onclick="confirmOrder('${order.id}')">✅ Confirmer la réception</button>
+                            </div>
+                        ` : `<div style="font-size:12px;color:rgba(0,0,0,0.4);">En attente de confirmation par l'acheteur...</div>`}
+                    ` : ''}
+                    ${order.status === 'en attente de confirmation' && !isBuyer ? `<div style="font-size:12px;color:rgba(0,0,0,0.4);">Le client doit confirmer la réception</div>` : ''}
+                    ${order.status === 'livré' ? `
+                        <div style="font-size:12px;color:var(--success);">✅ Livré le ${order.buyerConfirmedAt ? new Date(order.buyerConfirmedAt).toLocaleDateString() : ''}${order.sellerReceived ? '- Reçu '+order.sellerReceived+' FCFA' : ''}</div>
+                        <div style="margin-top:8px;"><button class="btn btn-primary btn-sm" onclick="giveFlame('${order.sellerId}')">🔥 Donner une flamme</button></div>
+                    ` : ''}
+                    ${order.status === 'en attente de confirmation' && new Date(order.createdAt) > new Date(Date.now() - 2*60*60*1000) ? `
+                        <button class="btn btn-danger btn-sm" style="margin-top:8px;" onclick="cancelOrder('${order.id}')">❌ Annuler (2h max)</button>
+                    ` : ''}
+                `;
+                container.appendChild(card);
+            });
+        } catch(e) { console.error(e); }
     }
 
+    window.confirmOrder = async function(orderId) {
+        const checks = document.querySelectorAll('.confirm-check');
+        const confirmations = {};
+        let allChecked = true;
+        checks.forEach(cb => {
+            confirmations[cb.dataset.key] = cb.checked;
+            if (!cb.checked) allChecked = false;
+        });
+        if (!allChecked) { showAlert('❌ Tu dois cocher les 3 cases', 'error'); return; }
+        try {
+            const res = await fetch(BACKEND_URL+'/api/orders/confirm', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderId, buyerId: currentUserId, confirmations })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showAlert('✅ Commande confirmée !', 'success');
+                loadOrders(); loadWallet(); loadStats(); loadProducts();
+            } else { showAlert('❌ '+data.message, 'error'); }
+        } catch(e) { showAlert('Erreur confirmation', 'error'); }
+    };
+
+    window.cancelOrder = async function(orderId) {
+        if (!confirm('Annuler cette commande ?')) return;
+        try {
+            const res = await fetch(BACKEND_URL+'/api/orders/cancel/'+orderId, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: currentUserId })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showAlert('✅ Commande annulée et remboursée', 'success');
+                loadOrders(); loadWallet(); loadProducts();
+            } else { showAlert('❌ '+data.message, 'error'); }
+        } catch(e) { showAlert('Erreur annulation', 'error'); }
+    };
+
+    window.giveFlame = async function(sellerId) {
+        try {
+            const res = await fetch(BACKEND_URL+'/api/flames', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sellerId, buyerId: currentUserId })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showAlert('🔥 Flamme donnée ! Total: '+data.flames, 'success');
+                loadUserData();
+            } else { showAlert('❌ '+data.message, 'error'); }
+        } catch(e) { showAlert('Erreur flamme', 'error'); }
+    };
+
     // ============================================================
-    // MESSAGES (simulés)
+    // MESSAGES (appel réel)
     // ============================================================
-    function loadMessages() {
-        const container = document.getElementById('messagesList');
-        const empty = document.getElementById('emptyMessages');
-        empty.style.display = 'none';
-        container.innerHTML = `
-            <div class="message-item">
-                <div class="avatar">M</div>
-                <div class="content"><div class="sender">Marie K.</div><div class="text">Bonjour, je suis intéressé par la robe vintage</div></div>
-                <div class="time">14:32</div>
-            </div>
-            <div class="message-item">
-                <div class="avatar">J</div>
-                <div class="content"><div class="sender">Jean P.</div><div class="text">Le sac est-il encore disponible ?</div></div>
-                <div class="time">12:15</div>
-            </div>
-        `;
+    async function loadMessages() {
+        if (!currentUserId) return;
+        try {
+            const res = await fetch(BACKEND_URL+'/api/messages/'+currentUserId);
+            const data = await res.json();
+            const container = document.getElementById('messagesList');
+            const empty = document.getElementById('emptyMessages');
+            if (!data.success || !data.data || data.data.length === 0) {
+                container.innerHTML = '';
+                empty.style.display = 'block';
+                return;
+            }
+            empty.style.display = 'none';
+            container.innerHTML = data.data.map(msg => `
+                <div class="message-item">
+                    <div class="avatar">${msg.senderPhoto ? `<img src="${msg.senderPhoto}" />` : (msg.senderName||'U')[0].toUpperCase()}</div>
+                    <div class="content"><div class="sender">${msg.senderName||'Anonyme'}</div><div class="text">${msg.text}</div></div>
+                    <div class="time">${msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : ''}</div>
+                </div>
+            `).join('');
+        } catch(e) { console.error(e); }
     }
 
-    document.getElementById('btnSendMessage').addEventListener('click', () => {
+    document.getElementById('btnSendMessage').addEventListener('click', async () => {
+        const receiverId = document.getElementById('chatReceiver').value.trim();
         const text = document.getElementById('messageInput').value.trim();
-        if (!text) { showAlert('Écris un message', 'error'); return; }
-        showAlert('✅ Message envoyé (simulation)', 'success');
-        document.getElementById('messageInput').value = '';
+        if (!receiverId || !text) { showAlert('Destinataire et message requis', 'error'); return; }
+        try {
+            const res = await fetch(BACKEND_URL+'/api/messages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    senderId: currentUserId, receiverId, text,
+                    senderName: currentUser?.name || 'Anonyme',
+                    senderPhoto: currentUser?.photo || ''
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('messageInput').value = '';
+                showAlert('✅ Message envoyé', 'success');
+                loadMessages();
+            } else { showAlert('❌ '+data.message, 'error'); }
+        } catch(e) { showAlert('Erreur envoi', 'error'); }
     });
 
     // ============================================================
-    // TRANSACTIONS (simulées)
+    // TRANSACTIONS (appel réel)
     // ============================================================
-    function loadTransactions() {
-        const container = document.getElementById('transactionsList');
-        const empty = document.getElementById('emptyTransactions');
-        empty.style.display = 'none';
-        container.innerHTML = `
-            <div class="transaction-item"><div class="info"><div class="desc">Dépôt</div><div class="date">07/07/2025</div></div><div class="amount positive">+10 000 FCFA</div></div>
-            <div class="transaction-item"><div class="info"><div class="desc">Achat #BLK-12345</div><div class="date">06/07/2025</div></div><div class="amount negative">-15 300 FCFA</div></div>
-            <div class="transaction-item"><div class="info"><div class="desc">Vente #BLK-67890</div><div class="date">05/07/2025</div></div><div class="amount positive">+9 600 FCFA</div></div>
-        `;
+    async function loadTransactions() {
+        if (!currentUserId) return;
+        try {
+            const res = await fetch(BACKEND_URL+'/api/transactions/'+currentUserId);
+            const data = await res.json();
+            const container = document.getElementById('transactionsList');
+            const empty = document.getElementById('emptyTransactions');
+            if (!data.success || !data.data || data.data.length === 0) {
+                container.innerHTML = '';
+                empty.style.display = 'block';
+                return;
+            }
+            empty.style.display = 'none';
+            container.innerHTML = data.data.slice(0,20).map(t => `
+                <div class="transaction-item">
+                    <div class="info"><div class="desc">${t.description || t.type}</div><div class="date">${t.date ? new Date(t.date).toLocaleDateString() : ''}</div></div>
+                    <div class="amount ${t.amount >= 0 ? 'positive' : 'negative'}">${t.amount >= 0 ? '+' : ''}${t.amount} FCFA</div>
+                </div>
+            `).join('');
+        } catch(e) { console.error(e); }
     }
 
     // ============================================================
-    // DEPOSIT / WITHDRAW (simulés)
+    // NOTIFICATIONS (Firestore)
+    // ============================================================
+    function listenNotifications() {
+        if (!currentUserId) return;
+        db.collection('notifications')
+            .where('userId','==',currentUserId)
+            .where('read','==',false)
+            .onSnapshot(snapshot => {
+                const count = snapshot.size;
+                document.getElementById('ordersBadge').textContent = count;
+                document.getElementById('ordersBadge').style.display = count > 0 ? 'block' : 'none';
+                snapshot.forEach(doc => {
+                    const notif = doc.data();
+                    showAlert(notif.message, 'info');
+                    db.collection('notifications').doc(doc.id).update({ read: true });
+                });
+            });
+    }
+
+    // ============================================================
+    // DEPOSIT / WITHDRAW (appel réel)
     // ============================================================
     document.getElementById('btnDeposit').addEventListener('click', () => {
         const form = document.getElementById('depositForm');
@@ -633,21 +968,68 @@
     });
     document.getElementById('btnCancelDeposit').addEventListener('click', () => { document.getElementById('depositForm').style.display = 'none'; });
     document.getElementById('btnCancelWithdraw').addEventListener('click', () => { document.getElementById('withdrawForm').style.display = 'none'; });
-    document.getElementById('btnConfirmDeposit').addEventListener('click', () => {
-        showAlert('💰 Dépôt simulé !', 'success');
-        document.getElementById('depositForm').style.display = 'none';
+    document.getElementById('btnConfirmDeposit').addEventListener('click', async () => {
+        const amount = document.getElementById('depositAmount').value;
+        const phone = document.getElementById('depositPhone').value;
+        if (!amount || !phone) { showAlert('Montant et téléphone requis', 'error'); return; }
+        try {
+            const res = await fetch(BACKEND_URL+'/api/wallet/deposit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: currentUserId,
+                    amount: parseInt(amount),
+                    phone
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showAlert('💰 '+data.message, 'success');
+                document.getElementById('depositForm').style.display = 'none';
+                loadWallet(); loadTransactions();
+            } else { showAlert('❌ '+data.message, 'error'); }
+        } catch(e) { showAlert('Erreur dépôt', 'error'); }
     });
-    document.getElementById('btnConfirmWithdraw').addEventListener('click', () => {
-        showAlert('💰 Retrait simulé !', 'success');
-        document.getElementById('withdrawForm').style.display = 'none';
+    document.getElementById('btnConfirmWithdraw').addEventListener('click', async () => {
+        const amount = document.getElementById('withdrawAmount').value;
+        const phone = document.getElementById('withdrawPhone').value;
+        if (!amount || !phone) { showAlert('Montant et téléphone requis', 'error'); return; }
+        try {
+            const res = await fetch(BACKEND_URL+'/api/wallet/withdraw', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: currentUserId,
+                    amount: parseInt(amount),
+                    phone
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showAlert('💰 '+data.message, 'success');
+                document.getElementById('withdrawForm').style.display = 'none';
+                loadWallet(); loadTransactions();
+            } else { showAlert('❌ '+data.message, 'error'); }
+        } catch(e) { showAlert('Erreur retrait', 'error'); }
     });
 
     // ============================================================
     // LOGOUT
     // ============================================================
-    document.getElementById('btnLogout').addEventListener('click', () => { location.reload(); });
+    document.getElementById('btnLogout').addEventListener('click', async () => {
+        await auth.signOut();
+        location.reload();
+    });
 
-    console.log('✅ BLK Marketplace - Mode démo (simulation)');
+    // ============================================================
+    // RECAPTCHA CONTAINER (caché)
+    // ============================================================
+    const recaptchaDiv = document.createElement('div');
+    recaptchaDiv.id = 'recaptchaContainer';
+    recaptchaDiv.style.display = 'none';
+    document.body.appendChild(recaptchaDiv);
+
+    console.log('✅ BLK Marketplace - Mode 100% RÉEL');
     console.log('🔗 Backend URL: '+BACKEND_URL);
 </script>
 </body>
