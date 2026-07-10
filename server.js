@@ -13,7 +13,7 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
 // ============================================================
-// FIREBASE ADMIN – Lecture de la clé (Secret File ou variable)
+// FIREBASE ADMIN
 // ============================================================
 let db = null;
 let firebaseReady = false;
@@ -64,7 +64,7 @@ console.log(`💳 Yabetoo: ${YABETOO_SECRET ? 'OK' : 'MANQUANT'}`);
 console.log(`🔥 Firebase: ${firebaseReady ? 'OK' : 'DÉGRADÉ (SIMULATION)'}`);
 
 // ============================================================
-// CRON – REMBOURSEMENT AUTO (si Firebase prêt)
+// CRON – REMBOURSEMENT AUTO
 // ============================================================
 if (firebaseReady) {
   cron.schedule('0 * * * *', async () => {
@@ -273,6 +273,24 @@ app.post('/api/upload', async (req, res) => {
 });
 
 // ============================================================
+// UPLOAD AUDIO (note vocale)
+// ============================================================
+app.post('/api/upload-audio', async (req, res) => {
+  try {
+    const { base64 } = req.body;
+    if (!base64) return res.status(400).json({ success: false, message: 'Aucun audio' });
+
+    // Pour l'instant, on renvoie le base64 comme URL (simulation)
+    // Dans une vraie app, on uploaderait sur Firebase Storage
+    const audioUrl = `data:audio/webm;base64,${base64}`;
+    res.json({ success: true, url: audioUrl });
+  } catch (error) {
+    console.error('Audio Upload Error:', error.message);
+    res.status(500).json({ success: false, message: 'Erreur upload audio' });
+  }
+});
+
+// ============================================================
 // UTILISATEURS
 // ============================================================
 app.get('/api/users/:userId', async (req, res) => {
@@ -285,7 +303,9 @@ app.get('/api/users/:userId', async (req, res) => {
         flames: 0,
         walletBalance: 5000,
         phone: '+242 06 123 4567',
-        email: 'test@example.com'
+        email: 'test@example.com',
+        isSeller: true,
+        blockedUsers: []
       }
     });
   }
@@ -302,7 +322,9 @@ app.get('/api/users/:userId', async (req, res) => {
         flames: data.flames || 0,
         walletBalance: data.walletBalance || 0,
         phone: data.phone || '',
-        email: data.email || ''
+        email: data.email || '',
+        isSeller: data.isSeller || false,
+        blockedUsers: data.blockedUsers || []
       }
     });
   } catch (error) {
@@ -316,14 +338,44 @@ app.put('/api/users/:userId', async (req, res) => {
   }
   try {
     const { userId } = req.params;
-    const { name, email, phone, photo } = req.body;
+    const { name, email, phone, photo, isSeller } = req.body;
     const updateData = {};
     if (name) updateData.name = name;
     if (email) updateData.email = email;
     if (phone) updateData.phone = phone;
     if (photo) updateData.photo = photo;
+    if (isSeller !== undefined) updateData.isSeller = isSeller;
     await db.collection('users').doc(userId).update(updateData);
     res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================================
+// BLOCAGE UTILISATEUR
+// ============================================================
+app.post('/api/users/block', async (req, res) => {
+  if (!firebaseReady) return res.json({ success: true, message: 'Simulation' });
+  try {
+    const { blockerId, blockedId } = req.body;
+    if (!blockerId || !blockedId) {
+      return res.status(400).json({ success: false, message: 'IDs requis' });
+    }
+    const blockerRef = db.collection('users').doc(blockerId);
+    const blockerDoc = await blockerRef.get();
+    const blocked = blockerDoc.data()?.blockedUsers || [];
+    if (blocked.includes(blockedId)) {
+      await blockerRef.update({
+        blockedUsers: blocked.filter(id => id !== blockedId)
+      });
+      return res.json({ success: true, message: 'Débloqué', blocked: false });
+    } else {
+      await blockerRef.update({
+        blockedUsers: [...blocked, blockedId]
+      });
+      return res.json({ success: true, message: 'Bloqué', blocked: true });
+    }
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -358,7 +410,6 @@ app.post('/api/wallet/deposit', async (req, res) => {
       return res.status(500).json({ success: false, message: 'Yabetoo non configuré' });
     }
     const reference = `DEP-${userId.slice(0,8)}-${Date.now().toString().slice(-6)}`;
-    // ✅ URL CORRECTE (api.yabetoo.com)
     const yabResponse = await axios.post('https://api.yabetoo.com/v1/payment/initiate', {
       amount: parseInt(amount),
       phone: phone,
@@ -416,7 +467,6 @@ app.post('/api/wallet/withdraw', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Solde insuffisant' });
     }
     const reference = `WTH-${userId.slice(0,8)}-${Date.now().toString().slice(-6)}`;
-    // ✅ URL CORRECTE
     const yabResponse = await axios.post('https://api.yabetoo.com/v1/withdraw', {
       amount: parseInt(amount),
       phone: phone,
@@ -520,11 +570,18 @@ app.post('/api/orders/create', async (req, res) => {
     if (!articleId || !buyerId || !sellerId || !amount) {
       return res.status(400).json({ success: false, message: 'Champs requis manquants' });
     }
-    const buyerRef = db.collection('users').doc(buyerId);
-    const buyerDoc = await buyerRef.get();
+
+    // Vérifier si le vendeur est bloqué par l'acheteur
+    const buyerDoc = await db.collection('users').doc(buyerId).get();
+    const blockedUsers = buyerDoc.data()?.blockedUsers || [];
+    if (blockedUsers.includes(sellerId)) {
+      return res.status(403).json({ success: false, message: 'Vous avez bloqué ce vendeur' });
+    }
+
     const buyerBalance = buyerDoc.data()?.walletBalance || 0;
     const buyerCommission = Math.round(amount * COMMISSION_BUYER);
     const totalAmount = amount + buyerCommission;
+
     if (buyerBalance < totalAmount) {
       return res.status(400).json({
         success: false,
@@ -534,7 +591,8 @@ app.post('/api/orders/create', async (req, res) => {
         difference: totalAmount - buyerBalance
       });
     }
-    await buyerRef.update({ walletBalance: buyerBalance - totalAmount });
+    await buyerDoc.ref.update({ walletBalance: buyerBalance - totalAmount });
+
     const order = {
       articleId,
       buyerId,
@@ -551,8 +609,10 @@ app.post('/api/orders/create', async (req, res) => {
       expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000),
       createdAt: new Date()
     };
+
     const orderRef = await db.collection('orders').add(order);
     const orderId = orderRef.id;
+
     await db.collection('notifications').add({
       userId: sellerId,
       message: `🛒 Nouvelle commande #${orderId.slice(0,8)} - ${amount} FCFA`,
@@ -561,6 +621,7 @@ app.post('/api/orders/create', async (req, res) => {
       orderId: orderId,
       createdAt: new Date()
     });
+
     res.json({
       success: true,
       orderId,
@@ -585,6 +646,7 @@ app.post('/api/orders/confirm', async (req, res) => {
     if (!orderId || !buyerId || !confirmations) {
       return res.status(400).json({ success: false, message: 'Champs requis' });
     }
+
     const required = ['recu', 'bon_etat', 'confirme'];
     for (const key of required) {
       if (!confirmations[key]) {
@@ -594,11 +656,13 @@ app.post('/api/orders/confirm', async (req, res) => {
         });
       }
     }
+
     const orderRef = db.collection('orders').doc(orderId);
     const orderDoc = await orderRef.get();
     if (!orderDoc.exists) {
       return res.status(404).json({ success: false, message: 'Commande non trouvée' });
     }
+
     const order = orderDoc.data();
     if (order.buyerId !== buyerId) {
       return res.status(403).json({ success: false, message: 'Non autorisé' });
@@ -606,19 +670,23 @@ app.post('/api/orders/confirm', async (req, res) => {
     if (order.status !== 'en attente de confirmation') {
       return res.status(400).json({ success: false, message: 'Commande déjà traitée' });
     }
+
     const now = new Date();
     const expiresAt = order.expiresAt.toDate ? order.expiresAt.toDate() : new Date(order.expiresAt);
     if (now > expiresAt) {
       return res.status(400).json({ success: false, message: '⏰ Délai expiré, remboursement automatique' });
     }
+
     const sellerCommission = order.sellerCommission || Math.round(order.amount * COMMISSION_SELLER);
     const buyerCommission = order.buyerCommission || Math.round(order.amount * COMMISSION_BUYER);
     const amountToSeller = order.amount - sellerCommission;
     const adminTotal = buyerCommission + sellerCommission;
+
     const sellerRef = db.collection('users').doc(order.sellerId);
     const sellerDoc = await sellerRef.get();
     const sellerBalance = sellerDoc.data()?.walletBalance || 0;
     await sellerRef.update({ walletBalance: sellerBalance + amountToSeller });
+
     const articleRef = db.collection('products').doc(order.articleId);
     await articleRef.update({
       status: 'sold',
@@ -626,10 +694,10 @@ app.post('/api/orders/confirm', async (req, res) => {
       soldTo: buyerId,
       orderId: orderId
     });
+
     if (ADMIN_PHONE && adminTotal > 0) {
       try {
         const adminRef = `ADMIN-${Date.now().toString().slice(-6)}`;
-        // ✅ URL CORRECTE
         await axios.post('https://api.yabetoo.com/v1/withdraw', {
           amount: adminTotal,
           phone: ADMIN_PHONE,
@@ -646,6 +714,7 @@ app.post('/api/orders/confirm', async (req, res) => {
         console.error('❌ Erreur envoi commission:', error.message);
       }
     }
+
     await orderRef.update({
       status: 'livré',
       buyerConfirmed: true,
@@ -654,6 +723,7 @@ app.post('/api/orders/confirm', async (req, res) => {
       sellerReceived: amountToSeller,
       adminCommission: adminTotal
     });
+
     await db.collection('notifications').add({
       userId: order.sellerId,
       message: `💰 Vente confirmée ! ${amountToSeller} FCFA crédités sur ton wallet.`,
@@ -662,6 +732,7 @@ app.post('/api/orders/confirm', async (req, res) => {
       orderId: orderId,
       createdAt: new Date()
     });
+
     await db.collection('notifications').add({
       userId: order.buyerId,
       message: `✅ Commande #${orderId.slice(0,8)} confirmée avec succès.`,
@@ -670,6 +741,7 @@ app.post('/api/orders/confirm', async (req, res) => {
       orderId: orderId,
       createdAt: new Date()
     });
+
     res.json({
       success: true,
       message: '✅ Commande confirmée !',
@@ -719,7 +791,6 @@ app.get('/api/orders/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     const orders = [];
-    // En tant qu'acheteur
     const buyerSnapshot = await db.collection('orders')
       .where('buyerId', '==', userId)
       .orderBy('createdAt', 'desc')
@@ -737,7 +808,6 @@ app.get('/api/orders/:userId', async (req, res) => {
         seller: seller ? { name: seller.name, photo: seller.photo || '' } : null
       });
     }
-    // En tant que vendeur
     const sellerSnapshot = await db.collection('orders')
       .where('sellerId', '==', userId)
       .orderBy('createdAt', 'desc')
@@ -962,7 +1032,6 @@ app.get('/api/transactions/:userId', async (req, res) => {
       .get();
     const transactions = [];
     snapshot.forEach(doc => transactions.push({ id: doc.id, ...doc.data() }));
-    // Ajouter les achats et ventes comme transactions
     const ordersSnapshot = await db.collection('orders')
       .where('buyerId', '==', userId)
       .where('status', '==', 'livré')
@@ -1046,21 +1115,34 @@ app.post('/api/messages', async (req, res) => {
     return res.json({ success: true, id: 'mock-' + Date.now() });
   }
   try {
-    const { senderId, receiverId, text, senderName, senderPhoto } = req.body;
-    if (!senderId || !receiverId || !text) {
-      return res.status(400).json({ success: false, message: 'Champs requis' });
+    const { senderId, receiverId, text, senderName, senderPhoto, audioUrl, audioDuration } = req.body;
+    if (!senderId || !receiverId || (!text && !audioUrl)) {
+      return res.status(400).json({ success: false, message: 'Message ou audio requis' });
     }
+
+    // Vérifier si le destinataire est bloqué
+    const receiverDoc = await db.collection('users').doc(receiverId).get();
+    const blockedUsers = receiverDoc.data()?.blockedUsers || [];
+    if (blockedUsers.includes(senderId)) {
+      return res.status(403).json({ success: false, message: 'Vous êtes bloqué par ce destinataire' });
+    }
+
     const message = {
       senderId,
       receiverId,
-      text,
+      text: text || '',
+      audioUrl: audioUrl || '',
+      audioDuration: audioDuration || 0,
       senderName: senderName || 'Anonyme',
       senderPhoto: senderPhoto || '',
       participants: [senderId, receiverId],
       read: false,
       createdAt: new Date()
     };
+
     const docRef = await db.collection('messages').add(message);
+
+    // Notification en temps réel (optionnelle)
     await db.collection('notifications').add({
       userId: receiverId,
       message: `💬 Nouveau message de ${senderName || 'Anonyme'}`,
@@ -1069,7 +1151,27 @@ app.post('/api/messages', async (req, res) => {
       messageId: docRef.id,
       createdAt: new Date()
     });
+
     res.json({ success: true, id: docRef.id });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================================
+// TYPING INDICATOR
+// ============================================================
+app.post('/api/messages/typing', async (req, res) => {
+  if (!firebaseReady) {
+    return res.json({ success: true });
+  }
+  try {
+    const { conversationId, userId, isTyping } = req.body;
+    await db.collection('typing').doc(conversationId).set({
+      [userId]: isTyping,
+      updatedAt: new Date()
+    }, { merge: true });
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
