@@ -64,7 +64,7 @@
     .btn-facebook { background: #1877F2; color: #fff; display: flex; align-items: center; justify-content: center; gap: 10px; }
     .btn-facebook:hover { background: #1664D9; }
 
-    /* ===== AUTH PAGE (fond jaune/orangé) ===== */
+    /* ===== AUTH PAGE ===== */
     .auth-page {
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
@@ -232,7 +232,7 @@
         letter-spacing: -0.5px;
     }
 
-    /* ===== TABS (rouge glass) ===== */
+    /* ===== TABS ===== */
     .tabs {
         position: fixed; bottom:0; left:0; right:0;
         display: none;
@@ -290,7 +290,7 @@
         min-width: 18px; text-align: center;
     }
 
-    /* ===== SEARCH (rouge glass) ===== */
+    /* ===== SEARCH ===== */
     .search-container {
         display: flex;
         align-items: center;
@@ -545,6 +545,42 @@
     .message-item .sender { font-weight:700; font-size:13px; }
     .message-item .text { font-size:13px; color:rgba(0,0,0,0.6); }
     .message-item .time { font-size:10px; color:rgba(0,0,0,0.3); flex-shrink:0; }
+    .message-item .audio {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(0,0,0,0.05);
+        border-radius: 20px;
+        padding: 4px 12px 4px 8px;
+        width: fit-content;
+    }
+    .message-item .audio audio {
+        height: 32px;
+        max-width: 150px;
+    }
+
+    /* ===== CONTACT CHIP ===== */
+    .contact-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        background: var(--frosted);
+        border-radius: 20px;
+        cursor: pointer;
+        border: 1px solid var(--frosted-border);
+        font-size: 13px;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+    .contact-chip:hover {
+        border-color: var(--primary);
+        background: rgba(231,76,60,0.05);
+    }
+    .contact-chip.active {
+        border-color: var(--primary);
+        background: rgba(231,76,60,0.1);
+    }
 
     /* ===== TRANSACTIONS ===== */
     .transaction-item {
@@ -579,6 +615,16 @@
         overflow: hidden;
     }
     .profile-avatar img { width:100%; height:100%; object-fit:cover; }
+
+    .profile-badge {
+        display: inline-block;
+        background: var(--primary);
+        color: #fff;
+        padding: 2px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+    }
 
     /* ===== CONFIRMATION OVERLAY ===== */
     .confirmation-overlay {
@@ -726,6 +772,38 @@
     .camera-btn input {
         display: none;
     }
+
+    .voice-btn {
+        background: var(--primary);
+        color: #fff;
+        border: none;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        cursor: pointer;
+        transition: all 0.3s;
+        flex-shrink: 0;
+    }
+    .voice-btn:hover {
+        transform: scale(1.05);
+    }
+    .voice-btn.recording {
+        background: var(--danger);
+        animation: pulse 1s infinite;
+    }
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+        100% { transform: scale(1); }
+    }
+    .voice-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
 </style>
 </head>
 <body>
@@ -870,16 +948,20 @@
     <!-- MESSAGES -->
     <div class="page" id="pageMessages">
         <h2 class="page-title">💬 Messagerie</h2>
-        <div class="glass-sm" style="margin-bottom:12px;">
-            <div style="display:flex;gap:8px;margin-bottom:8px;">
-                <input type="text" id="chatReceiver" placeholder="ID du destinataire..." style="flex:1;padding:8px 12px;border:1px solid rgba(0,0,0,0.08);border-radius:var(--radius-sm);" />
+        <div style="display:flex; gap:12px; margin-bottom:12px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:150px;">
+                <input type="text" id="chatReceiver" placeholder="ID du destinataire..." style="width:100%; padding:10px 12px; border:1px solid rgba(0,0,0,0.08); border-radius:var(--radius-sm);" />
             </div>
-            <div style="display:flex;gap:8px;">
-                <input type="text" id="messageInput" placeholder="Écris ton message..." style="flex:1;padding:8px 12px;border:1px solid rgba(0,0,0,0.08);border-radius:var(--radius-sm);" />
-                <button class="btn btn-primary" style="width:auto;padding:8px 16px;" id="btnSendMessage">Envoyer</button>
+            <div style="display:flex; gap:8px; flex:2; min-width:200px;">
+                <input type="text" id="messageInput" placeholder="Écris ton message..." style="flex:1; padding:10px 12px; border:1px solid rgba(0,0,0,0.08); border-radius:var(--radius-sm);" />
+                <button class="btn btn-primary" style="width:auto; padding:10px 16px;" id="btnSendMessage">Envoyer</button>
+                <button class="voice-btn" id="btnRecordVoice" title="Note vocale">🎤</button>
             </div>
         </div>
-        <div id="messagesList"></div>
+        <!-- Contacts -->
+        <div id="contactsList" style="margin-bottom:12px; display:flex; gap:8px; flex-wrap:wrap; overflow-x:auto; padding-bottom:8px;"></div>
+        <!-- Messages -->
+        <div id="messagesList" style="max-height:400px; overflow-y:auto;"></div>
         <div id="emptyMessages" class="empty-state" style="display:none;">
             <div class="icon">💬</div>
             <h3>Aucun message</h3>
@@ -925,7 +1007,14 @@
                 <h3 id="profileName">Utilisateur</h3>
                 <p style="color:rgba(0,0,0,0.4);font-size:13px;" id="profileEmail">email@example.com</p>
                 <p style="color:rgba(0,0,0,0.4);font-size:13px;" id="profilePhone">+242 06 XXX XXXX</p>
-                <div style="margin-top:8px;"><span style="font-size:14px;">🔥 <span id="profileFlames">0</span> flammes</span></div>
+                <div style="margin-top:8px;">
+                    <span style="font-size:14px;">🔥 <span id="profileFlames">0</span> flammes</span>
+                    <span class="profile-badge" id="profileSellerBadge" style="display:none;">Vendeur</span>
+                </div>
+                <!-- Bouton Commander (visible si le profil visité est un vendeur) -->
+                <div id="profileOrderBtn" style="margin-top:12px; display:none;">
+                    <button class="btn btn-success" id="btnOrderFromProfile">Commander</button>
+                </div>
             </div>
             <div class="glass-lg" style="margin-top:12px;">
                 <h3 style="color:var(--success);">💰 Wallet BLK</h3>
@@ -991,7 +1080,7 @@
         <span class="tab-icon">
             <svg viewBox="0 0 24 24"><path d="M12 12c2.2 0 4-1.8 4-4s-1.8-4-4-4-4 1.8-4 4 1.8 4 4 4zm0 2c-2.7 0-8 1.3-8 4v2h16v-2c0-2.7-5.3-4-8-4z"/></svg>
         </span>
-        <span class="tab-label">Mon Profil</span>
+        <span class="tab-label">Profil</span>
     </button>
 </nav>
 
@@ -999,13 +1088,23 @@
     // ============================================================
     // CONFIGURATION
     // ============================================================
-    const BACKEND_URL = 'https://blk-marketplace2-0-1.onrender.com';
+    const BACKEND_URL = 'https://blk-marketplace2.0-1.onrender.com';
     const STORAGE_KEY = 'blk_user_id';
 
     let currentUser = null;
     let currentUserId = null;
     let allProducts = [];
     let selectedCategory = 'all';
+
+    // Messagerie
+    let activeConversationId = null;
+    let typingTimeout = null;
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let isRecording = false;
+
+    // Profil visité (pour le bouton "Commander")
+    let viewedUserId = null;
 
     // ============================================================
     // ALERT
@@ -1046,7 +1145,9 @@
             photo: '',
             flames: 0,
             walletBalance: 0,
-            id: userId
+            id: userId,
+            isSeller: false,
+            blockedUsers: []
         };
         document.getElementById('authPage').style.display = 'none';
         document.getElementById('welcomeScreen').classList.add('active');
@@ -1108,6 +1209,9 @@
         document.getElementById('profileAvatar').textContent = (currentUser?.name || 'U')[0].toUpperCase();
         document.getElementById('walletBalance').textContent = currentUser?.walletBalance || 0;
 
+        // Afficher le badge vendeur si l'utilisateur courant est vendeur
+        updateProfileSellerBadge();
+
         const now = new Date();
         document.getElementById('statsDate').textContent = now.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) + ' · ' + now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
@@ -1117,6 +1221,10 @@
         loadMessages();
         loadTransactions();
         loadWallet();
+        loadUserData(currentUserId); // pour le profil
+
+        // Bouton "Commander" sur le profil (visible si on visite un autre vendeur)
+        // On le gère dans loadUserData quand on affiche un autre utilisateur
     }
 
     // ============================================================
@@ -1130,6 +1238,63 @@
             document.getElementById(this.dataset.page).classList.add('active');
         });
     });
+
+    // ============================================================
+    // USER DATA (pour afficher le profil de quelqu'un d'autre)
+    // ============================================================
+    async function loadUserData(userId) {
+        if (!userId) return;
+        try {
+            const res = await fetch(BACKEND_URL+'/api/users/'+userId);
+            const data = await res.json();
+            if (data.success) {
+                const user = data.data;
+                // Mettre à jour l'affichage du profil
+                document.getElementById('profileName').textContent = user.name || 'Utilisateur';
+                document.getElementById('profileEmail').textContent = user.email || 'email@example.com';
+                document.getElementById('profilePhone').textContent = user.phone || '+242 06 XXX XXXX';
+                document.getElementById('profileFlames').textContent = user.flames || 0;
+                const pAvatar = document.getElementById('profileAvatar');
+                if (user.photo) pAvatar.innerHTML = '<img src="'+user.photo+'" />';
+                else pAvatar.textContent = (user.name || 'U')[0].toUpperCase();
+
+                // Badge vendeur
+                const badge = document.getElementById('profileSellerBadge');
+                if (user.isSeller) {
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+
+                // Bouton "Commander" (visible si l'utilisateur visité est un vendeur ET que ce n'est pas l'utilisateur courant)
+                const orderBtnContainer = document.getElementById('profileOrderBtn');
+                if (user.isSeller && userId !== currentUserId) {
+                    orderBtnContainer.style.display = 'block';
+                    viewedUserId = userId;
+                } else {
+                    orderBtnContainer.style.display = 'none';
+                    viewedUserId = null;
+                }
+
+                // Sauvegarder les infos du vendeur pour le bouton Commander
+                if (user.isSeller && userId !== currentUserId) {
+                    // On stocke les infos du vendeur dans un attribut global
+                    window._sellerData = user;
+                }
+            }
+        } catch (error) {
+            console.error('Erreur chargement utilisateur:', error);
+        }
+    }
+
+    function updateProfileSellerBadge() {
+        const badge = document.getElementById('profileSellerBadge');
+        if (currentUser?.isSeller) {
+            badge.style.display = 'inline-block';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
 
     // ============================================================
     // PRODUCTS
@@ -1373,7 +1538,7 @@
     }
 
     // ============================================================
-    // PUBLISH (avec caméra et confirmation)
+    // PUBLISH
     // ============================================================
     document.getElementById('btnPublish').addEventListener('click', () => {
         const modal = document.createElement('div');
@@ -1489,6 +1654,8 @@
                     loadProducts();
                     loadStats();
                     loadShopArticles();
+                    // Recharger le profil pour le badge vendeur
+                    loadUserData(currentUserId);
                 } else {
                     showAlert('Erreur: '+data.message, 'error');
                 }
@@ -1627,6 +1794,7 @@
             const data = await res.json();
             if (data.success) {
                 showAlert('🔥 Flamme donnée ! Total: '+data.flames, 'success');
+                loadUserData(sellerId);
             } else {
                 showAlert('❌ '+data.message, 'error');
             }
@@ -1636,8 +1804,10 @@
     };
 
     // ============================================================
-    // MESSAGES
+    // MESSAGES (amélioré avec contacts, saisie, audio)
     // ============================================================
+    let typingTimeoutId = null;
+
     async function loadMessages() {
         if (!currentUserId) return;
         try {
@@ -1645,45 +1815,189 @@
             const data = await res.json();
             const container = document.getElementById('messagesList');
             const empty = document.getElementById('emptyMessages');
+            const contactsContainer = document.getElementById('contactsList');
+
             if (!data.success || !data.data || data.data.length === 0) {
                 container.innerHTML = '';
                 empty.style.display = 'block';
+                contactsContainer.innerHTML = '';
                 return;
             }
+
             empty.style.display = 'none';
-            container.innerHTML = data.data.map(msg => `
-                <div class="message-item">
-                    <div class="avatar">${msg.senderPhoto ? `<img src="${msg.senderPhoto}" />` : (msg.senderName||'U')[0].toUpperCase()}</div>
-                    <div class="content">
-                        <div class="sender">${msg.senderName||'Anonyme'}</div>
-                        <div class="text">${msg.text}</div>
+
+            // Extraire les contacts uniques
+            const contactsMap = {};
+            data.data.forEach(msg => {
+                const otherId = msg.senderId === currentUserId ? msg.receiverId : msg.senderId;
+                const otherName = msg.senderId === currentUserId ? msg.receiverName : msg.senderName;
+                if (!contactsMap[otherId]) {
+                    contactsMap[otherId] = {
+                        name: otherName || 'Inconnu',
+                        lastMessage: msg.text || (msg.audioUrl ? '🎤 Audio' : ''),
+                        time: msg.createdAt,
+                        unread: msg.receiverId === currentUserId && !msg.read ? 1 : 0,
+                        photo: msg.senderId === currentUserId ? msg.receiverPhoto : msg.senderPhoto
+                    };
+                } else if (msg.receiverId === currentUserId && !msg.read) {
+                    contactsMap[otherId].unread = (contactsMap[otherId].unread || 0) + 1;
+                }
+            });
+
+            // Afficher les contacts
+            contactsContainer.innerHTML = Object.keys(contactsMap).map(id => `
+                <div class="contact-chip ${activeConversationId === id ? 'active' : ''}" data-id="${id}">
+                    <div style="width:24px;height:24px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;overflow:hidden;">
+                        ${contactsMap[id].photo ? `<img src="${contactsMap[id].photo}" style="width:100%;height:100%;object-fit:cover;" />` : (contactsMap[id].name || 'U')[0].toUpperCase()}
                     </div>
-                    <div class="time">${msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : ''}</div>
+                    <span>${contactsMap[id].name}</span>
+                    ${contactsMap[id].unread > 0 ? `<span style="background:var(--danger);color:#fff;border-radius:50%;padding:1px 6px;font-size:10px;">${contactsMap[id].unread}</span>` : ''}
                 </div>
             `).join('');
-        } catch(e) { console.error(e); }
+
+            // Gestion du clic sur un contact
+            document.querySelectorAll('.contact-chip').forEach(el => {
+                el.addEventListener('click', function() {
+                    const contactId = this.dataset.id;
+                    activeConversationId = contactId;
+                    // Recharger les messages avec ce contact
+                    loadConversation(contactId);
+                    // Mettre à jour les chips
+                    document.querySelectorAll('.contact-chip').forEach(c => c.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+
+            // Si un contact est actif, charger sa conversation
+            if (activeConversationId) {
+                loadConversation(activeConversationId);
+            } else {
+                // Sinon charger le premier contact
+                const firstChip = document.querySelector('.contact-chip');
+                if (firstChip) {
+                    firstChip.click();
+                }
+            }
+        } catch(e) {
+            console.error('Erreur chargement messages:', e);
+        }
     }
 
-    document.getElementById('btnSendMessage').addEventListener('click', async () => {
-        const receiverId = document.getElementById('chatReceiver').value.trim();
-        const text = document.getElementById('messageInput').value.trim();
-        if (!receiverId || !text) {
-            showAlert('Destinataire et message requis', 'error');
+    async function loadConversation(contactId) {
+        if (!currentUserId || !contactId) return;
+        try {
+            // Récupérer tous les messages entre les deux utilisateurs
+            const res = await fetch(BACKEND_URL+'/api/messages/'+currentUserId);
+            const data = await res.json();
+            if (!data.success) return;
+
+            const allMessages = data.data.filter(msg =>
+                (msg.senderId === currentUserId && msg.receiverId === contactId) ||
+                (msg.senderId === contactId && msg.receiverId === currentUserId)
+            );
+
+            const container = document.getElementById('messagesList');
+            if (allMessages.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>Aucun message avec cet utilisateur.</p></div>';
+                return;
+            }
+
+            // Trier par date (ancien → récent)
+            allMessages.sort((a, b) => {
+                const da = new Date(a.createdAt);
+                const db = new Date(b.createdAt);
+                return da - db;
+            });
+
+            container.innerHTML = allMessages.map(msg => {
+                const isMine = msg.senderId === currentUserId;
+                const avatar = isMine ? (currentUser?.photo || '') : (msg.senderPhoto || '');
+                const name = isMine ? (currentUser?.name || 'Moi') : (msg.senderName || 'Anonyme');
+                const time = msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+
+                let content = '';
+                if (msg.text) {
+                    content = `<div class="text">${msg.text}</div>`;
+                }
+                if (msg.audioUrl) {
+                    content = `<div class="audio"><audio controls src="${msg.audioUrl}"></audio></div>`;
+                }
+
+                return `
+                    <div class="message-item" style="${isMine ? 'flex-direction:row-reverse;' : ''}">
+                        <div class="avatar">${avatar ? `<img src="${avatar}" />` : (name || 'U')[0].toUpperCase()}</div>
+                        <div class="content">
+                            <div class="sender">${name}</div>
+                            ${content}
+                            <div class="time">${time}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Marquer les messages comme lus
+            const unreadMessages = allMessages.filter(msg => msg.receiverId === currentUserId && !msg.read);
+            for (const msg of unreadMessages) {
+                await fetch(BACKEND_URL+'/api/messages/read/'+msg.id, { method: 'POST' });
+            }
+
+            // Scroller en bas
+            container.scrollTop = container.scrollHeight;
+
+        } catch(e) {
+            console.error('Erreur chargement conversation:', e);
+        }
+    }
+
+    // Envoi de message (texte ou audio)
+    async function sendMessage(text, audioBase64 = null) {
+        if (!currentUserId) {
+            showAlert('Connecte-toi d\'abord', 'error');
             return;
         }
+        const receiverId = document.getElementById('chatReceiver').value.trim() || activeConversationId;
+        if (!receiverId) {
+            showAlert('Destinataire requis', 'error');
+            return;
+        }
+        if (!text && !audioBase64) {
+            showAlert('Message ou audio requis', 'error');
+            return;
+        }
+
         try {
+            const payload = {
+                senderId: currentUserId,
+                receiverId: receiverId,
+                senderName: currentUser?.name || 'Anonyme',
+                senderPhoto: currentUser?.photo || ''
+            };
+            if (text) payload.text = text;
+            if (audioBase64) {
+                // Upload de l'audio
+                const uploadRes = await fetch(BACKEND_URL+'/api/upload-audio', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ base64: audioBase64 })
+                });
+                const uploadData = await uploadRes.json();
+                if (uploadData.success) {
+                    payload.audioUrl = uploadData.url;
+                    payload.audioDuration = 0; // à améliorer
+                } else {
+                    showAlert('Erreur upload audio', 'error');
+                    return;
+                }
+            }
+
             const res = await fetch(BACKEND_URL+'/api/messages', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    senderId: currentUserId, receiverId, text,
-                    senderName: currentUser?.name || 'Anonyme',
-                    senderPhoto: currentUser?.photo || ''
-                })
+                body: JSON.stringify(payload)
             });
             const data = await res.json();
             if (data.success) {
-                document.getElementById('messageInput').value = '';
+                if (text) document.getElementById('messageInput').value = '';
                 showAlert('✅ Message envoyé', 'success');
                 loadMessages();
             } else {
@@ -1691,6 +2005,185 @@
             }
         } catch(e) {
             showAlert('Erreur envoi', 'error');
+        }
+    }
+
+    document.getElementById('btnSendMessage').addEventListener('click', () => {
+        const text = document.getElementById('messageInput').value.trim();
+        sendMessage(text);
+    });
+
+    // Envoi au pressage Entrée
+    document.getElementById('messageInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const text = document.getElementById('messageInput').value.trim();
+            if (text) sendMessage(text);
+        }
+    });
+
+    // Typing indicator
+    document.getElementById('messageInput').addEventListener('input', function() {
+        const receiverId = document.getElementById('chatReceiver').value.trim() || activeConversationId;
+        if (!receiverId) return;
+        // Envoyer un signal de saisie
+        const conversationId = [currentUserId, receiverId].sort().join('_');
+        fetch(BACKEND_URL+'/api/messages/typing', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ conversationId, userId: currentUserId, isTyping: true })
+        });
+        clearTimeout(typingTimeoutId);
+        typingTimeoutId = setTimeout(() => {
+            fetch(BACKEND_URL+'/api/messages/typing', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ conversationId, userId: currentUserId, isTyping: false })
+            });
+        }, 2000);
+    });
+
+    // ============================================================
+    // AUDIO / NOTES VOCALES
+    // ============================================================
+    const voiceBtn = document.getElementById('btnRecordVoice');
+
+    voiceBtn.addEventListener('mousedown', startRecording);
+    voiceBtn.addEventListener('mouseup', stopRecording);
+    voiceBtn.addEventListener('mouseleave', stopRecording);
+
+    // Pour mobile (touch)
+    voiceBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        startRecording();
+    });
+    voiceBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        stopRecording();
+    });
+
+    async function startRecording() {
+        if (isRecording) return;
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+
+            mediaRecorder.ondataavailable = event => {
+                audioChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                const reader = new FileReader();
+                reader.onload = async () => {
+                    const base64Audio = reader.result.split(',')[1];
+                    if (base64Audio) {
+                        await sendMessage(null, base64Audio);
+                    }
+                };
+                reader.readAsDataURL(audioBlob);
+                // Libérer le stream
+                stream.getTracks().forEach(track => track.stop());
+            };
+
+            mediaRecorder.start();
+            isRecording = true;
+            voiceBtn.classList.add('recording');
+            voiceBtn.textContent = '⏹';
+            showAlert('🎙️ Enregistrement... relâchez pour envoyer', 'info');
+        } catch (error) {
+            console.error('Erreur microphone:', error);
+            showAlert('❌ Impossible d\'accéder au microphone', 'error');
+        }
+    }
+
+    function stopRecording() {
+        if (mediaRecorder && isRecording) {
+            mediaRecorder.stop();
+            isRecording = false;
+            voiceBtn.classList.remove('recording');
+            voiceBtn.textContent = '🎤';
+        }
+    }
+
+    // ============================================================
+    // BLOCAGE UTILISATEUR (dans une conversation)
+    // ============================================================
+    async function toggleBlock(blockerId, blockedId) {
+        try {
+            const res = await fetch(BACKEND_URL+'/api/users/block', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ blockerId, blockedId })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showAlert(data.message, data.blocked ? 'error' : 'success');
+                loadUserData(blockedId);
+            } else {
+                showAlert('Erreur: '+data.message, 'error');
+            }
+        } catch(e) {
+            showAlert('Erreur blocage', 'error');
+        }
+    }
+
+    // Ajouter un bouton de blocage dans la conversation (à faire dans loadConversation ou via un événement)
+    // Pour simplifier, on peut ajouter un bouton dans l'en-tête de la conversation
+    // Je laisse cette fonction accessible pour une intégration ultérieure.
+
+    // ============================================================
+    // BOUTON "COMMANDER" SUR LE PROFIL
+    // ============================================================
+    document.getElementById('btnOrderFromProfile').addEventListener('click', async function() {
+        if (!viewedUserId) {
+            showAlert('Vendeur non identifié', 'error');
+            return;
+        }
+        // Récupérer les articles du vendeur
+        try {
+            const res = await fetch(BACKEND_URL+'/api/articles/seller/'+viewedUserId);
+            const data = await res.json();
+            if (data.success && data.data && data.data.length > 0) {
+                // Afficher une modale avec la liste des articles du vendeur
+                const modal = document.createElement('div');
+                modal.className = 'modal';
+                modal.innerHTML = `
+                    <div class="modal-content">
+                        <button class="modal-close" id="modalCloseOrder">✕</button>
+                        <h3 style="margin-bottom:16px;">Articles de ${window._sellerData?.name || 'vendeur'}</h3>
+                        ${data.data.map(a => `
+                            <div style="display:flex; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid rgba(0,0,0,0.05);">
+                                <img src="${a.image || 'https://via.placeholder.com/50x50/F5F0E8/CCCCCC?text=BLK'}" style="width:50px;height:50px;object-fit:cover;border-radius:8px;" />
+                                <div style="flex:1;">
+                                    <div style="font-weight:600;">${a.title}</div>
+                                    <div style="font-size:14px;color:var(--primary);font-weight:700;">${a.price} FCFA</div>
+                                </div>
+                                <button class="btn btn-primary btn-sm" style="width:auto;" data-article='${JSON.stringify(a)}'>Acheter</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                document.body.appendChild(modal);
+
+                document.getElementById('modalCloseOrder').addEventListener('click', () => modal.remove());
+
+                modal.querySelectorAll('[data-article]').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const article = JSON.parse(this.dataset.article);
+                        modal.remove();
+                        buyProduct(article);
+                    });
+                });
+
+                modal.addEventListener('click', (e) => { if(e.target === modal) modal.remove(); });
+
+            } else {
+                showAlert('Ce vendeur n\'a pas d\'articles disponibles.', 'info');
+            }
+        } catch(e) {
+            showAlert('Erreur chargement des articles du vendeur', 'error');
         }
     });
 
