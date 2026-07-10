@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>BLK Marketplace</title>
     <style>
-        /* = RESET & VARIABLES = */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
             --primary: #E74C3C;
@@ -19,887 +18,238 @@
             --radius-sm: 14px;
             --bg: #F5F0E8;
         }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg);
-            color: #1a1a1a;
-            min-height: 100vh;
-            overflow-x: hidden;
-            padding-bottom: 80px;
-        }
-        .kente {
-            height: 6px;
-            background: linear-gradient(90deg, #FFD700 0%, #FFD700 20%, #2ECC71 20%, #2ECC71 40%, #E74C3C 40%, #E74C3C 60%, #FFD700 60%, #FFD700 80%, #2ECC71 80%, #2ECC71 100%);
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1000;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: #1a1a1a; min-height: 100vh; overflow-x: hidden; padding-bottom: 80px; }
+        .kente { height: 6px; background: linear-gradient(90deg, #FFD700 0%, #FFD700 20%, #2ECC71 20%, #2ECC71 40%, #E74C3C 40%, #E74C3C 60%, #FFD700 60%, #FFD700 80%, #2ECC71 80%, #2ECC71 100%); position: fixed; top: 0; left: 0; right: 0; z-index: 1000; }
         @keyframes slideUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
         @keyframes float { 0%,100% { transform:translateY(0px); } 50% { transform:translateY(-10px); } }
         @keyframes gradientShift { 0%{background-position:0% 50%;} 50%{background-position:100% 50%;} 100%{background-position:0% 50%;} }
         @keyframes timerDanger { 0%,100% { transform:scale(1); color:#E74C3C; } 50% { transform:scale(1.05); color:#FF6B6B; } }
         @keyframes fadeInOut { 0% { opacity:0; transform:scale(0.8); } 20% { opacity:1; transform:scale(1); } 80% { opacity:1; transform:scale(1); } 100% { opacity:0; transform:scale(0.8); } }
-
-    /* ===== FROSTED GLASS ===== */
-    .glass { background: var(--frosted); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border: 1px solid var(--frosted-border); border-radius: var(--radius); box-shadow: var(--shadow); }
-    .glass-sm { border-radius: var(--radius-sm); padding: 16px; }
-    .glass-lg { border-radius: var(--radius); padding: 24px; }
-
-    /* ===== BUTTONS ===== */
-    .btn { padding: 14px 28px; border: none; border-radius: var(--radius-sm); font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.3s ease; width: 100%; text-transform: uppercase; letter-spacing: 0.5px; }
-    .btn:active { transform: scale(0.97); }
-    .btn-primary { background: var(--primary); color: #fff; }
-    .btn-primary:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(231,76,60,0.3); }
-    .btn-success { background: var(--success); color: #fff; }
-    .btn-success:hover { background: #27AE60; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(46,204,113,0.3); }
-    .btn-danger { background: var(--danger); color: #fff; }
-    .btn-danger:hover { background: #C0392B; transform: translateY(-2px); }
-    .btn-outline { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
-    .btn-outline:hover { background: var(--primary); color: #fff; }
-    .btn-sm { padding: 8px 14px; font-size: 11px; width: auto; }
-    .btn-google { background: rgba(255,255,255,0.9); color: #333; border: 1px solid rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; gap: 10px; }
-    .btn-google:hover { background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    .btn-facebook { background: #1877F2; color: #fff; display: flex; align-items: center; justify-content: center; gap: 10px; }
-    .btn-facebook:hover { background: #1664D9; }
-
-    /* ===== AUTH PAGE ===== */
-    .auth-page {
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        z-index: 500;
-        background: linear-gradient(135deg, #FFD700, #FF8C00);
-        background-size: 200% 200%;
-        animation: gradientShift 10s ease infinite;
-    }
-    .auth-page .glass {
-        width: 100%;
-        max-width: 420px;
-        padding: 32px 24px;
-        animation: slideUp 0.5s ease;
-        background: rgba(255,255,255,0.7);
-        backdrop-filter: blur(30px);
-        border: 1px solid rgba(255,255,255,0.5);
-    }
-    .auth-page h2 {
-        text-align: center;
-        font-size: 28px;
-        font-weight: 800;
-        color: #1a1a1a;
-        margin-bottom: 8px;
-    }
-    .auth-page .subtitle {
-        text-align: center;
-        font-size: 14px;
-        color: rgba(0,0,0,0.5);
-        margin-bottom: 24px;
-    }
-    .auth-page .form-group { margin-bottom: 16px; }
-    .auth-page label { display:block; font-size:12px; font-weight:600; text-transform:uppercase; color:rgba(0,0,0,0.5); margin-bottom:6px; }
-    .auth-page input {
-        width:100%; padding:14px 16px;
-        border:1px solid rgba(0,0,0,0.1);
-        border-radius:var(--radius-sm);
-        background:rgba(255,255,255,0.8);
-        font-size:15px;
-        transition:all 0.3s ease;
-        color:#1a1a1a;
-    }
-    .auth-page input:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(231,76,60,0.15); background:#fff; }
-    .auth-page .divider {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        margin: 20px 0;
-        color: rgba(0,0,0,0.3);
-        font-size: 12px;
-    }
-    .auth-page .divider::before, .auth-page .divider::after {
-        content: '';
-        flex: 1;
-        height: 1px;
-        background: rgba(0,0,0,0.1);
-    }
-    .auth-page .toggle-link {
-        text-align: center;
-        margin-top: 16px;
-        font-size: 14px;
-        color: rgba(0,0,0,0.5);
-    }
-    .auth-page .toggle-link button {
-        background: none;
-        border: none;
-        color: var(--primary);
-        font-weight: 700;
-        cursor: pointer;
-        font-size: 14px;
-    }
-    .auth-page .social-buttons {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        margin-top: 16px;
-    }
-
-    /* ===== WELCOME SCREEN ===== */
-    .welcome-screen {
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 600;
-        background: linear-gradient(135deg, #FFD700, #2ECC71, #E74C3C);
-        background-size: 400% 400%;
-        animation: gradientShift 8s ease infinite;
-        padding: 40px;
-        text-align: center;
-    }
-    .welcome-screen.active { display: flex; }
-    .welcome-screen .content { animation: float 3s ease-in-out infinite; }
-    .welcome-screen .logo-big {
-        font-size: 72px;
-        font-weight: 900;
-        color: #fff;
-        text-shadow: 0 4px 20px rgba(0,0,0,0.2);
-        letter-spacing: 4px;
-        margin-bottom: 16px;
-    }
-    .welcome-screen .logo-big span { color: #1a1a1a; }
-    .welcome-screen h1 {
-        font-size: 36px;
-        color: #fff;
-        font-weight: 800;
-        margin-bottom: 8px;
-        text-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-    .welcome-screen p {
-        font-size: 16px;
-        color: rgba(255,255,255,0.85);
-        max-width: 320px;
-        margin: 0 auto 32px;
-        line-height: 1.6;
-    }
-    .welcome-screen .btn {
-        max-width: 280px;
-        margin: 0 auto;
-        background: #fff;
-        color: #1a1a1a;
-    }
-    .welcome-screen .btn:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.2); }
-
-    /* ===== HEADER ===== */
-    header {
-        position: fixed; top:6px; left:0; right:0; z-index:200;
-        padding:10px 16px; display:none;
-        align-items:center; justify-content:space-between;
-        background:var(--frosted); backdrop-filter:blur(30px);
-        border-bottom:1px solid var(--frosted-border);
-    }
-    header .logo { font-size:20px; font-weight:800; color:var(--primary); letter-spacing:1px; }
-    header .user-info { display:flex; align-items:center; gap:10px; }
-    header .user-avatar {
-        width:36px; height:36px; border-radius:50%; object-fit:cover;
-        border:2px solid var(--primary);
-        background:var(--primary);
-        display:flex; align-items:center; justify-content:center;
-        font-size:16px; font-weight:700; color:#fff; overflow:hidden;
-    }
-    header .user-avatar img { width:100%; height:100%; object-fit:cover; }
-    header .user-name { font-size:13px; font-weight:600; color:#1a1a1a; max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-
-    /* ===== APP CONTAINER ===== */
-    .app-container {
-        max-width: 800px;
-        margin: 0 auto;
-        padding: 70px 16px 100px;
-        display: none;
-    }
-    .app-container.active { display: block; }
-
-    .page { display: none; animation: slideUp 0.4s ease; }
-    .page.active { display: block; }
-    .page-title {
-        font-size: 22px;
-        font-weight: 800;
-        color: var(--primary);
-        margin-bottom: 16px;
-        letter-spacing: -0.5px;
-    }
-
-    /* ===== TABS ===== */
-    .tabs {
-        position: fixed; bottom:0; left:0; right:0;
-        display: none;
-        background: rgba(255,255,255,0.5);
-        backdrop-filter: blur(30px);
-        -webkit-backdrop-filter: blur(30px);
-        border-top: 1px solid rgba(255,255,255,0.8);
-        padding: 8px 8px env(safe-area-inset-bottom);
-        z-index: 150;
-    }
-    .tabs.active { display: flex; }
-    .tab-btn {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 2px;
-        padding: 8px 4px;
-        border: none;
-        background: none;
-        cursor: pointer;
-        font-size: 9px;
-        font-weight: 600;
-        color: rgba(0,0,0,0.4);
-        transition: all 0.3s ease;
-        border-radius: var(--radius-sm);
-        position: relative;
-    }
-    .tab-btn .tab-icon {
-        font-size: 22px;
-        transition: all 0.3s ease;
-        line-height: 1;
-    }
-    .tab-btn .tab-icon svg {
-        width: 22px;
-        height: 22px;
-        fill: currentColor;
-    }
-    .tab-btn .tab-label {
-        font-size: 9px;
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
-    }
-    .tab-btn:hover { color: var(--primary); }
-    .tab-btn.active {
-        color: var(--primary);
-        background: rgba(231,76,60,0.1);
-    }
-    .tab-btn.active .tab-icon { transform: scale(1.1); }
-    .tab-btn .badge {
-        position: absolute; top: 2px; right: 50%;
-        transform: translateX(calc(50% + 20px));
-        background: var(--danger); color: #fff;
-        font-size: 9px; padding: 1px 6px; border-radius: 10px;
-        min-width: 18px; text-align: center;
-    }
-
-    /* ===== SEARCH ===== */
-    .search-container {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        background: rgba(255,255,255,0.5);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border: 1px solid rgba(255,255,255,0.8);
-        border-radius: var(--radius-sm);
-        padding: 6px 16px;
-        margin-bottom: 12px;
-    }
-    .search-container .logo-icon {
-        font-size: 22px;
-        font-weight: 800;
-        color: var(--primary);
-        flex-shrink: 0;
-    }
-    .search-container .search-bar {
-        flex: 1;
-        padding: 10px 0;
-        border: none;
-        background: transparent;
-        font-size: 14px;
-        color: #1a1a1a;
-        outline: none;
-    }
-    .search-container .search-bar::placeholder {
-        color: rgba(0,0,0,0.3);
-    }
-
-    /* ===== CATEGORIES ===== */
-    .category-filters {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        margin-bottom: 12px;
-    }
-    .category-filters .btn {
-        width: auto;
-        padding: 6px 14px;
-        font-size: 11px;
-    }
-    .category-filters .btn-primary {
-        background: var(--primary);
-        color: #fff;
-        border: none;
-    }
-    .category-filters .btn-primary:hover {
-        background: var(--primary-dark);
-    }
-    .category-filters .btn-outline {
-        background: transparent;
-        color: var(--primary);
-        border: 2px solid var(--primary);
-    }
-    .category-filters .btn-outline:hover {
-        background: var(--primary);
-        color: #fff;
-    }
-
-    /* ===== PRODUCTS ===== */
-    .grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-        gap: 12px;
-        margin-top: 12px;
-    }
-    .product-card {
-        background: var(--frosted);
-        backdrop-filter: blur(20px);
-        border: 1px solid var(--frosted-border);
-        border-radius: var(--radius-sm);
-        overflow: hidden;
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
-    .product-card:active { transform: scale(0.97); }
-    .product-card .img {
-        width: 100%;
-        height: 150px;
-        object-fit: cover;
-        background: linear-gradient(135deg, #f0ebe3, #e8e0d8);
-    }
-    .product-card .info { padding: 12px; }
-    .product-card .title {
-        font-size: 13px;
-        font-weight: 700;
-        color: #1a1a1a;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-    .product-card .price {
-        font-size: 15px;
-        font-weight: 800;
-        color: var(--primary);
-        margin-top: 4px;
-    }
-    .product-card .seller {
-        font-size: 11px;
-        color: rgba(0,0,0,0.4);
-        margin-top: 4px;
-    }
-
-    /* ===== STATS ===== */
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 10px;
-        margin-bottom: 16px;
-    }
-    .stat-card {
-        background: var(--frosted);
-        backdrop-filter: blur(20px);
-        border: 1px solid var(--frosted-border);
-        border-radius: var(--radius-sm);
-        padding: 14px;
-        text-align: center;
-    }
-    .stat-card .number {
-        font-size: 24px;
-        font-weight: 800;
-        color: var(--primary);
-    }
-    .stat-card .label {
-        font-size: 10px;
-        text-transform: uppercase;
-        color: rgba(0,0,0,0.4);
-        margin-top: 4px;
-    }
-    .stat-card .trend {
-        font-size: 11px;
-        font-weight: 600;
-        margin-top: 2px;
-    }
-    .stat-card .trend.up { color: var(--success); }
-    .stat-card .trend.down { color: var(--danger); }
-
-    .chart-container {
-        height: 120px;
-        margin-top: 8px;
-        display: flex;
-        align-items: flex-end;
-        gap: 8px;
-        padding: 8px 0;
-    }
-    .chart-bar {
-        flex: 1;
-        background: var(--primary);
-        border-radius: 4px 4px 0 0;
-        min-height: 4px;
-        transition: height 0.3s ease;
-    }
-
-    .stats-date {
-        font-size: 11px;
-        color: rgba(0,0,0,0.4);
-        text-align: right;
-        margin-top: 4px;
-    }
-
-    /* ===== ORDERS ===== */
-    .order-card {
-        background: var(--frosted);
-        backdrop-filter: blur(20px);
-        border: 1px solid var(--frosted-border);
-        border-radius: var(--radius-sm);
-        padding: 16px;
-        margin-bottom: 12px;
-    }
-    .order-card .status {
-        font-size: 12px;
-        font-weight: 600;
-        padding: 4px 12px;
-        border-radius: 20px;
-        display: inline-block;
-    }
-    .order-card .status-pending {
-        background: rgba(255,215,0,0.2);
-        color: #B7950B;
-    }
-    .order-card .status-delivered {
-        background: rgba(46,204,113,0.2);
-        color: #27AE60;
-    }
-    .order-card .status-cancelled {
-        background: rgba(231,76,60,0.2);
-        color: #C0392B;
-    }
-    .order-card .status-refunded {
-        background: rgba(52,152,219,0.2);
-        color: #2980B9;
-    }
-    .timer-display {
-        font-size: 28px;
-        font-weight: 800;
-        font-family: 'Courier New', monospace;
-        text-align: center;
-        padding: 8px 0;
-    }
-    .timer-display.danger { animation: timerDanger 1s infinite; }
-    .order-card .confirm-box {
-        background: rgba(255,255,255,0.5);
-        border-radius: var(--radius-sm);
-        padding: 12px;
-        margin-top: 12px;
-    }
-    .order-card .confirm-box label {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 6px 0;
-        font-size: 13px;
-        font-weight: 500;
-        cursor: pointer;
-    }
-    .order-card .confirm-box input[type="checkbox"] {
-        width: 18px;
-        height: 18px;
-        accent-color: var(--success);
-    }
-
-    /* ===== MESSAGES ===== */
-    .message-item {
-        background: var(--frosted);
-        backdrop-filter: blur(20px);
-        border: 1px solid var(--frosted-border);
-        border-radius: var(--radius-sm);
-        padding: 12px;
-        margin-bottom: 8px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-    .message-item .avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        object-fit: cover;
-        background: var(--primary);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        color: #fff;
-        flex-shrink: 0;
-        overflow: hidden;
-    }
-    .message-item .avatar img { width:100%; height:100%; object-fit:cover; }
-    .message-item .content { flex:1; min-width:0; }
-    .message-item .sender { font-weight:700; font-size:13px; }
-    .message-item .text { font-size:13px; color:rgba(0,0,0,0.6); }
-    .message-item .time { font-size:10px; color:rgba(0,0,0,0.3); flex-shrink:0; }
-    .message-item .audio {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        background: rgba(0,0,0,0.05);
-        border-radius: 20px;
-        padding: 4px 12px 4px 8px;
-        width: fit-content;
-    }
-    .message-item .audio audio {
-        height: 32px;
-        max-width: 150px;
-    }
-
-    /* ===== CONTACT CHIP ===== */
-    .contact-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 14px;
-        background: var(--frosted);
-        border-radius: 20px;
-        cursor: pointer;
-        border: 1px solid var(--frosted-border);
-        font-size: 13px;
-        transition: all 0.2s;
-        white-space: nowrap;
-    }
-    .contact-chip:hover {
-        border-color: var(--primary);
-        background: rgba(231,76,60,0.05);
-    }
-    .contact-chip.active {
-        border-color: var(--primary);
-        background: rgba(231,76,60,0.1);
-    }
-
-    /* ===== TRANSACTIONS ===== */
-    .transaction-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 12px 0;
-        border-bottom: 1px solid rgba(0,0,0,0.04);
-    }
-    .transaction-item:last-child { border-bottom: none; }
-    .transaction-item .info { display: flex; flex-direction: column; }
-    .transaction-item .desc { font-size: 13px; font-weight: 600; }
-    .transaction-item .date { font-size: 11px; color: rgba(0,0,0,0.3); }
-    .transaction-item .amount { font-weight: 700; font-size: 15px; }
-    .transaction-item .amount.positive { color: var(--success); }
-    .transaction-item .amount.negative { color: var(--danger); }
-
-    /* ===== PROFILE ===== */
-    .profile-avatar {
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        background: var(--primary);
-        margin: 0 auto 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 32px;
-        font-weight: 800;
-        color: #fff;
-        border: 3px solid var(--primary);
-        overflow: hidden;
-    }
-    .profile-avatar img { width:100%; height:100%; object-fit:cover; }
-
-    .profile-badge {
-        display: inline-block;
-        background: var(--primary);
-        color: #fff;
-        padding: 2px 10px;
-        border-radius: 20px;
-        font-size: 11px;
-        font-weight: 600;
-    }
-
-    /* ===== CONFIRMATION OVERLAY ===== */
-    .confirmation-overlay {
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 2000;
-        background: rgba(0,0,0,0.4);
-        backdrop-filter: blur(10px);
-        animation: fadeInOut 2.5s ease forwards;
-    }
-    .confirmation-overlay.active {
-        display: flex;
-    }
-    .confirmation-overlay .box {
-        background: #fff;
-        padding: 40px 32px;
-        border-radius: var(--radius);
-        text-align: center;
-        max-width: 360px;
-        width: 90%;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-        animation: slideUp 0.4s ease;
-    }
-    .confirmation-overlay .box .icon {
-        font-size: 56px;
-        margin-bottom: 12px;
-    }
-    .confirmation-overlay .box h3 {
-        font-size: 20px;
-        color: var(--success);
-        margin-bottom: 8px;
-    }
-    .confirmation-overlay .box p {
-        color: rgba(0,0,0,0.6);
-        font-size: 14px;
-    }
-
-    /* ===== MODAL ===== */
-    .modal {
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0,0,0,0.5);
-        backdrop-filter: blur(10px);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-        padding: 20px;
-    }
-    .modal-content {
-        background: rgba(255,255,255,0.95);
-        backdrop-filter: blur(30px);
-        border-radius: var(--radius);
-        padding: 24px;
-        max-width: 400px;
-        width: 100%;
-        max-height: 90vh;
-        overflow-y: auto;
-        border: 1px solid var(--frosted-border);
-    }
-    .modal-content .form-group { margin-bottom: 16px; }
-    .modal-content .form-group label {
-        display: block;
-        font-size: 12px;
-        font-weight: 600;
-        text-transform: uppercase;
-        color: rgba(0,0,0,0.5);
-        margin-bottom: 4px;
-    }
-    .modal-content .form-group input,
-    .modal-content .form-group textarea,
-    .modal-content .form-group select {
-        width: 100%;
-        padding: 10px 14px;
-        border: 1px solid rgba(0,0,0,0.08);
-        border-radius: var(--radius-sm);
-        background: rgba(255,255,255,0.8);
-        font-size: 14px;
-    }
-    .modal-content .form-group textarea { resize: vertical; }
-    .modal-content .form-group input:focus,
-    .modal-content .form-group textarea:focus,
-    .modal-content .form-group select:focus {
-        outline: none;
-        border-color: var(--primary);
-    }
-    .modal-close {
-        float: right;
-        background: none;
-        border: none;
-        font-size: 24px;
-        cursor: pointer;
-        color: #666;
-    }
-
-    /* ===== ALERT ===== */
-    .alert {
-        padding: 12px 16px;
-        border-radius: var(--radius-sm);
-        margin-bottom: 16px;
-        font-size: 13px;
-        display: none;
-        animation: slideUp 0.3s ease;
-        border-left: 4px solid;
-    }
-    .alert.active { display: block; }
-    .alert-success { background: rgba(46,204,113,0.1); color: #27AE60; border-left-color: var(--success); }
-    .alert-error { background: rgba(231,76,60,0.1); color: var(--danger); border-left-color: var(--danger); }
-    .alert-info { background: rgba(255,215,0,0.1); color: #B7950B; border-left-color: var(--primary); }
-
-    .empty-state { text-align:center; padding:40px 20px; color:rgba(0,0,0,0.3); }
-    .empty-state .icon { font-size:48px; margin-bottom:12px; }
-    .empty-state h3 { font-size:18px; color:rgba(0,0,0,0.5); margin-bottom:4px; }
-    .empty-state p { font-size:13px; }
-    .hidden { display:none !important; }
-
-    @media (max-width:480px) {
-        .stats-grid { grid-template-columns: repeat(2,1fr); }
-        .grid { grid-template-columns: repeat(auto-fill, minmax(130px,1fr)); }
-        .auth-page .glass { padding:24px 16px; }
-        .welcome-screen .logo-big { font-size:48px; }
-        .welcome-screen h1 { font-size:24px; }
-    }
-
-    .camera-btn {
-        background: var(--primary);
-        color: #fff;
-        padding: 8px 12px;
-        border: none;
-        border-radius: var(--radius-sm);
-        font-weight: 600;
-        cursor: pointer;
-        font-size: 12px;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        margin-top: 4px;
-    }
-    .camera-btn:hover {
-        background: var(--primary-dark);
-    }
-    .camera-btn input {
-        display: none;
-    }
-
-    .voice-btn {
-        background: var(--primary);
-        color: #fff;
-        border: none;
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 18px;
-        cursor: pointer;
-        transition: all 0.3s;
-        flex-shrink: 0;
-    }
-    .voice-btn:hover {
-        transform: scale(1.05);
-    }
-    .voice-btn.recording {
-        background: var(--danger);
-        animation: pulse 1s infinite;
-    }
-    @keyframes pulse {
-        0% { transform: scale(1); }
-        50% { transform: scale(1.1); }
-        100% { transform: scale(1); }
-    }
-    .voice-btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-</style>
+        .glass { background: var(--frosted); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border: 1px solid var(--frosted-border); border-radius: var(--radius); box-shadow: var(--shadow); }
+        .glass-sm { border-radius: var(--radius-sm); padding: 16px; }
+        .glass-lg { border-radius: var(--radius); padding: 24px; }
+        .btn { padding: 14px 28px; border: none; border-radius: var(--radius-sm); font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.3s ease; width: 100%; text-transform: uppercase; letter-spacing: 0.5px; }
+        .btn:active { transform: scale(0.97); }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(231,76,60,0.3); }
+        .btn-success { background: var(--success); color: #fff; }
+        .btn-success:hover { background: #27AE60; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(46,204,113,0.3); }
+        .btn-danger { background: var(--danger); color: #fff; }
+        .btn-danger:hover { background: #C0392B; transform: translateY(-2px); }
+        .btn-outline { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
+        .btn-outline:hover { background: var(--primary); color: #fff; }
+        .btn-sm { padding: 8px 14px; font-size: 11px; width: auto; }
+        .btn-google { background: rgba(255,255,255,0.9); color: #333; border: 1px solid rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .btn-google:hover { background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .btn-facebook { background: #1877F2; color: #fff; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .btn-facebook:hover { background: #1664D9; }
+        .auth-page { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 500; background: linear-gradient(135deg, #FFD700, #FF8C00); background-size: 200% 200%; animation: gradientShift 10s ease infinite; }
+        .auth-page .glass { width: 100%; max-width: 420px; padding: 32px 24px; animation: slideUp 0.5s ease; background: rgba(255,255,255,0.7); backdrop-filter: blur(30px); border: 1px solid rgba(255,255,255,0.5); }
+        .auth-page h2 { text-align: center; font-size: 28px; font-weight: 800; color: #1a1a1a; margin-bottom: 8px; }
+        .auth-page .subtitle { text-align: center; font-size: 14px; color: rgba(0,0,0,0.5); margin-bottom: 24px; }
+        .auth-page .form-group { margin-bottom: 16px; }
+        .auth-page label { display:block; font-size:12px; font-weight:600; text-transform:uppercase; color:rgba(0,0,0,0.5); margin-bottom:6px; }
+        .auth-page input { width:100%; padding:14px 16px; border:1px solid rgba(0,0,0,0.1); border-radius:var(--radius-sm); background:rgba(255,255,255,0.8); font-size:15px; transition:all 0.3s ease; color:#1a1a1a; }
+        .auth-page input:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(231,76,60,0.15); background:#fff; }
+        .auth-page .divider { display: flex; align-items: center; gap: 16px; margin: 20px 0; color: rgba(0,0,0,0.3); font-size: 12px; }
+        .auth-page .divider::before, .auth-page .divider::after { content: ''; flex: 1; height: 1px; background: rgba(0,0,0,0.1); }
+        .auth-page .toggle-link { text-align: center; margin-top: 16px; font-size: 14px; color: rgba(0,0,0,0.5); }
+        .auth-page .toggle-link button { background: none; border: none; color: var(--primary); font-weight: 700; cursor: pointer; font-size: 14px; }
+        .auth-page .social-buttons { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+        .welcome-screen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: none; align-items: center; justify-content: center; z-index: 600; background: linear-gradient(135deg, #FFD700, #2ECC71, #E74C3C); background-size: 400% 400%; animation: gradientShift 8s ease infinite; padding: 40px; text-align: center; }
+        .welcome-screen.active { display: flex; }
+        .welcome-screen .content { animation: float 3s ease-in-out infinite; }
+        .welcome-screen .logo-big { font-size: 72px; font-weight: 900; color: #fff; text-shadow: 0 4px 20px rgba(0,0,0,0.2); letter-spacing: 4px; margin-bottom: 16px; }
+        .welcome-screen .logo-big span { color: #1a1a1a; }
+        .welcome-screen h1 { font-size: 36px; color: #fff; font-weight: 800; margin-bottom: 8px; text-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .welcome-screen p { font-size: 16px; color: rgba(255,255,255,0.85); max-width: 320px; margin: 0 auto 32px; line-height: 1.6; }
+        .welcome-screen .btn { max-width: 280px; margin: 0 auto; background: #fff; color: #1a1a1a; }
+        .welcome-screen .btn:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.2); }
+        header { position: fixed; top:6px; left:0; right:0; z-index:200; padding:10px 16px; display:none; align-items:center; justify-content:space-between; background:var(--frosted); backdrop-filter:blur(30px); border-bottom:1px solid var(--frosted-border); }
+        header .logo { font-size:20px; font-weight:800; color:var(--primary); letter-spacing:1px; }
+        header .user-info { display:flex; align-items:center; gap:10px; }
+        header .user-avatar { width:36px; height:36px; border-radius:50%; object-fit:cover; border:2px solid var(--primary); background:var(--primary); display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:700; color:#fff; overflow:hidden; }
+        header .user-avatar img { width:100%; height:100%; object-fit:cover; }
+        header .user-name { font-size:13px; font-weight:600; color:#1a1a1a; max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .app-container { max-width: 800px; margin: 0 auto; padding: 70px 16px 100px; display: none; }
+        .app-container.active { display: block; }
+        .page { display: none; animation: slideUp 0.4s ease; }
+        .page.active { display: block; }
+        .page-title { font-size: 22px; font-weight: 800; color: var(--primary); margin-bottom: 16px; letter-spacing: -0.5px; }
+        .tabs { position: fixed; bottom:0; left:0; right:0; display: none; background: rgba(255,255,255,0.5); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border-top: 1px solid rgba(255,255,255,0.8); padding: 8px 8px env(safe-area-inset-bottom); z-index: 150; }
+        .tabs.active { display: flex; }
+        .tab-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border: none; background: none; cursor: pointer; font-size: 9px; font-weight: 600; color: rgba(0,0,0,0.4); transition: all 0.3s ease; border-radius: var(--radius-sm); position: relative; }
+        .tab-btn .tab-icon { font-size: 22px; transition: all 0.3s ease; line-height: 1; }
+        .tab-btn .tab-icon svg { width: 22px; height: 22px; fill: currentColor; }
+        .tab-btn .tab-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.3px; }
+        .tab-btn:hover { color: var(--primary); }
+        .tab-btn.active { color: var(--primary); background: rgba(231,76,60,0.1); }
+        .tab-btn.active .tab-icon { transform: scale(1.1); }
+        .tab-btn .badge { position: absolute; top: 2px; right: 50%; transform: translateX(calc(50% + 20px)); background: var(--danger); color: #fff; font-size: 9px; padding: 1px 6px; border-radius: 10px; min-width: 18px; text-align: center; }
+        .search-container { display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.5); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.8); border-radius: var(--radius-sm); padding: 6px 16px; margin-bottom: 12px; }
+        .search-container .logo-icon { font-size: 22px; font-weight: 800; color: var(--primary); flex-shrink: 0; }
+        .search-container .search-bar { flex: 1; padding: 10px 0; border: none; background: transparent; font-size: 14px; color: #1a1a1a; outline: none; }
+        .search-container .search-bar::placeholder { color: rgba(0,0,0,0.3); }
+        .category-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+        .category-filters .btn { width: auto; padding: 6px 14px; font-size: 11px; }
+        .category-filters .btn-primary { background: var(--primary); color: #fff; border: none; }
+        .category-filters .btn-primary:hover { background: var(--primary-dark); }
+        .category-filters .btn-outline { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
+        .category-filters .btn-outline:hover { background: var(--primary); color: #fff; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-top: 12px; }
+        .product-card { background: var(--frosted); backdrop-filter: blur(20px); border: 1px solid var(--frosted-border); border-radius: var(--radius-sm); overflow: hidden; cursor: pointer; transition: all 0.3s ease; }
+        .product-card:active { transform: scale(0.97); }
+        .product-card .img { width: 100%; height: 150px; object-fit: cover; background: linear-gradient(135deg, #f0ebe3, #e8e0d8); }
+        .product-card .info { padding: 12px; }
+        .product-card .title { font-size: 13px; font-weight: 700; color: #1a1a1a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .product-card .price { font-size: 15px; font-weight: 800; color: var(--primary); margin-top: 4px; }
+        .product-card .seller { font-size: 11px; color: rgba(0,0,0,0.4); margin-top: 4px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+        .stat-card { background: var(--frosted); backdrop-filter: blur(20px); border: 1px solid var(--frosted-border); border-radius: var(--radius-sm); padding: 14px; text-align: center; }
+        .stat-card .number { font-size: 24px; font-weight: 800; color: var(--primary); }
+        .stat-card .label { font-size: 10px; text-transform: uppercase; color: rgba(0,0,0,0.4); margin-top: 4px; }
+        .stat-card .trend { font-size: 11px; font-weight: 600; margin-top: 2px; }
+        .stat-card .trend.up { color: var(--success); }
+        .stat-card .trend.down { color: var(--danger); }
+        .chart-container { height: 120px; margin-top: 8px; display: flex; align-items: flex-end; gap: 8px; padding: 8px 0; }
+        .chart-bar { flex: 1; background: var(--primary); border-radius: 4px 4px 0 0; min-height: 4px; transition: height 0.3s ease; }
+        .stats-date { font-size: 11px; color: rgba(0,0,0,0.4); text-align: right; margin-top: 4px; }
+        .order-card { background: var(--frosted); backdrop-filter: blur(20px); border: 1px solid var(--frosted-border); border-radius: var(--radius-sm); padding: 16px; margin-bottom: 12px; }
+        .order-card .status { font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 20px; display: inline-block; }
+        .order-card .status-pending { background: rgba(255,215,0,0.2); color: #B7950B; }
+        .order-card .status-delivered { background: rgba(46,204,113,0.2); color: #27AE60; }
+        .order-card .status-cancelled { background: rgba(231,76,60,0.2); color: #C0392B; }
+        .order-card .status-refunded { background: rgba(52,152,219,0.2); color: #2980B9; }
+        .timer-display { font-size: 28px; font-weight: 800; font-family: 'Courier New', monospace; text-align: center; padding: 8px 0; }
+        .timer-display.danger { animation: timerDanger 1s infinite; }
+        .order-card .confirm-box { background: rgba(255,255,255,0.5); border-radius: var(--radius-sm); padding: 12px; margin-top: 12px; }
+        .order-card .confirm-box label { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 13px; font-weight: 500; cursor: pointer; }
+        .order-card .confirm-box input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--success); }
+        .message-item { background: var(--frosted); backdrop-filter: blur(20px); border: 1px solid var(--frosted-border); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 8px; display: flex; align-items: flex-start; gap: 12px; }
+        .message-item .avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; flex-shrink: 0; overflow: hidden; position: relative; }
+        .message-item .avatar img { width:100%; height:100%; object-fit:cover; }
+        .message-item .avatar .online-dot { position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; }
+        .message-item .avatar .online-dot.online { background: var(--success); }
+        .message-item .avatar .online-dot.offline { background: #ccc; }
+        .message-item .content { flex:1; min-width:0; }
+        .message-item .sender { font-weight:700; font-size:13px; display: flex; align-items: center; gap: 8px; }
+        .message-item .sender .online-badge { font-size: 10px; font-weight: 400; color: var(--success); }
+        .message-item .sender .offline-badge { font-size: 10px; font-weight: 400; color: #999; }
+        .message-item .text { font-size:13px; color:rgba(0,0,0,0.6); }
+        .message-item .time { font-size:10px; color:rgba(0,0,0,0.3); margin-top:2px; }
+        .message-item .audio { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.05); border-radius: 20px; padding: 4px 12px 4px 8px; width: fit-content; }
+        .message-item .audio audio { height: 32px; max-width: 150px; }
+        .contact-chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; background: var(--frosted); border-radius: 20px; cursor: pointer; border: 1px solid var(--frosted-border); font-size: 13px; transition: all 0.2s; white-space: nowrap; position: relative; }
+        .contact-chip:hover { border-color: var(--primary); background: rgba(231,76,60,0.05); }
+        .contact-chip.active { border-color: var(--primary); background: rgba(231,76,60,0.1); }
+        .contact-chip .online-dot-small { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-left: 2px; }
+        .contact-chip .online-dot-small.online { background: var(--success); }
+        .contact-chip .online-dot-small.offline { background: #ccc; }
+        .transaction-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(0,0,0,0.04); }
+        .transaction-item:last-child { border-bottom: none; }
+        .transaction-item .info { display: flex; flex-direction: column; }
+        .transaction-item .desc { font-size: 13px; font-weight: 600; }
+        .transaction-item .date { font-size: 11px; color: rgba(0,0,0,0.3); }
+        .transaction-item .amount { font-weight: 700; font-size: 15px; }
+        .transaction-item .amount.positive { color: var(--success); }
+        .transaction-item .amount.negative { color: var(--danger); }
+        .profile-avatar { width: 80px; height: 80px; border-radius: 50%; background: var(--primary); margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 800; color: #fff; border: 3px solid var(--primary); overflow: hidden; position: relative; }
+        .profile-avatar img { width:100%; height:100%; object-fit:cover; }
+        .profile-avatar .online-dot-big { position: absolute; bottom: 4px; right: 4px; width: 16px; height: 16px; border-radius: 50%; border: 2px solid #fff; }
+        .profile-avatar .online-dot-big.online { background: var(--success); }
+        .profile-avatar .online-dot-big.offline { background: #ccc; }
+        .profile-badge { display: inline-block; background: var(--primary); color: #fff; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .confirmation-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: none; align-items: center; justify-content: center; z-index: 2000; background: rgba(0,0,0,0.4); backdrop-filter: blur(10px); animation: fadeInOut 2.5s ease forwards; }
+        .confirmation-overlay.active { display: flex; }
+        .confirmation-overlay .box { background: #fff; padding: 40px 32px; border-radius: var(--radius); text-align: center; max-width: 360px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.2); animation: slideUp 0.4s ease; }
+        .confirmation-overlay .box .icon { font-size: 56px; margin-bottom: 12px; }
+        .confirmation-overlay .box h3 { font-size: 20px; color: var(--success); margin-bottom: 8px; }
+        .confirmation-overlay .box p { color: rgba(0,0,0,0.6); font-size: 14px; }
+        .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+        .modal-content { background: rgba(255,255,255,0.95); backdrop-filter: blur(30px); border-radius: var(--radius); padding: 24px; max-width: 400px; width: 100%; max-height: 90vh; overflow-y: auto; border: 1px solid var(--frosted-border); }
+        .modal-content .form-group { margin-bottom: 16px; }
+        .modal-content .form-group label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; color: rgba(0,0,0,0.5); margin-bottom: 4px; }
+        .modal-content .form-group input, .modal-content .form-group textarea, .modal-content .form-group select { width: 100%; padding: 10px 14px; border: 1px solid rgba(0,0,0,0.08); border-radius: var(--radius-sm); background: rgba(255,255,255,0.8); font-size: 14px; }
+        .modal-content .form-group textarea { resize: vertical; }
+        .modal-content .form-group input:focus, .modal-content .form-group textarea:focus, .modal-content .form-group select:focus { outline: none; border-color: var(--primary); }
+        .modal-close { float: right; background: none; border: none; font-size: 24px; cursor: pointer; color: #666; }
+        .alert { padding: 12px 16px; border-radius: var(--radius-sm); margin-bottom: 16px; font-size: 13px; display: none; animation: slideUp 0.3s ease; border-left: 4px solid; }
+        .alert.active { display: block; }
+        .alert-success { background: rgba(46,204,113,0.1); color: #27AE60; border-left-color: var(--success); }
+        .alert-error { background: rgba(231,76,60,0.1); color: var(--danger); border-left-color: var(--danger); }
+        .alert-info { background: rgba(255,215,0,0.1); color: #B7950B; border-left-color: var(--primary); }
+        .empty-state { text-align:center; padding:40px 20px; color:rgba(0,0,0,0.3); }
+        .empty-state .icon { font-size:48px; margin-bottom:12px; }
+        .empty-state h3 { font-size:18px; color:rgba(0,0,0,0.5); margin-bottom:4px; }
+        .empty-state p { font-size:13px; }
+        .hidden { display:none !important; }
+        @media (max-width:480px) { .stats-grid { grid-template-columns: repeat(2,1fr); } .grid { grid-template-columns: repeat(auto-fill, minmax(130px,1fr)); } .auth-page .glass { padding:24px 16px; } .welcome-screen .logo-big { font-size:48px; } .welcome-screen h1 { font-size:24px; } }
+        .camera-btn { background: var(--primary); color: #fff; padding: 8px 12px; border: none; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; }
+        .camera-btn:hover { background: var(--primary-dark); }
+        .camera-btn input { display: none; }
+        .voice-btn { background: var(--primary); color: #fff; border: none; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; transition: all 0.3s; flex-shrink: 0; }
+        .voice-btn:hover { transform: scale(1.05); }
+        .voice-btn.recording { background: var(--danger); animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        .voice-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .call-btn { background: var(--success); color: #fff; border: none; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; transition: all 0.3s; flex-shrink: 0; }
+        .call-btn:hover { transform: scale(1.05); }
+        .discussion-header { display: flex; align-items: center; gap: 12px; padding: 8px 0; margin-bottom: 12px; border-bottom: 1px solid var(--frosted-border); }
+        .discussion-header .avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; overflow: hidden; position: relative; flex-shrink: 0; }
+        .discussion-header .avatar img { width:100%; height:100%; object-fit:cover; }
+        .discussion-header .avatar .online-dot { position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; }
+        .discussion-header .avatar .online-dot.online { background: var(--success); }
+        .discussion-header .avatar .online-dot.offline { background: #ccc; }
+        .discussion-header .info { flex: 1; }
+        .discussion-header .info .name { font-weight: 700; font-size: 15px; }
+        .discussion-header .info .status { font-size: 12px; color: rgba(0,0,0,0.4); }
+        .discussion-header .actions { display: flex; gap: 8px; }
+        .order-btn-in-chat { margin-top: 8px; }
+    </style>
 </head>
 <body>
     <div class="kente"></div>
-
-<!-- ===== CONFIRMATION OVERLAY ===== -->
-<div class="confirmation-overlay" id="confirmationOverlay">
-    <div class="box">
-        <div class="icon">✅</div>
-        <h3>Article publié !</h3>
-        <p>Votre article a été ajouté avec succès à la marketplace.</p>
+    <div class="confirmation-overlay" id="confirmationOverlay">
+        <div class="box"><div class="icon">✅</div><h3>Article publié !</h3><p>Votre article a été ajouté avec succès à la marketplace.</p></div>
     </div>
-</div>
 
-<!-- ===== AUTH PAGE ===== -->
+<!-- AUTH PAGE -->
 <div id="authPage" class="auth-page">
     <div class="glass">
         <h2>BLK</h2>
         <p class="subtitle">Bienvenue sur BLK Marketplace</p>
         <p class="subtitle" style="font-size:12px; margin-top:-12px;">Inscrivez-vous pour profiter de toutes les offres!</p>
-
-        <!-- Login -->
         <div id="loginForm">
-            <div class="form-group">
-                <label>Nom complet</label>
-                <input type="text" id="loginName" placeholder="Jean Dupont" />
-            </div>
-            <div class="form-group">
-                <label>Adresse e-mail</label>
-                <input type="email" id="loginEmail" placeholder="jean@gmail.com" />
-            </div>
+            <div class="form-group"><label>Nom complet</label><input type="text" id="loginName" placeholder="Jean Dupont" /></div>
+            <div class="form-group"><label>Adresse e-mail</label><input type="email" id="loginEmail" placeholder="jean@gmail.com" /></div>
             <button class="btn btn-primary" id="btnLogin">Se connecter</button>
             <div class="divider">ou inscrivez-vous avec</div>
             <div class="social-buttons">
-                <button class="btn btn-facebook" id="btnFakeFacebook">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.989C18.343 21.129 22 16.99 22 12z"/></svg>
-                    Continuer avec Facebook
-                </button>
-                <button class="btn btn-google" id="btnFakeGoogle">
-                    <svg width="20" height="20" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-                    Continuer avec Google
-                </button>
+                <button class="btn btn-facebook" id="btnFakeFacebook"><svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.989C18.343 21.129 22 16.99 22 12z"/></svg> Continuer avec Facebook</button>
+                <button class="btn btn-google" id="btnFakeGoogle"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Continuer avec Google</button>
             </div>
-            <div class="toggle-link">
-                Pas de compte ? <button id="btnShowSignup">S'inscrire</button>
-            </div>
+            <div class="toggle-link">Pas de compte ? <button id="btnShowSignup">S'inscrire</button></div>
         </div>
-
-        <!-- Signup -->
         <div id="signupForm" style="display:none;">
-            <div class="form-group">
-                <label>Nom complet</label>
-                <input type="text" id="signupName" placeholder="Jean Dupont" />
-            </div>
-            <div class="form-group">
-                <label>Adresse e-mail</label>
-                <input type="email" id="signupEmail" placeholder="jean@gmail.com" />
-            </div>
-            <div class="form-group">
-                <label>Mot de passe</label>
-                <input type="password" id="signupPassword" placeholder="••••••••" />
-            </div>
-            <div class="form-group">
-                <label>Confirmer le mot de passe</label>
-                <input type="password" id="signupConfirmPassword" placeholder="••••••••" />
-            </div>
+            <div class="form-group"><label>Nom complet</label><input type="text" id="signupName" placeholder="Jean Dupont" /></div>
+            <div class="form-group"><label>Adresse e-mail</label><input type="email" id="signupEmail" placeholder="jean@gmail.com" /></div>
+            <div class="form-group"><label>Mot de passe</label><input type="password" id="signupPassword" placeholder="••••••••" /></div>
+            <div class="form-group"><label>Confirmer le mot de passe</label><input type="password" id="signupConfirmPassword" placeholder="••••••••" /></div>
             <button class="btn btn-primary" id="btnSignup">S'inscrire</button>
             <div class="divider">ou inscrivez-vous avec</div>
             <div class="social-buttons">
-                <button class="btn btn-facebook" id="btnFakeFacebook2">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.989C18.343 21.129 22 16.99 22 12z"/></svg>
-                    Continuer avec Facebook
-                </button>
-                <button class="btn btn-google" id="btnFakeGoogle2">
-                    <svg width="20" height="20" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-                    Continuer avec Google
-                </button>
+                <button class="btn btn-facebook" id="btnFakeFacebook2"><svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.989C18.343 21.129 22 16.99 22 12z"/></svg> Continuer avec Facebook</button>
+                <button class="btn btn-google" id="btnFakeGoogle2"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Continuer avec Google</button>
             </div>
-            <div class="toggle-link">
-                Déjà un compte ? <button id="btnShowLogin">Se connecter</button>
-            </div>
+            <div class="toggle-link">Déjà un compte ? <button id="btnShowLogin">Se connecter</button></div>
         </div>
     </div>
 </div>
 
-<!-- ===== WELCOME SCREEN ===== -->
 <div class="welcome-screen" id="welcomeScreen">
-    <div class="content">
-        <div class="logo-big">BLK<span>.</span></div>
-        <h1>Bienvenue dans<br>le marché BLK</h1>
-        <p>La mode et les accessoires à portée de main.</p>
-        <button class="btn" id="welcomeBtn">Découvrir</button>
-    </div>
+    <div class="content"><div class="logo-big">BLK<span>.</span></div><h1>Bienvenue dans<br>le marché BLK</h1><p>La mode et les accessoires à portée de main.</p><button class="btn" id="welcomeBtn">Découvrir</button></div>
 </div>
 
-<!-- ===== HEADER ===== -->
 <header id="header">
     <span class="logo">BLK</span>
     <div class="user-info">
@@ -908,16 +258,12 @@
     </div>
 </header>
 
-<!-- ===== APP CONTAINER ===== -->
 <div class="app-container" id="appContainer">
     <div id="alertBox" class="alert"></div>
 
     <!-- HOME -->
     <div class="page active" id="pageHome">
-        <div class="search-container">
-            <span class="logo-icon">BLK</span>
-            <input type="text" class="search-bar" id="searchInput" placeholder="Rechercher..." />
-        </div>
+        <div class="search-container"><span class="logo-icon">BLK</span><input type="text" class="search-bar" id="searchInput" placeholder="Rechercher..." /></div>
         <div class="category-filters" id="categoryFilters">
             <button class="btn btn-primary btn-sm" data-cat="all">Tous</button>
             <button class="btn btn-outline btn-sm" data-cat="vêtements">Vêtements</button>
@@ -927,73 +273,51 @@
             <button class="btn btn-outline btn-sm" data-cat="accessoires">Accessoires</button>
         </div>
         <div id="productsGrid" class="grid"></div>
-        <div id="emptyHome" class="empty-state" style="display:none;">
-            <div class="icon">📭</div>
-            <h3>Aucun article</h3>
-            <p>Soyez le premier à publier un article !</p>
-        </div>
+        <div id="emptyHome" class="empty-state" style="display:none;"><div class="icon">📭</div><h3>Aucun article</h3><p>Soyez le premier à publier un article !</p></div>
     </div>
 
     <!-- ORDERS -->
     <div class="page" id="pageOrders">
         <h2 class="page-title">📦 Mes Commandes</h2>
         <div id="ordersList"></div>
-        <div id="emptyOrders" class="empty-state" style="display:none;">
-            <div class="icon">📭</div>
-            <h3>Aucune commande</h3>
-            <p>Vos commandes apparaîtront ici.</p>
-        </div>
+        <div id="emptyOrders" class="empty-state" style="display:none;"><div class="icon">📭</div><h3>Aucune commande</h3><p>Vos commandes apparaîtront ici.</p></div>
     </div>
 
     <!-- MESSAGES -->
     <div class="page" id="pageMessages">
         <h2 class="page-title">💬 Messagerie</h2>
-        <div style="display:flex; gap:12px; margin-bottom:12px; flex-wrap:wrap;">
-            <div style="flex:1; min-width:150px;">
-                <input type="text" id="chatReceiver" placeholder="ID du destinataire..." style="width:100%; padding:10px 12px; border:1px solid rgba(0,0,0,0.08); border-radius:var(--radius-sm);" />
-            </div>
-            <div style="display:flex; gap:8px; flex:2; min-width:200px;">
-                <input type="text" id="messageInput" placeholder="Écris ton message..." style="flex:1; padding:10px 12px; border:1px solid rgba(0,0,0,0.08); border-radius:var(--radius-sm);" />
-                <button class="btn btn-primary" style="width:auto; padding:10px 16px;" id="btnSendMessage">Envoyer</button>
-                <button class="voice-btn" id="btnRecordVoice" title="Note vocale">🎤</button>
-            </div>
-        </div>
-        <!-- Contacts -->
         <div id="contactsList" style="margin-bottom:12px; display:flex; gap:8px; flex-wrap:wrap; overflow-x:auto; padding-bottom:8px;"></div>
-        <!-- Messages -->
-        <div id="messagesList" style="max-height:400px; overflow-y:auto;"></div>
-        <div id="emptyMessages" class="empty-state" style="display:none;">
-            <div class="icon">💬</div>
-            <h3>Aucun message</h3>
-            <p>Commencez une conversation !</p>
+        <div id="discussionView" style="display:none;">
+            <div class="discussion-header" id="discussionHeader">
+                <div class="avatar" id="discussionAvatar"><span>U</span><div class="online-dot offline" id="discussionOnlineDot"></div></div>
+                <div class="info">
+                    <div class="name" id="discussionName">Utilisateur</div>
+                    <div class="status" id="discussionStatus">Hors ligne</div>
+                </div>
+                <div class="actions">
+                    <button class="call-btn" id="btnCall" title="Appel audio">📞</button>
+                </div>
+            </div>
+            <div id="discussionOrderBtn" style="margin-bottom:8px;"></div>
+            <div id="messagesList" style="max-height:320px; overflow-y:auto; padding:4px 0;"></div>
+            <div style="display:flex; gap:8px; margin-top:8px;">
+                <input type="text" id="messageInput" placeholder="Écris ton message..." style="flex:1; padding:10px 12px; border:1px solid rgba(0,0,0,0.08); border-radius:var(--radius-sm);" />
+                <button class="voice-btn" id="btnRecordVoice" title="Note vocale">🎤</button>
+                <button class="btn btn-primary" style="width:auto; padding:10px 16px;" id="btnSendMessage">Envoyer</button>
+            </div>
         </div>
+        <div id="emptyMessages" class="empty-state" style="display:block;"><div class="icon">💬</div><h3>Aucune discussion</h3><p>Cliquez sur "Contacter le vendeur" depuis un article.</p></div>
     </div>
 
     <!-- SHOP -->
     <div class="page" id="pageShop">
         <h2 class="page-title">🏪 Mon Magasin</h2>
         <div class="stats-grid" id="statsGrid">
-            <div class="stat-card">
-                <div class="number" id="statSales">0</div>
-                <div class="label">Ventes</div>
-                <div class="trend up" id="trendSales">⬆️ 0%</div>
-            </div>
-            <div class="stat-card">
-                <div class="number" id="statOrders">0</div>
-                <div class="label">Commandes</div>
-                <div class="trend up" id="trendOrders">⬆️ 0%</div>
-            </div>
-            <div class="stat-card">
-                <div class="number" id="statArticles">0</div>
-                <div class="label">Articles</div>
-                <div class="trend up" id="trendArticles">⬆️ 0%</div>
-            </div>
+            <div class="stat-card"><div class="number" id="statSales">0</div><div class="label">Ventes</div><div class="trend up" id="trendSales">⬆️ 0%</div></div>
+            <div class="stat-card"><div class="number" id="statOrders">0</div><div class="label">Commandes</div><div class="trend up" id="trendOrders">⬆️ 0%</div></div>
+            <div class="stat-card"><div class="number" id="statArticles">0</div><div class="label">Articles</div><div class="trend up" id="trendArticles">⬆️ 0%</div></div>
         </div>
-        <div class="glass-sm" style="margin-bottom:12px;">
-            <h3 style="font-size:16px;">📈 Évolution des ventes</h3>
-            <div class="chart-container" id="chartContainer"></div>
-            <div class="stats-date" id="statsDate"></div>
-        </div>
+        <div class="glass-sm" style="margin-bottom:12px;"><h3 style="font-size:16px;">📈 Évolution des ventes</h3><div class="chart-container" id="chartContainer"></div><div class="stats-date" id="statsDate"></div></div>
         <button class="btn btn-primary" id="btnPublish">📤 Publier un article</button>
         <div id="shopArticles" style="margin-top:12px;"></div>
     </div>
@@ -1003,7 +327,7 @@
         <h2 class="page-title">👤 Mon Profil</h2>
         <div id="profileContent">
             <div class="glass-lg" style="text-align:center;">
-                <div class="profile-avatar" id="profileAvatar">U</div>
+                <div class="profile-avatar" id="profileAvatar">U<div class="online-dot-big offline" id="profileOnlineDot"></div></div>
                 <h3 id="profileName">Utilisateur</h3>
                 <p style="color:rgba(0,0,0,0.4);font-size:13px;" id="profileEmail">email@example.com</p>
                 <p style="color:rgba(0,0,0,0.4);font-size:13px;" id="profilePhone">+242 06 XXX XXXX</p>
@@ -1011,18 +335,12 @@
                     <span style="font-size:14px;">🔥 <span id="profileFlames">0</span> flammes</span>
                     <span class="profile-badge" id="profileSellerBadge" style="display:none;">Vendeur</span>
                 </div>
-                <!-- Bouton Commander (visible si le profil visité est un vendeur) -->
-                <div id="profileOrderBtn" style="margin-top:12px; display:none;">
-                    <button class="btn btn-success" id="btnOrderFromProfile">Commander</button>
-                </div>
+                <div id="profileOrderBtn" style="margin-top:12px; display:none;"><button class="btn btn-success" id="btnOrderFromProfile">Commander</button></div>
             </div>
             <div class="glass-lg" style="margin-top:12px;">
                 <h3 style="color:var(--success);">💰 Wallet BLK</h3>
                 <p style="font-size:32px;font-weight:800;color:var(--success);margin:8px 0;"><span id="walletBalance">0</span> FCFA</p>
-                <div style="display:flex;gap:8px;">
-                    <button class="btn btn-success" style="flex:1;" id="btnDeposit">Déposer</button>
-                    <button class="btn btn-primary" style="flex:1;" id="btnWithdraw">Retirer</button>
-                </div>
+                <div style="display:flex;gap:8px;"><button class="btn btn-success" style="flex:1;" id="btnDeposit">Déposer</button><button class="btn btn-primary" style="flex:1;" id="btnWithdraw">Retirer</button></div>
             </div>
             <div class="glass-lg" style="margin-top:12px;display:none;" id="depositForm">
                 <h3>💳 Dépôt</h3>
@@ -1038,123 +356,49 @@
                 <button class="btn btn-danger" id="btnConfirmWithdraw">Confirmer le retrait</button>
                 <button class="btn btn-outline" style="margin-top:8px;" id="btnCancelWithdraw">Annuler</button>
             </div>
-            <div class="glass-lg" style="margin-top:12px;">
-                <h3>📋 Historique des transactions</h3>
-                <div id="transactionsList"></div>
-                <div id="emptyTransactions" class="empty-state" style="display:none;padding:20px 0;"><p>Aucune transaction</p></div>
-            </div>
+            <div class="glass-lg" style="margin-top:12px;"><h3>📋 Historique des transactions</h3><div id="transactionsList"></div><div id="emptyTransactions" class="empty-state" style="display:none;padding:20px 0;"><p>Aucune transaction</p></div></div>
             <button class="btn btn-danger" style="margin-top:12px;" id="btnLogout">🚪 Déconnexion</button>
         </div>
     </div>
 </div>
 
-<!-- ===== TABS ===== -->
 <nav class="tabs" id="tabs">
-    <button class="tab-btn active" data-page="pageHome">
-        <span class="tab-icon">
-            <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-        </span>
-        <span class="tab-label">Accueil</span>
-    </button>
-    <button class="tab-btn" data-page="pageOrders">
-        <span class="tab-icon">
-            <svg viewBox="0 0 24 24"><path d="M19 6h-2v2h2v10H5V8h2V6H5c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-7 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
-        </span>
-        <span class="tab-label">Commandes</span>
-        <span class="badge" id="ordersBadge" style="display:none;">0</span>
-    </button>
-    <button class="tab-btn" data-page="pageMessages">
-        <span class="tab-icon">
-            <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
-        </span>
-        <span class="tab-label">Messages</span>
-        <span class="badge" id="messagesBadge" style="display:none;">0</span>
-    </button>
-    <button class="tab-btn" data-page="pageShop">
-        <span class="tab-icon">
-            <svg viewBox="0 0 24 24"><path d="M18 6h-2c0-2.2-1.8-4-4-4S8 3.8 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2z"/></svg>
-        </span>
-        <span class="tab-label">Mon Magasin</span>
-    </button>
-    <button class="tab-btn" data-page="pageProfile">
-        <span class="tab-icon">
-            <svg viewBox="0 0 24 24"><path d="M12 12c2.2 0 4-1.8 4-4s-1.8-4-4-4-4 1.8-4 4 1.8 4 4 4zm0 2c-2.7 0-8 1.3-8 4v2h16v-2c0-2.7-5.3-4-8-4z"/></svg>
-        </span>
-        <span class="tab-label">Profil</span>
-    </button>
+    <button class="tab-btn active" data-page="pageHome"><span class="tab-icon"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></span><span class="tab-label">Accueil</span></button>
+    <button class="tab-btn" data-page="pageOrders"><span class="tab-icon"><svg viewBox="0 0 24 24"><path d="M19 6h-2v2h2v10H5V8h2V6H5c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-7 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg></span><span class="tab-label">Commandes</span><span class="badge" id="ordersBadge" style="display:none;">0</span></button>
+    <button class="tab-btn" data-page="pageMessages"><span class="tab-icon"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg></span><span class="tab-label">Messages</span><span class="badge" id="messagesBadge" style="display:none;">0</span></button>
+    <button class="tab-btn" data-page="pageShop"><span class="tab-icon"><svg viewBox="0 0 24 24"><path d="M18 6h-2c0-2.2-1.8-4-4-4S8 3.8 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2z"/></svg></span><span class="tab-label">Mon Magasin</span></button>
+    <button class="tab-btn" data-page="pageProfile"><span class="tab-icon"><svg viewBox="0 0 24 24"><path d="M12 12c2.2 0 4-1.8 4-4s-1.8-4-4-4-4 1.8-4 4 1.8 4 4 4zm0 2c-2.7 0-8 1.3-8 4v2h16v-2c0-2.7-5.3-4-8-4z"/></svg></span><span class="tab-label">Profil</span></button>
 </nav>
 
 <script>
-    // ============================================================
-    // CONFIGURATION
-    // ============================================================
     const BACKEND_URL = 'https://blk-marketplace2.0-1.onrender.com';
     const STORAGE_KEY = 'blk_user_id';
+    let currentUser = null, currentUserId = null, allProducts = [], selectedCategory = 'all';
+    let activeConversationId = null, typingTimeoutId = null, mediaRecorder = null, audioChunks = [], isRecording = false;
+    let viewedUserId = null, hasOrderedFromCurrentSeller = false;
 
-    let currentUser = null;
-    let currentUserId = null;
-    let allProducts = [];
-    let selectedCategory = 'all';
-
-    // Messagerie
-    let activeConversationId = null;
-    let typingTimeout = null;
-    let mediaRecorder = null;
-    let audioChunks = [];
-    let isRecording = false;
-
-    // Profil visité (pour le bouton "Commander")
-    let viewedUserId = null;
-
-    // ============================================================
-    // ALERT
-    // ============================================================
-    function showAlert(message, type='success') {
-        const box = document.getElementById('alertBox');
-        box.textContent = message;
-        box.className = 'alert active alert-'+type;
-        clearTimeout(box._timeout);
-        box._timeout = setTimeout(() => box.classList.remove('active'), 4000);
+    function showAlert(m, t='success') {
+        const b = document.getElementById('alertBox');
+        b.textContent = m; b.className = 'alert active alert-'+t;
+        clearTimeout(b._timeout); b._timeout = setTimeout(() => b.classList.remove('active'), 4000);
     }
-
-    // ============================================================
-    // CONFIRMATION PUBLICATION (overlay)
-    // ============================================================
     function showConfirmation() {
-        const overlay = document.getElementById('confirmationOverlay');
-        overlay.classList.add('active');
-        setTimeout(() => {
-            overlay.classList.remove('active');
-        }, 2500);
+        const o = document.getElementById('confirmationOverlay');
+        o.classList.add('active'); setTimeout(() => o.classList.remove('active'), 2500);
     }
 
-    // ============================================================
-    // AUTH
-    // ============================================================
     function handleLogin(name, email) {
         let userId = localStorage.getItem(STORAGE_KEY);
-        if (!userId) {
-            userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-            localStorage.setItem(STORAGE_KEY, userId);
-        }
+        if (!userId) { userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6); localStorage.setItem(STORAGE_KEY, userId); }
         currentUserId = userId;
-        currentUser = {
-            name: name || 'Utilisateur',
-            email: email || 'user@example.com',
-            phone: '+242 06 XXX XXXX',
-            photo: '',
-            flames: 0,
-            walletBalance: 0,
-            id: userId,
-            isSeller: false,
-            blockedUsers: []
-        };
+        currentUser = { name: name || 'Utilisateur', email: email || 'user@example.com', phone: '+242 06 XXX XXXX', photo: '', flames: 0, walletBalance: 0, id: userId, isSeller: false, blockedUsers: [], online: true };
         document.getElementById('authPage').style.display = 'none';
         document.getElementById('welcomeScreen').classList.add('active');
         document.getElementById('welcomeBtn').addEventListener('click', () => {
             document.getElementById('welcomeScreen').classList.remove('active');
-            showMainApp();
-            showAlert('✅ Bienvenue ' + currentUser.name + ' !', 'success');
+            showMainApp(); showAlert('✅ Bienvenue ' + currentUser.name + ' !', 'success');
+            // Mettre à jour le statut en ligne
+            fetch(BACKEND_URL+'/api/users/online', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: currentUserId, online: true }) });
         });
     }
 
@@ -1163,24 +407,17 @@
         const email = document.getElementById('loginEmail').value.trim() || 'user@example.com';
         handleLogin(name, email);
     });
-
     document.getElementById('btnSignup').addEventListener('click', () => {
         const name = document.getElementById('signupName').value.trim() || 'Utilisateur';
         const email = document.getElementById('signupEmail').value.trim() || 'user@example.com';
-        const password = document.getElementById('signupPassword').value;
-        const confirm = document.getElementById('signupConfirmPassword').value;
-        if (password && password !== confirm) {
-            showAlert('Les mots de passe ne correspondent pas', 'error');
-            return;
-        }
+        const pwd = document.getElementById('signupPassword').value, cnf = document.getElementById('signupConfirmPassword').value;
+        if (pwd && pwd !== cnf) { showAlert('Les mots de passe ne correspondent pas', 'error'); return; }
         handleLogin(name, email);
     });
-
     document.getElementById('btnFakeFacebook').addEventListener('click', () => handleLogin('Utilisateur Facebook', 'fb@example.com'));
     document.getElementById('btnFakeFacebook2').addEventListener('click', () => handleLogin('Utilisateur Facebook', 'fb@example.com'));
     document.getElementById('btnFakeGoogle').addEventListener('click', () => handleLogin('Utilisateur Google', 'google@example.com'));
     document.getElementById('btnFakeGoogle2').addEventListener('click', () => handleLogin('Utilisateur Google', 'google@example.com'));
-
     document.getElementById('btnShowSignup').addEventListener('click', () => {
         document.getElementById('loginForm').style.display = 'none';
         document.getElementById('signupForm').style.display = 'block';
@@ -1190,58 +427,40 @@
         document.getElementById('signupForm').style.display = 'none';
     });
 
-    // ============================================================
-    // MAIN APP
-    // ============================================================
     function showMainApp() {
         document.getElementById('appContainer').classList.add('active');
         document.getElementById('header').style.display = 'flex';
         document.getElementById('tabs').classList.add('active');
-
         document.getElementById('headerName').textContent = currentUser?.name || 'Utilisateur';
-        const avatar = document.getElementById('headerAvatar');
-        avatar.textContent = (currentUser?.name || 'U')[0].toUpperCase();
-
+        const a = document.getElementById('headerAvatar');
+        a.textContent = (currentUser?.name || 'U')[0].toUpperCase();
         document.getElementById('profileName').textContent = currentUser?.name || 'Utilisateur';
         document.getElementById('profileEmail').textContent = currentUser?.email || 'email@example.com';
         document.getElementById('profilePhone').textContent = currentUser?.phone || '+242 06 XXX XXXX';
         document.getElementById('profileFlames').textContent = currentUser?.flames || 0;
         document.getElementById('profileAvatar').textContent = (currentUser?.name || 'U')[0].toUpperCase();
         document.getElementById('walletBalance').textContent = currentUser?.walletBalance || 0;
-
-        // Afficher le badge vendeur si l'utilisateur courant est vendeur
-        updateProfileSellerBadge();
-
+        const badge = document.getElementById('profileSellerBadge');
+        if (currentUser?.isSeller) badge.style.display = 'inline-block'; else badge.style.display = 'none';
         const now = new Date();
         document.getElementById('statsDate').textContent = now.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) + ' · ' + now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-
-        loadProducts();
-        loadStats();
-        loadOrders();
-        loadMessages();
-        loadTransactions();
-        loadWallet();
-        loadUserData(currentUserId); // pour le profil
-
-        // Bouton "Commander" sur le profil (visible si on visite un autre vendeur)
-        // On le gère dans loadUserData quand on affiche un autre utilisateur
+        // Mettre à jour le statut en ligne périodiquement
+        setInterval(() => {
+            fetch(BACKEND_URL+'/api/users/online', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: currentUserId, online: true }) });
+        }, 30000);
+        loadProducts(); loadStats(); loadOrders(); loadMessages(); loadTransactions(); loadWallet(); loadUserData(currentUserId);
     }
 
-    // ============================================================
-    // TABS
-    // ============================================================
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             this.classList.add('active');
             document.getElementById(this.dataset.page).classList.add('active');
+            if (this.dataset.page === 'pageMessages') loadMessages();
         });
     });
 
-    // ============================================================
-    // USER DATA (pour afficher le profil de quelqu'un d'autre)
-    // ============================================================
     async function loadUserData(userId) {
         if (!userId) return;
         try {
@@ -1249,98 +468,45 @@
             const data = await res.json();
             if (data.success) {
                 const user = data.data;
-                // Mettre à jour l'affichage du profil
                 document.getElementById('profileName').textContent = user.name || 'Utilisateur';
                 document.getElementById('profileEmail').textContent = user.email || 'email@example.com';
                 document.getElementById('profilePhone').textContent = user.phone || '+242 06 XXX XXXX';
                 document.getElementById('profileFlames').textContent = user.flames || 0;
                 const pAvatar = document.getElementById('profileAvatar');
-                if (user.photo) pAvatar.innerHTML = '<img src="'+user.photo+'" />';
-                else pAvatar.textContent = (user.name || 'U')[0].toUpperCase();
-
-                // Badge vendeur
+                if (user.photo) pAvatar.innerHTML = '<img src="'+user.photo+'" /><div class="online-dot-big '+(user.online?'online':'offline')+'"></div>';
+                else pAvatar.innerHTML = (user.name || 'U')[0].toUpperCase() + '<div class="online-dot-big '+(user.online?'online':'offline')+'"></div>';
                 const badge = document.getElementById('profileSellerBadge');
-                if (user.isSeller) {
-                    badge.style.display = 'inline-block';
-                } else {
-                    badge.style.display = 'none';
-                }
-
-                // Bouton "Commander" (visible si l'utilisateur visité est un vendeur ET que ce n'est pas l'utilisateur courant)
-                const orderBtnContainer = document.getElementById('profileOrderBtn');
+                if (user.isSeller) badge.style.display = 'inline-block'; else badge.style.display = 'none';
+                const orderBtn = document.getElementById('profileOrderBtn');
                 if (user.isSeller && userId !== currentUserId) {
-                    orderBtnContainer.style.display = 'block';
+                    orderBtn.style.display = 'block';
                     viewedUserId = userId;
-                } else {
-                    orderBtnContainer.style.display = 'none';
-                    viewedUserId = null;
-                }
-
-                // Sauvegarder les infos du vendeur pour le bouton Commander
-                if (user.isSeller && userId !== currentUserId) {
-                    // On stocke les infos du vendeur dans un attribut global
                     window._sellerData = user;
-                }
+                } else { orderBtn.style.display = 'none'; viewedUserId = null; }
             }
-        } catch (error) {
-            console.error('Erreur chargement utilisateur:', error);
-        }
+        } catch(e) { console.error(e); }
     }
 
-    function updateProfileSellerBadge() {
-        const badge = document.getElementById('profileSellerBadge');
-        if (currentUser?.isSeller) {
-            badge.style.display = 'inline-block';
-        } else {
-            badge.style.display = 'none';
-        }
-    }
-
-    // ============================================================
-    // PRODUCTS
-    // ============================================================
     async function loadProducts() {
         try {
             const res = await fetch(BACKEND_URL+'/api/articles');
             const data = await res.json();
-            if (data.success && data.data) allProducts = data.data;
-            else allProducts = [];
+            allProducts = (data.success && data.data) ? data.data : [];
             renderProducts(allProducts);
-        } catch(e) {
-            allProducts = [];
-            renderProducts(allProducts);
-        }
+        } catch(e) { allProducts = []; renderProducts(allProducts); }
     }
 
     function renderProducts(products) {
-        const grid = document.getElementById('productsGrid');
-        const empty = document.getElementById('emptyHome');
+        const grid = document.getElementById('productsGrid'), empty = document.getElementById('emptyHome');
         let filtered = products;
-        if (selectedCategory !== 'all') {
-            filtered = products.filter(p => p.category === selectedCategory);
-        }
-        const query = document.getElementById('searchInput').value.toLowerCase();
-        if (query) {
-            filtered = filtered.filter(p => p.title && p.title.toLowerCase().includes(query));
-        }
-        if (filtered.length === 0) {
-            grid.innerHTML = '';
-            empty.style.display = 'block';
-            return;
-        }
-        empty.style.display = 'none';
-        grid.innerHTML = '';
+        if (selectedCategory !== 'all') filtered = products.filter(p => p.category === selectedCategory);
+        const q = document.getElementById('searchInput').value.toLowerCase();
+        if (q) filtered = filtered.filter(p => p.title && p.title.toLowerCase().includes(q));
+        if (filtered.length === 0) { grid.innerHTML = ''; empty.style.display = 'block'; return; }
+        empty.style.display = 'none'; grid.innerHTML = '';
         filtered.forEach(p => {
-            const card = document.createElement('div');
-            card.className = 'product-card';
-            card.innerHTML = `
-                <img src="${p.image || 'https://via.placeholder.com/150x150/F5F0E8/CCCCCC?text=BLK'}" class="img" />
-                <div class="info">
-                    <div class="title">${p.title || 'Sans titre'}</div>
-                    <div class="price">${p.price || 0} FCFA</div>
-                    <div class="seller">${p.sellerName || 'Anonyme'}</div>
-                </div>
-            `;
+            const card = document.createElement('div'); card.className = 'product-card';
+            card.innerHTML = `<img src="${p.image || 'https://via.placeholder.com/150x150/F5F0E8/CCCCCC?text=BLK'}" class="img" /><div class="info"><div class="title">${p.title || 'Sans titre'}</div><div class="price">${p.price || 0} FCFA</div><div class="seller">${p.sellerName || 'Anonyme'}</div></div>`;
             card.addEventListener('click', () => showProductDetail(p));
             grid.appendChild(card);
         });
@@ -1348,25 +514,14 @@
 
     document.querySelectorAll('#categoryFilters .btn').forEach(btn => {
         btn.addEventListener('click', function() {
-            document.querySelectorAll('#categoryFilters .btn').forEach(b => {
-                b.className = 'btn btn-outline btn-sm';
-            });
-            this.className = 'btn btn-primary btn-sm';
-            selectedCategory = this.dataset.cat;
-            renderProducts(allProducts);
+            document.querySelectorAll('#categoryFilters .btn').forEach(b => { b.className = 'btn btn-outline btn-sm'; });
+            this.className = 'btn btn-primary btn-sm'; selectedCategory = this.dataset.cat; renderProducts(allProducts);
         });
     });
+    document.getElementById('searchInput').addEventListener('input', () => renderProducts(allProducts));
 
-    document.getElementById('searchInput').addEventListener('input', () => {
-        renderProducts(allProducts);
-    });
-
-    // ============================================================
-    // PRODUCT DETAIL (avec bouton "Contacter le vendeur")
-    // ============================================================
     function showProductDetail(product) {
-        const modal = document.createElement('div');
-        modal.className = 'modal';
+        const modal = document.createElement('div'); modal.className = 'modal';
         modal.innerHTML = `
             <div class="modal-content">
                 <button class="modal-close" id="modalCloseBtn">✕</button>
@@ -1383,41 +538,23 @@
             </div>
         `;
         document.body.appendChild(modal);
-
         document.getElementById('modalClose').addEventListener('click', () => modal.remove());
-
-        document.getElementById('modalBuy').addEventListener('click', async () => {
-            await buyProduct(product);
-            modal.remove();
-        });
-
+        document.getElementById('modalBuy').addEventListener('click', async () => { await buyProduct(product); modal.remove(); });
         document.getElementById('modalContact').addEventListener('click', () => {
             modal.remove();
-            // Basculer vers l'onglet Messagerie
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             const targetTab = document.querySelector('.tab-btn[data-page="pageMessages"]');
-            if (targetTab) {
-                targetTab.classList.add('active');
-                document.getElementById('pageMessages').classList.add('active');
-            }
-            // Pré-remplir le destinataire avec l'ID du vendeur
-            document.getElementById('chatReceiver').value = product.sellerId || '';
-            document.getElementById('messageInput').focus();
+            if (targetTab) { targetTab.classList.add('active'); document.getElementById('pageMessages').classList.add('active'); }
+            // Ouvrir la discussion avec ce vendeur
+            openDiscussion(product.sellerId, product.sellerName);
             showAlert('💬 Vous pouvez maintenant envoyer un message au vendeur.', 'info');
         });
-
         modal.addEventListener('click', (e) => { if(e.target === modal) modal.remove(); });
     }
 
-    // ============================================================
-    // BUY PRODUCT
-    // ============================================================
     async function buyProduct(product) {
-        if (!currentUserId) {
-            showAlert('Connecte-toi d\'abord', 'error');
-            return;
-        }
+        if (!currentUserId) { showAlert('Connecte-toi d\'abord', 'error'); return; }
         try {
             const buyerCommission = Math.round(product.price * 0.03);
             const totalAmount = product.price + buyerCommission;
@@ -1428,43 +565,30 @@
                 return;
             }
             const res = await fetch(BACKEND_URL+'/api/orders/create', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    articleId: product.id,
-                    buyerId: currentUserId,
-                    sellerId: product.sellerId,
-                    amount: product.price,
-                    buyerPhone: currentUser?.phone || ''
-                })
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ articleId: product.id, buyerId: currentUserId, sellerId: product.sellerId, amount: product.price, buyerPhone: currentUser?.phone || '' })
             });
             const data = await res.json();
             if (data.success) {
                 showAlert('✅ Commande créée !', 'success');
                 loadWallet(); loadOrders(); loadProducts();
+                // Vérifier si on a commandé à ce vendeur
+                if (product.sellerId === activeConversationId) {
+                    hasOrderedFromCurrentSeller = true;
+                    updateOrderButtonInChat();
+                }
             } else {
                 showAlert('❌ '+data.message, 'error');
             }
-        } catch(error) {
-            showAlert('Erreur: '+error.message, 'error');
-        }
+        } catch(error) { showAlert('Erreur: '+error.message, 'error'); }
     }
 
-    // ============================================================
-    // WALLET
-    // ============================================================
     async function loadWallet() {
         if (!currentUserId) return;
-        try {
-            const res = await fetch(BACKEND_URL+'/api/wallet/'+currentUserId);
-            const data = await res.json();
-            document.getElementById('walletBalance').textContent = data.balance || 0;
-        } catch(e) { console.error(e); }
+        try { const res = await fetch(BACKEND_URL+'/api/wallet/'+currentUserId); const data = await res.json(); document.getElementById('walletBalance').textContent = data.balance || 0; }
+        catch(e) { console.error(e); }
     }
 
-    // ============================================================
-    // STATS
-    // ============================================================
     async function loadStats() {
         if (!currentUserId) return;
         try {
@@ -1486,17 +610,12 @@
                         bar.title = h.month+': '+h.revenu+' FCFA ('+h.ventes+' ventes)';
                         container.appendChild(bar);
                     });
-                } else {
-                    container.innerHTML = '<p style="color:rgba(0,0,0,0.3);font-size:13px;">Aucune donnée</p>';
-                }
+                } else { container.innerHTML = '<p style="color:rgba(0,0,0,0.3);font-size:13px;">Aucune donnée</p>'; }
                 loadShopArticles();
             }
         } catch(e) { console.error(e); }
     }
 
-    // ============================================================
-    // SHOP ARTICLES
-    // ============================================================
     async function loadShopArticles() {
         if (!currentUserId) return;
         try {
@@ -1507,76 +626,35 @@
                 container.innerHTML = data.data.map(a => `
                     <div class="glass-sm" style="margin-bottom:8px;display:flex;align-items:center;gap:12px;">
                         <img src="${a.image || 'https://via.placeholder.com/50x50/F5F0E8/CCCCCC?text=BLK'}" style="width:50px;height:50px;object-fit:cover;border-radius:8px;" />
-                        <div style="flex:1;">
-                            <div style="font-weight:600;font-size:13px;">${a.title}</div>
-                            <div style="font-size:12px;color:var(--primary);font-weight:700;">${a.price} FCFA</div>
-                            <div style="font-size:10px;color:rgba(0,0,0,0.4);">${a.status === 'active' ? '✅ En vente' : a.status === 'sold' ? '✅ Vendu' : '⏸ Inactif'}</div>
-                        </div>
+                        <div style="flex:1;"><div style="font-weight:600;font-size:13px;">${a.title}</div><div style="font-size:12px;color:var(--primary);font-weight:700;">${a.price} FCFA</div><div style="font-size:10px;color:rgba(0,0,0,0.4);">${a.status === 'active' ? '✅ En vente' : a.status === 'sold' ? '✅ Vendu' : '⏸ Inactif'}</div></div>
                         ${a.status === 'active' ? `<button class="btn btn-danger btn-sm" onclick="deleteArticle('${a.id}')">Supprimer</button>` : ''}
                     </div>
                 `).join('');
-            } else {
-                container.innerHTML = '<p style="color:rgba(0,0,0,0.3);font-size:13px;">Aucun article publié</p>';
-            }
+            } else { container.innerHTML = '<p style="color:rgba(0,0,0,0.3);font-size:13px;">Aucun article publié</p>'; }
         } catch(e) { console.error(e); }
     }
 
-    // ============================================================
-    // DELETE ARTICLE
-    // ============================================================
     async function deleteArticle(articleId) {
         if (!confirm('Supprimer cet article ?')) return;
-        try {
-            const res = await fetch(BACKEND_URL+'/api/articles/'+articleId, { method: 'DELETE' });
-            if (res.ok) {
-                showAlert('Article supprimé', 'success');
-                loadShopArticles(); loadStats(); loadProducts();
-            }
-        } catch(e) {
-            showAlert('Erreur suppression', 'error');
-        }
+        try { const res = await fetch(BACKEND_URL+'/api/articles/'+articleId, { method: 'DELETE' }); if (res.ok) { showAlert('Article supprimé', 'success'); loadShopArticles(); loadStats(); loadProducts(); } }
+        catch(e) { showAlert('Erreur suppression', 'error'); }
     }
 
-    // ============================================================
-    // PUBLISH
-    // ============================================================
     document.getElementById('btnPublish').addEventListener('click', () => {
-        const modal = document.createElement('div');
-        modal.className = 'modal';
+        const modal = document.createElement('div'); modal.className = 'modal';
         modal.innerHTML = `
             <div class="modal-content">
                 <button class="modal-close" id="pubClose">✕</button>
                 <h3 style="margin-bottom:16px;">📤 Publier un article</h3>
-                <div class="form-group">
-                    <label>Titre</label>
-                    <input type="text" id="pubTitle" placeholder="Robe vintage..." />
-                </div>
-                <div class="form-group">
-                    <label>Description</label>
-                    <textarea id="pubDesc" rows="3" placeholder="Décris l'article..."></textarea>
-                </div>
-                <div class="form-group">
-                    <label>Prix (FCFA)</label>
-                    <input type="number" id="pubPrice" placeholder="5000" />
-                </div>
-                <div class="form-group">
-                    <label>Catégorie</label>
-                    <select id="pubCategory">
-                        <option value="vêtements">Vêtements</option>
-                        <option value="chaussures">Chaussures</option>
-                        <option value="sacs">Sacs</option>
-                        <option value="bijoux">Bijoux</option>
-                        <option value="accessoires">Accessoires</option>
-                    </select>
-                </div>
+                <div class="form-group"><label>Titre</label><input type="text" id="pubTitle" placeholder="Robe vintage..." /></div>
+                <div class="form-group"><label>Description</label><textarea id="pubDesc" rows="3" placeholder="Décris l'article..."></textarea></div>
+                <div class="form-group"><label>Prix (FCFA)</label><input type="number" id="pubPrice" placeholder="5000" /></div>
+                <div class="form-group"><label>Catégorie</label><select id="pubCategory"><option value="vêtements">Vêtements</option><option value="chaussures">Chaussures</option><option value="sacs">Sacs</option><option value="bijoux">Bijoux</option><option value="accessoires">Accessoires</option></select></div>
                 <div class="form-group">
                     <label>Photo</label>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;">
                         <input type="file" id="pubImage" accept="image/*" style="flex:1;padding:8px;" />
-                        <button class="camera-btn" id="cameraBtn">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-                            Prendre une photo
-                        </button>
+                        <button class="camera-btn" id="cameraBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Prendre une photo</button>
                         <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;" />
                     </div>
                 </div>
@@ -1585,129 +663,62 @@
             </div>
         `;
         document.body.appendChild(modal);
-
-        const cameraBtn = document.getElementById('cameraBtn');
-        const cameraInput = document.getElementById('cameraInput');
-        const fileInput = document.getElementById('pubImage');
-
+        const cameraBtn = document.getElementById('cameraBtn'), cameraInput = document.getElementById('cameraInput'), fileInput = document.getElementById('pubImage');
         cameraBtn.addEventListener('click', () => cameraInput.click());
-        cameraInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                const dt = new DataTransfer();
-                dt.items.add(e.target.files[0]);
-                fileInput.files = dt.files;
-                showAlert('📸 Photo prise !', 'success');
-            }
-        });
-
+        cameraInput.addEventListener('change', (e) => { if (e.target.files.length > 0) { const dt = new DataTransfer(); dt.items.add(e.target.files[0]); fileInput.files = dt.files; showAlert('📸 Photo prise !', 'success'); } });
         document.getElementById('pubClose').addEventListener('click', () => modal.remove());
         document.getElementById('pubCancel').addEventListener('click', () => modal.remove());
-
         document.getElementById('pubSubmit').addEventListener('click', async () => {
             const title = document.getElementById('pubTitle').value.trim();
             const description = document.getElementById('pubDesc').value.trim();
             const price = document.getElementById('pubPrice').value;
             const category = document.getElementById('pubCategory').value;
             const imageFile = document.getElementById('pubImage').files[0];
-
-            if (!title || !description || !price) {
-                showAlert('Remplis tous les champs', 'error');
-                return;
-            }
-
+            if (!title || !description || !price) { showAlert('Remplis tous les champs', 'error'); return; }
             let imageUrl = '';
             if (imageFile) {
                 try {
                     const reader = new FileReader();
-                    const base64 = await new Promise((resolve) => {
-                        reader.onload = () => resolve(reader.result);
-                        reader.readAsDataURL(imageFile);
-                    });
-                    const uploadRes = await fetch(BACKEND_URL+'/api/upload', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ base64 })
-                    });
+                    const base64 = await new Promise((resolve) => { reader.onload = () => resolve(reader.result); reader.readAsDataURL(imageFile); });
+                    const uploadRes = await fetch(BACKEND_URL+'/api/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ base64 }) });
                     const uploadData = await uploadRes.json();
                     if (uploadData.success) imageUrl = uploadData.url;
-                } catch(e) {
-                    showAlert('Erreur upload image', 'error');
-                    return;
-                }
+                } catch(e) { showAlert('Erreur upload image', 'error'); return; }
             }
-
             try {
                 const res = await fetch(BACKEND_URL+'/api/articles', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        title, description, price: parseInt(price), category,
-                        image: imageUrl, sellerId: currentUserId,
-                        sellerName: currentUser?.name || 'Anonyme',
-                        sellerPhoto: currentUser?.photo || ''
-                    })
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, description, price: parseInt(price), category, image: imageUrl, sellerId: currentUserId, sellerName: currentUser?.name || 'Anonyme', sellerPhoto: currentUser?.photo || '' })
                 });
                 const data = await res.json();
-                if (data.success) {
-                    showConfirmation();
-                    modal.remove();
-                    loadProducts();
-                    loadStats();
-                    loadShopArticles();
-                    // Recharger le profil pour le badge vendeur
-                    loadUserData(currentUserId);
-                } else {
-                    showAlert('Erreur: '+data.message, 'error');
-                }
-            } catch(e) {
-                showAlert('Erreur publication', 'error');
-            }
+                if (data.success) { showConfirmation(); modal.remove(); loadProducts(); loadStats(); loadShopArticles(); }
+                else { showAlert('Erreur: '+data.message, 'error'); }
+            } catch(e) { showAlert('Erreur publication', 'error'); }
         });
-
-        modal.addEventListener('click', (e) => { if(e.target===modal) modal.remove(); });
+        modal.addEventListener('click', (e) => { if(e.target === modal) modal.remove(); });
     });
 
-    // ============================================================
-    // ORDERS
-    // ============================================================
     async function loadOrders() {
         if (!currentUserId) return;
         try {
             const res = await fetch(BACKEND_URL+'/api/orders/'+currentUserId);
             const orders = await res.json();
-            const container = document.getElementById('ordersList');
-            const empty = document.getElementById('emptyOrders');
-            if (!orders || orders.length === 0) {
-                container.innerHTML = '';
-                empty.style.display = 'block';
-                return;
-            }
-            empty.style.display = 'none';
-            container.innerHTML = '';
+            const container = document.getElementById('ordersList'), empty = document.getElementById('emptyOrders');
+            if (!orders || orders.length === 0) { container.innerHTML = ''; empty.style.display = 'block'; return; }
+            empty.style.display = 'none'; container.innerHTML = '';
             orders.forEach(order => {
-                const isBuyer = order.buyerId === currentUserId;
-                const isSeller = order.sellerId === currentUserId;
-                const otherPerson = isBuyer ? order.seller : order.buyer;
+                const isBuyer = order.buyerId === currentUserId, isSeller = order.sellerId === currentUserId;
+                const other = isBuyer ? order.seller : order.buyer;
                 const expiresAt = order.expiresAt ? new Date(order.expiresAt) : null;
                 const now = new Date();
                 const timeLeft = expiresAt ? Math.max(0, Math.floor((expiresAt - now)/1000)) : 0;
-                const hours = Math.floor(timeLeft/3600);
-                const mins = Math.floor((timeLeft%3600)/60);
+                const hours = Math.floor(timeLeft/3600), mins = Math.floor((timeLeft%3600)/60);
                 const isDanger = timeLeft < 3600 && order.status === 'en attente de confirmation';
-                const card = document.createElement('div');
-                card.className = 'order-card';
+                const card = document.createElement('div'); card.className = 'order-card';
                 card.innerHTML = `
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-                        <div>
-                            <div style="font-weight:700;">${order.article?.title || 'Article'}</div>
-                            <div style="font-size:12px;color:rgba(0,0,0,0.4);">${isBuyer ? 'Vendeur: '+(otherPerson?.name||'Inconnu') : 'Acheteur: '+(otherPerson?.name||'Inconnu')}</div>
-                        </div>
-                        <span class="status status-${order.status === 'livré' ? 'delivered' : order.status === 'annulé' ? 'cancelled' : order.status === 'remboursé' ? 'refunded' : 'pending'}">
-                            ${order.status === 'en attente de confirmation' ? '⏳ En attente' :
-                              order.status === 'livré' ? '✅ Livré' :
-                              order.status === 'annulé' ? '❌ Annulé' :
-                              order.status === 'remboursé' ? '💰 Remboursé' : order.status}
-                        </span>
+                        <div><div style="font-weight:700;">${order.article?.title || 'Article'}</div><div style="font-size:12px;color:rgba(0,0,0,0.4);">${isBuyer ? 'Vendeur: '+(other?.name||'Inconnu') : 'Acheteur: '+(other?.name||'Inconnu')}</div></div>
+                        <span class="status status-${order.status === 'livré' ? 'delivered' : order.status === 'annulé' ? 'cancelled' : order.status === 'remboursé' ? 'refunded' : 'pending'}">${order.status === 'en attente de confirmation' ? '⏳ En attente' : order.status === 'livré' ? '✅ Livré' : order.status === 'annulé' ? '❌ Annulé' : order.status === 'remboursé' ? '💰 Remboursé' : order.status}</span>
                     </div>
                     <div style="font-size:16px;font-weight:700;color:var(--primary);margin:8px 0;">${order.totalAmount || order.amount} FCFA</div>
                     ${order.status === 'en attente de confirmation' ? `
@@ -1736,91 +747,64 @@
 
     window.confirmOrder = async function(orderId) {
         const checks = document.querySelectorAll('.confirm-check');
-        const confirmations = {};
-        let allChecked = true;
-        checks.forEach(cb => {
-            confirmations[cb.dataset.key] = cb.checked;
-            if (!cb.checked) allChecked = false;
-        });
-        if (!allChecked) {
-            showAlert('❌ Tu dois cocher les 3 cases', 'error');
-            return;
-        }
+        const confirmations = {}; let allChecked = true;
+        checks.forEach(cb => { confirmations[cb.dataset.key] = cb.checked; if (!cb.checked) allChecked = false; });
+        if (!allChecked) { showAlert('❌ Tu dois cocher les 3 cases', 'error'); return; }
         try {
             const res = await fetch(BACKEND_URL+'/api/orders/confirm', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ orderId, buyerId: currentUserId, confirmations })
             });
             const data = await res.json();
-            if (data.success) {
-                showAlert('✅ Commande confirmée !', 'success');
-                loadOrders(); loadWallet(); loadStats(); loadProducts();
-            } else {
-                showAlert('❌ '+data.message, 'error');
-            }
-        } catch(e) {
-            showAlert('Erreur confirmation', 'error');
-        }
+            if (data.success) { showAlert('✅ Commande confirmée !', 'success'); loadOrders(); loadWallet(); loadStats(); loadProducts(); }
+            else { showAlert('❌ '+data.message, 'error'); }
+        } catch(e) { showAlert('Erreur confirmation', 'error'); }
     };
 
     window.cancelOrder = async function(orderId) {
         if (!confirm('Annuler cette commande ?')) return;
         try {
             const res = await fetch(BACKEND_URL+'/api/orders/cancel/'+orderId, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: currentUserId })
             });
             const data = await res.json();
-            if (data.success) {
-                showAlert('✅ Commande annulée et remboursée', 'success');
-                loadOrders(); loadWallet(); loadProducts();
-            } else {
-                showAlert('❌ '+data.message, 'error');
-            }
-        } catch(e) {
-            showAlert('Erreur annulation', 'error');
-        }
+            if (data.success) { showAlert('✅ Commande annulée et remboursée', 'success'); loadOrders(); loadWallet(); loadProducts(); }
+            else { showAlert('❌ '+data.message, 'error'); }
+        } catch(e) { showAlert('Erreur annulation', 'error'); }
     };
 
     window.giveFlame = async function(sellerId) {
         try {
             const res = await fetch(BACKEND_URL+'/api/flames', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ sellerId, buyerId: currentUserId })
             });
             const data = await res.json();
-            if (data.success) {
-                showAlert('🔥 Flamme donnée ! Total: '+data.flames, 'success');
-                loadUserData(sellerId);
-            } else {
-                showAlert('❌ '+data.message, 'error');
-            }
-        } catch(e) {
-            showAlert('Erreur flamme', 'error');
-        }
+            if (data.success) { showAlert('🔥 Flamme donnée ! Total: '+data.flames, 'success'); loadUserData(sellerId); }
+            else { showAlert('❌ '+data.message, 'error'); }
+        } catch(e) { showAlert('Erreur flamme', 'error'); }
     };
 
     // ============================================================
-    // MESSAGES (amélioré avec contacts, saisie, audio)
+    // MESSAGERIE AVANCÉE (WhatsApp-like)
     // ============================================================
-    let typingTimeoutId = null;
+    let discussionContact = null;
+    let messageInterval = null;
 
     async function loadMessages() {
         if (!currentUserId) return;
         try {
             const res = await fetch(BACKEND_URL+'/api/messages/'+currentUserId);
             const data = await res.json();
-            const container = document.getElementById('messagesList');
-            const empty = document.getElementById('emptyMessages');
             const contactsContainer = document.getElementById('contactsList');
+            const empty = document.getElementById('emptyMessages');
+            const discussionView = document.getElementById('discussionView');
 
             if (!data.success || !data.data || data.data.length === 0) {
-                container.innerHTML = '';
-                empty.style.display = 'block';
                 contactsContainer.innerHTML = '';
+                empty.style.display = 'block';
+                discussionView.style.display = 'none';
                 return;
             }
 
@@ -1837,18 +821,43 @@
                         lastMessage: msg.text || (msg.audioUrl ? '🎤 Audio' : ''),
                         time: msg.createdAt,
                         unread: msg.receiverId === currentUserId && !msg.read ? 1 : 0,
-                        photo: msg.senderId === currentUserId ? msg.receiverPhoto : msg.senderPhoto
+                        photo: msg.senderId === currentUserId ? msg.receiverPhoto : msg.senderPhoto,
+                        online: false
                     };
                 } else if (msg.receiverId === currentUserId && !msg.read) {
                     contactsMap[otherId].unread = (contactsMap[otherId].unread || 0) + 1;
                 }
+                // Mettre à jour le dernier message
+                const msgTime = new Date(msg.createdAt);
+                const currentTime = new Date(contactsMap[otherId].time);
+                if (msgTime > currentTime) {
+                    contactsMap[otherId].lastMessage = msg.text || (msg.audioUrl ? '🎤 Audio' : '');
+                    contactsMap[otherId].time = msg.createdAt;
+                }
             });
 
+            // Récupérer les statuts en ligne pour chaque contact
+            for (const contactId of Object.keys(contactsMap)) {
+                try {
+                    const userRes = await fetch(BACKEND_URL+'/api/users/'+contactId);
+                    const userData = await userRes.json();
+                    if (userData.success) {
+                        contactsMap[contactId].online = userData.data.online || false;
+                        contactsMap[contactId].photo = userData.data.photo || contactsMap[contactId].photo;
+                    }
+                } catch(e) {}
+            }
+
             // Afficher les contacts
-            contactsContainer.innerHTML = Object.keys(contactsMap).map(id => `
+            contactsContainer.innerHTML = Object.keys(contactsMap).sort((a, b) => {
+                const timeA = new Date(contactsMap[a].time);
+                const timeB = new Date(contactsMap[b].time);
+                return timeB - timeA;
+            }).map(id => `
                 <div class="contact-chip ${activeConversationId === id ? 'active' : ''}" data-id="${id}">
-                    <div style="width:24px;height:24px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;overflow:hidden;">
+                    <div style="width:24px;height:24px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;overflow:hidden;position:relative;">
                         ${contactsMap[id].photo ? `<img src="${contactsMap[id].photo}" style="width:100%;height:100%;object-fit:cover;" />` : (contactsMap[id].name || 'U')[0].toUpperCase()}
+                        <span class="online-dot-small ${contactsMap[id].online ? 'online' : 'offline'}" style="position:absolute;bottom:0;right:0;width:8px;height:8px;border-radius:50%;border:1px solid #fff;"></span>
                     </div>
                     <span>${contactsMap[id].name}</span>
                     ${contactsMap[id].unread > 0 ? `<span style="background:var(--danger);color:#fff;border-radius:50%;padding:1px 6px;font-size:10px;">${contactsMap[id].unread}</span>` : ''}
@@ -1860,33 +869,112 @@
                 el.addEventListener('click', function() {
                     const contactId = this.dataset.id;
                     activeConversationId = contactId;
-                    // Recharger les messages avec ce contact
-                    loadConversation(contactId);
-                    // Mettre à jour les chips
                     document.querySelectorAll('.contact-chip').forEach(c => c.classList.remove('active'));
                     this.classList.add('active');
+                    // Charger la conversation avec ce contact
+                    openDiscussion(contactId, contactsMap[contactId]?.name || 'Utilisateur');
                 });
             });
 
             // Si un contact est actif, charger sa conversation
-            if (activeConversationId) {
-                loadConversation(activeConversationId);
+            if (activeConversationId && contactsMap[activeConversationId]) {
+                openDiscussion(activeConversationId, contactsMap[activeConversationId].name);
             } else {
                 // Sinon charger le premier contact
                 const firstChip = document.querySelector('.contact-chip');
-                if (firstChip) {
-                    firstChip.click();
-                }
+                if (firstChip) { firstChip.click(); }
             }
-        } catch(e) {
-            console.error('Erreur chargement messages:', e);
+
+        } catch(e) { console.error('Erreur chargement messages:', e); }
+    }
+
+    async function openDiscussion(contactId, contactName) {
+        if (!currentUserId || !contactId) return;
+        activeConversationId = contactId;
+        discussionContact = contactId;
+
+        const discussionView = document.getElementById('discussionView');
+        const empty = document.getElementById('emptyMessages');
+        discussionView.style.display = 'block';
+        empty.style.display = 'none';
+
+        // Récupérer les infos du contact
+        try {
+            const res = await fetch(BACKEND_URL+'/api/users/'+contactId);
+            const data = await res.json();
+            if (data.success) {
+                const user = data.data;
+                document.getElementById('discussionName').textContent = user.name || contactName || 'Utilisateur';
+                const avatar = document.getElementById('discussionAvatar');
+                if (user.photo) avatar.innerHTML = '<img src="'+user.photo+'" /><div class="online-dot '+(user.online?'online':'offline')+'"></div>';
+                else avatar.innerHTML = (user.name || 'U')[0].toUpperCase() + '<div class="online-dot '+(user.online?'online':'offline')+'"></div>';
+                document.getElementById('discussionStatus').textContent = user.online ? '🟢 En ligne' : '⚪ Hors ligne';
+                document.getElementById('discussionOnlineDot').className = 'online-dot '+(user.online?'online':'offline');
+                // Vérifier si une commande a déjà été passée à ce vendeur
+                hasOrderedFromCurrentSeller = false;
+                const ordersRes = await fetch(BACKEND_URL+'/api/orders/'+currentUserId);
+                const ordersData = await ordersRes.json();
+                if (ordersData && ordersData.length > 0) {
+                    hasOrderedFromCurrentSeller = ordersData.some(o => o.sellerId === contactId && o.status !== 'annulé' && o.status !== 'remboursé');
+                }
+                updateOrderButtonInChat();
+
+                // Pré-remplir le champ de message
+                document.getElementById('chatReceiver').value = contactId;
+            }
+        } catch(e) { console.error(e); }
+
+        // Charger les messages de la conversation
+        await loadConversation(contactId);
+    }
+
+    function updateOrderButtonInChat() {
+        const container = document.getElementById('discussionOrderBtn');
+        if (!hasOrderedFromCurrentSeller && discussionContact) {
+            container.innerHTML = `<button class="btn btn-success btn-sm order-btn-in-chat" id="btnOrderInChat">🛒 Commander à ce vendeur</button>`;
+            document.getElementById('btnOrderInChat').addEventListener('click', async () => {
+                // Récupérer les articles du vendeur
+                try {
+                    const res = await fetch(BACKEND_URL+'/api/articles/seller/'+discussionContact);
+                    const data = await res.json();
+                    if (data.success && data.data && data.data.length > 0) {
+                        const modal = document.createElement('div'); modal.className = 'modal';
+                        modal.innerHTML = `
+                            <div class="modal-content">
+                                <button class="modal-close" id="modalCloseOrder">✕</button>
+                                <h3 style="margin-bottom:16px;">Articles du vendeur</h3>
+                                ${data.data.map(a => `
+                                    <div style="display:flex; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid rgba(0,0,0,0.05);">
+                                        <img src="${a.image || 'https://via.placeholder.com/50x50/F5F0E8/CCCCCC?text=BLK'}" style="width:50px;height:50px;object-fit:cover;border-radius:8px;" />
+                                        <div style="flex:1;"><div style="font-weight:600;">${a.title}</div><div style="font-size:14px;color:var(--primary);font-weight:700;">${a.price} FCFA</div></div>
+                                        <button class="btn btn-primary btn-sm" style="width:auto;" data-article='${JSON.stringify(a)}'>Acheter</button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `;
+                        document.body.appendChild(modal);
+                        document.getElementById('modalCloseOrder').addEventListener('click', () => modal.remove());
+                        modal.querySelectorAll('[data-article]').forEach(btn => {
+                            btn.addEventListener('click', function() {
+                                const article = JSON.parse(this.dataset.article);
+                                modal.remove();
+                                buyProduct(article);
+                            });
+                        });
+                        modal.addEventListener('click', (e) => { if(e.target === modal) modal.remove(); });
+                    } else { showAlert('Ce vendeur n\'a pas d\'articles disponibles.', 'info'); }
+                } catch(e) { showAlert('Erreur chargement des articles du vendeur', 'error'); }
+            });
+        } else if (hasOrderedFromCurrentSeller) {
+            container.innerHTML = `<div style="font-size:12px;color:var(--success);">✅ Vous avez déjà commandé à ce vendeur</div>`;
+        } else {
+            container.innerHTML = '';
         }
     }
 
     async function loadConversation(contactId) {
         if (!currentUserId || !contactId) return;
         try {
-            // Récupérer tous les messages entre les deux utilisateurs
             const res = await fetch(BACKEND_URL+'/api/messages/'+currentUserId);
             const data = await res.json();
             if (!data.success) return;
@@ -1898,30 +986,35 @@
 
             const container = document.getElementById('messagesList');
             if (allMessages.length === 0) {
-                container.innerHTML = '<div class="empty-state"><p>Aucun message avec cet utilisateur.</p></div>';
+                container.innerHTML = '<div class="empty-state" style="padding:20px 0;"><p>Aucun message avec cet utilisateur.</p></div>';
                 return;
             }
 
-            // Trier par date (ancien → récent)
             allMessages.sort((a, b) => {
-                const da = new Date(a.createdAt);
-                const db = new Date(b.createdAt);
+                const da = new Date(a.createdAt), db = new Date(b.createdAt);
                 return da - db;
             });
 
+            // Récupérer le nom et la photo du contact
+            let contactName = 'Utilisateur', contactPhoto = '';
+            try {
+                const userRes = await fetch(BACKEND_URL+'/api/users/'+contactId);
+                const userData = await userRes.json();
+                if (userData.success) {
+                    contactName = userData.data.name || 'Utilisateur';
+                    contactPhoto = userData.data.photo || '';
+                }
+            } catch(e) {}
+
             container.innerHTML = allMessages.map(msg => {
                 const isMine = msg.senderId === currentUserId;
-                const avatar = isMine ? (currentUser?.photo || '') : (msg.senderPhoto || '');
-                const name = isMine ? (currentUser?.name || 'Moi') : (msg.senderName || 'Anonyme');
+                const avatar = isMine ? (currentUser?.photo || '') : (msg.senderPhoto || contactPhoto);
+                const name = isMine ? (currentUser?.name || 'Moi') : (msg.senderName || contactName);
                 const time = msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
 
                 let content = '';
-                if (msg.text) {
-                    content = `<div class="text">${msg.text}</div>`;
-                }
-                if (msg.audioUrl) {
-                    content = `<div class="audio"><audio controls src="${msg.audioUrl}"></audio></div>`;
-                }
+                if (msg.text) content = `<div class="text">${msg.text}</div>`;
+                if (msg.audioUrl) content = `<div class="audio"><audio controls src="${msg.audioUrl}"></audio></div>`;
 
                 return `
                     <div class="message-item" style="${isMine ? 'flex-direction:row-reverse;' : ''}">
@@ -1941,21 +1034,27 @@
                 await fetch(BACKEND_URL+'/api/messages/read/'+msg.id, { method: 'POST' });
             }
 
-            // Scroller en bas
             container.scrollTop = container.scrollHeight;
 
-        } catch(e) {
-            console.error('Erreur chargement conversation:', e);
-        }
+            // Vérifier les commandes pour ce vendeur
+            const ordersRes = await fetch(BACKEND_URL+'/api/orders/'+currentUserId);
+            const ordersData = await ordersRes.json();
+            if (ordersData && ordersData.length > 0) {
+                hasOrderedFromCurrentSeller = ordersData.some(o => o.sellerId === contactId && o.status !== 'annulé' && o.status !== 'remboursé');
+            } else {
+                hasOrderedFromCurrentSeller = false;
+            }
+            updateOrderButtonInChat();
+
+        } catch(e) { console.error('Erreur chargement conversation:', e); }
     }
 
-    // Envoi de message (texte ou audio)
     async function sendMessage(text, audioBase64 = null) {
         if (!currentUserId) {
             showAlert('Connecte-toi d\'abord', 'error');
             return;
         }
-        const receiverId = document.getElementById('chatReceiver').value.trim() || activeConversationId;
+        const receiverId = activeConversationId || document.getElementById('chatReceiver')?.value.trim();
         if (!receiverId) {
             showAlert('Destinataire requis', 'error');
             return;
@@ -1974,25 +1073,19 @@
             };
             if (text) payload.text = text;
             if (audioBase64) {
-                // Upload de l'audio
                 const uploadRes = await fetch(BACKEND_URL+'/api/upload-audio', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ base64: audioBase64 })
                 });
                 const uploadData = await uploadRes.json();
                 if (uploadData.success) {
                     payload.audioUrl = uploadData.url;
-                    payload.audioDuration = 0; // à améliorer
-                } else {
-                    showAlert('Erreur upload audio', 'error');
-                    return;
-                }
+                    payload.audioDuration = 0;
+                } else { showAlert('Erreur upload audio', 'error'); return; }
             }
 
             const res = await fetch(BACKEND_URL+'/api/messages', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
             const data = await res.json();
@@ -2003,41 +1096,31 @@
             } else {
                 showAlert('❌ '+data.message, 'error');
             }
-        } catch(e) {
-            showAlert('Erreur envoi', 'error');
-        }
+        } catch(e) { showAlert('Erreur envoi', 'error'); }
     }
 
     document.getElementById('btnSendMessage').addEventListener('click', () => {
         const text = document.getElementById('messageInput').value.trim();
-        sendMessage(text);
+        if (text) sendMessage(text);
     });
 
-    // Envoi au pressage Entrée
     document.getElementById('messageInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            const text = document.getElementById('messageInput').value.trim();
-            if (text) sendMessage(text);
-        }
+        if (e.key === 'Enter') { e.preventDefault(); const text = document.getElementById('messageInput').value.trim(); if (text) sendMessage(text); }
     });
 
     // Typing indicator
     document.getElementById('messageInput').addEventListener('input', function() {
-        const receiverId = document.getElementById('chatReceiver').value.trim() || activeConversationId;
+        const receiverId = activeConversationId;
         if (!receiverId) return;
-        // Envoyer un signal de saisie
         const conversationId = [currentUserId, receiverId].sort().join('_');
         fetch(BACKEND_URL+'/api/messages/typing', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ conversationId, userId: currentUserId, isTyping: true })
         });
         clearTimeout(typingTimeoutId);
         typingTimeoutId = setTimeout(() => {
             fetch(BACKEND_URL+'/api/messages/typing', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ conversationId, userId: currentUserId, isTyping: false })
             });
         }, 2000);
@@ -2047,20 +1130,11 @@
     // AUDIO / NOTES VOCALES
     // ============================================================
     const voiceBtn = document.getElementById('btnRecordVoice');
-
     voiceBtn.addEventListener('mousedown', startRecording);
     voiceBtn.addEventListener('mouseup', stopRecording);
     voiceBtn.addEventListener('mouseleave', stopRecording);
-
-    // Pour mobile (touch)
-    voiceBtn.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        startRecording();
-    });
-    voiceBtn.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        stopRecording();
-    });
+    voiceBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startRecording(); });
+    voiceBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopRecording(); });
 
     async function startRecording() {
         if (isRecording) return;
@@ -2068,25 +1142,17 @@
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorder = new MediaRecorder(stream);
             audioChunks = [];
-
-            mediaRecorder.ondataavailable = event => {
-                audioChunks.push(event.data);
-            };
-
+            mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
             mediaRecorder.onstop = async () => {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                 const reader = new FileReader();
                 reader.onload = async () => {
                     const base64Audio = reader.result.split(',')[1];
-                    if (base64Audio) {
-                        await sendMessage(null, base64Audio);
-                    }
+                    if (base64Audio) await sendMessage(null, base64Audio);
                 };
                 reader.readAsDataURL(audioBlob);
-                // Libérer le stream
                 stream.getTracks().forEach(track => track.stop());
             };
-
             mediaRecorder.start();
             isRecording = true;
             voiceBtn.classList.add('recording');
@@ -2099,56 +1165,27 @@
     }
 
     function stopRecording() {
-        if (mediaRecorder && isRecording) {
-            mediaRecorder.stop();
-            isRecording = false;
-            voiceBtn.classList.remove('recording');
-            voiceBtn.textContent = '🎤';
-        }
+        if (mediaRecorder && isRecording) { mediaRecorder.stop(); isRecording = false; voiceBtn.classList.remove('recording'); voiceBtn.textContent = '🎤'; }
     }
 
     // ============================================================
-    // BLOCAGE UTILISATEUR (dans une conversation)
+    // APPEL AUDIO (simulé)
     // ============================================================
-    async function toggleBlock(blockerId, blockedId) {
-        try {
-            const res = await fetch(BACKEND_URL+'/api/users/block', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ blockerId, blockedId })
-            });
-            const data = await res.json();
-            if (data.success) {
-                showAlert(data.message, data.blocked ? 'error' : 'success');
-                loadUserData(blockedId);
-            } else {
-                showAlert('Erreur: '+data.message, 'error');
-            }
-        } catch(e) {
-            showAlert('Erreur blocage', 'error');
-        }
-    }
-
-    // Ajouter un bouton de blocage dans la conversation (à faire dans loadConversation ou via un événement)
-    // Pour simplifier, on peut ajouter un bouton dans l'en-tête de la conversation
-    // Je laisse cette fonction accessible pour une intégration ultérieure.
+    document.getElementById('btnCall').addEventListener('click', () => {
+        if (!activeConversationId) { showAlert('Aucun contact sélectionné', 'error'); return; }
+        showAlert('📞 Appel audio vers ' + (document.getElementById('discussionName').textContent || 'le contact') + ' (simulé)', 'info');
+    });
 
     // ============================================================
     // BOUTON "COMMANDER" SUR LE PROFIL
     // ============================================================
     document.getElementById('btnOrderFromProfile').addEventListener('click', async function() {
-        if (!viewedUserId) {
-            showAlert('Vendeur non identifié', 'error');
-            return;
-        }
-        // Récupérer les articles du vendeur
+        if (!viewedUserId) { showAlert('Vendeur non identifié', 'error'); return; }
         try {
             const res = await fetch(BACKEND_URL+'/api/articles/seller/'+viewedUserId);
             const data = await res.json();
             if (data.success && data.data && data.data.length > 0) {
-                // Afficher une modale avec la liste des articles du vendeur
-                const modal = document.createElement('div');
-                modal.className = 'modal';
+                const modal = document.createElement('div'); modal.className = 'modal';
                 modal.innerHTML = `
                     <div class="modal-content">
                         <button class="modal-close" id="modalCloseOrder">✕</button>
@@ -2156,19 +1193,14 @@
                         ${data.data.map(a => `
                             <div style="display:flex; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid rgba(0,0,0,0.05);">
                                 <img src="${a.image || 'https://via.placeholder.com/50x50/F5F0E8/CCCCCC?text=BLK'}" style="width:50px;height:50px;object-fit:cover;border-radius:8px;" />
-                                <div style="flex:1;">
-                                    <div style="font-weight:600;">${a.title}</div>
-                                    <div style="font-size:14px;color:var(--primary);font-weight:700;">${a.price} FCFA</div>
-                                </div>
+                                <div style="flex:1;"><div style="font-weight:600;">${a.title}</div><div style="font-size:14px;color:var(--primary);font-weight:700;">${a.price} FCFA</div></div>
                                 <button class="btn btn-primary btn-sm" style="width:auto;" data-article='${JSON.stringify(a)}'>Acheter</button>
                             </div>
                         `).join('')}
                     </div>
                 `;
                 document.body.appendChild(modal);
-
                 document.getElementById('modalCloseOrder').addEventListener('click', () => modal.remove());
-
                 modal.querySelectorAll('[data-article]').forEach(btn => {
                     btn.addEventListener('click', function() {
                         const article = JSON.parse(this.dataset.article);
@@ -2176,15 +1208,9 @@
                         buyProduct(article);
                     });
                 });
-
                 modal.addEventListener('click', (e) => { if(e.target === modal) modal.remove(); });
-
-            } else {
-                showAlert('Ce vendeur n\'a pas d\'articles disponibles.', 'info');
-            }
-        } catch(e) {
-            showAlert('Erreur chargement des articles du vendeur', 'error');
-        }
+            } else { showAlert('Ce vendeur n\'a pas d\'articles disponibles.', 'info'); }
+        } catch(e) { showAlert('Erreur chargement des articles du vendeur', 'error'); }
     });
 
     // ============================================================
@@ -2195,20 +1221,12 @@
         try {
             const res = await fetch(BACKEND_URL+'/api/transactions/'+currentUserId);
             const data = await res.json();
-            const container = document.getElementById('transactionsList');
-            const empty = document.getElementById('emptyTransactions');
-            if (!data.success || !data.data || data.data.length === 0) {
-                container.innerHTML = '';
-                empty.style.display = 'block';
-                return;
-            }
+            const container = document.getElementById('transactionsList'), empty = document.getElementById('emptyTransactions');
+            if (!data.success || !data.data || data.data.length === 0) { container.innerHTML = ''; empty.style.display = 'block'; return; }
             empty.style.display = 'none';
             container.innerHTML = data.data.slice(0,20).map(t => `
                 <div class="transaction-item">
-                    <div class="info">
-                        <div class="desc">${t.description || t.type}</div>
-                        <div class="date">${t.date ? new Date(t.date).toLocaleDateString() : ''}</div>
-                    </div>
+                    <div class="info"><div class="desc">${t.description || t.type}</div><div class="date">${t.date ? new Date(t.date).toLocaleDateString() : ''}</div></div>
                     <div class="amount ${t.amount >= 0 ? 'positive' : 'negative'}">${t.amount >= 0 ? '+' : ''}${t.amount} FCFA</div>
                 </div>
             `).join('');
@@ -2228,75 +1246,40 @@
         form.style.display = form.style.display === 'none' ? 'block' : 'none';
         document.getElementById('depositForm').style.display = 'none';
     });
-    document.getElementById('btnCancelDeposit').addEventListener('click', () => {
-        document.getElementById('depositForm').style.display = 'none';
-    });
-    document.getElementById('btnCancelWithdraw').addEventListener('click', () => {
-        document.getElementById('withdrawForm').style.display = 'none';
-    });
+    document.getElementById('btnCancelDeposit').addEventListener('click', () => { document.getElementById('depositForm').style.display = 'none'; });
+    document.getElementById('btnCancelWithdraw').addEventListener('click', () => { document.getElementById('withdrawForm').style.display = 'none'; });
     document.getElementById('btnConfirmDeposit').addEventListener('click', async () => {
         const amount = document.getElementById('depositAmount').value;
         const phone = document.getElementById('depositPhone').value;
-        if (!amount || !phone) {
-            showAlert('Montant et téléphone requis', 'error');
-            return;
-        }
+        if (!amount || !phone) { showAlert('Montant et téléphone requis', 'error'); return; }
         try {
             const res = await fetch(BACKEND_URL+'/api/wallet/deposit', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: currentUserId,
-                    amount: parseInt(amount),
-                    phone
-                })
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: currentUserId, amount: parseInt(amount), phone })
             });
             const data = await res.json();
-            if (data.success) {
-                showAlert('💰 '+data.message, 'success');
-                document.getElementById('depositForm').style.display = 'none';
-                loadWallet(); loadTransactions();
-            } else {
-                showAlert('❌ '+data.message, 'error');
-            }
-        } catch(e) {
-            showAlert('Erreur dépôt', 'error');
-        }
+            if (data.success) { showAlert('💰 '+data.message, 'success'); document.getElementById('depositForm').style.display = 'none'; loadWallet(); loadTransactions(); }
+            else { showAlert('❌ '+data.message, 'error'); }
+        } catch(e) { showAlert('Erreur dépôt', 'error'); }
     });
     document.getElementById('btnConfirmWithdraw').addEventListener('click', async () => {
         const amount = document.getElementById('withdrawAmount').value;
         const phone = document.getElementById('withdrawPhone').value;
-        if (!amount || !phone) {
-            showAlert('Montant et téléphone requis', 'error');
-            return;
-        }
+        if (!amount || !phone) { showAlert('Montant et téléphone requis', 'error'); return; }
         try {
             const res = await fetch(BACKEND_URL+'/api/wallet/withdraw', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: currentUserId,
-                    amount: parseInt(amount),
-                    phone
-                })
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: currentUserId, amount: parseInt(amount), phone })
             });
             const data = await res.json();
-            if (data.success) {
-                showAlert('💰 '+data.message, 'success');
-                document.getElementById('withdrawForm').style.display = 'none';
-                loadWallet(); loadTransactions();
-            } else {
-                showAlert('❌ '+data.message, 'error');
-            }
-        } catch(e) {
-            showAlert('Erreur retrait', 'error');
-        }
+            if (data.success) { showAlert('💰 '+data.message, 'success'); document.getElementById('withdrawForm').style.display = 'none'; loadWallet(); loadTransactions(); }
+            else { showAlert('❌ '+data.message, 'error'); }
+        } catch(e) { showAlert('Erreur retrait', 'error'); }
     });
 
-    // ============================================================
-    // LOGOUT
-    // ============================================================
     document.getElementById('btnLogout').addEventListener('click', () => {
+        // Mettre à jour le statut hors ligne
+        fetch(BACKEND_URL+'/api/users/online', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: currentUserId, online: false }) });
         localStorage.removeItem(STORAGE_KEY);
         location.reload();
     });
