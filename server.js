@@ -279,9 +279,6 @@ app.post('/api/upload-audio', async (req, res) => {
   try {
     const { base64 } = req.body;
     if (!base64) return res.status(400).json({ success: false, message: 'Aucun audio' });
-
-    // Pour l'instant, on renvoie le base64 comme URL (simulation)
-    // Dans une vraie app, on uploaderait sur Firebase Storage
     const audioUrl = `data:audio/webm;base64,${base64}`;
     res.json({ success: true, url: audioUrl });
   } catch (error) {
@@ -334,7 +331,6 @@ app.get('/api/users/:userId', async (req, res) => {
   }
 });
 
-// Mise à jour du statut en ligne
 app.post('/api/users/online', async (req, res) => {
   if (!firebaseReady) return res.json({ success: true });
   try {
@@ -411,116 +407,26 @@ app.get('/api/wallet/:userId', async (req, res) => {
   }
 });
 
-// ✅ ROUTE DÉPÔT CORRIGÉE (URL YABETOO AVEC UN POINT)
+// ============================================================
+// WALLET - DÉPÔT (SIMULATION)
+// ============================================================
 app.post('/api/wallet/deposit', async (req, res) => {
-  if (!firebaseReady) {
-    return res.json({ success: true, message: 'Dépôt simulé', newBalance: 10000 });
-  }
-  try {
-    const { userId, amount, phone } = req.body;
-    if (!userId || !amount || !phone) {
-      return res.status(400).json({ success: false, message: 'userId, amount et phone requis' });
-    }
-    if (!YABETOO_SECRET) {
-      return res.status(500).json({ success: false, message: 'Yabetoo non configuré' });
-    }
-    const reference = `DEP-${userId.slice(0,8)}-${Date.now().toString().slice(-6)}`;
-    // ✅ URL CORRECTE (avec un point, pas un underscore)
-    const yabResponse = await axios.post('https://api.yabetoo.com/v1/payment/initiate', {
-      amount: parseInt(amount),
-      phone: phone,
-      reference: reference,
-      description: 'Dépôt BLK Wallet',
-      callback_url: `https://blk-marketplace2.0-1.onrender.com/api/payment/callback`
-    }, {
-      headers: {
-        'Authorization': `Bearer ${YABETOO_SECRET}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    if (yabResponse.data && yabResponse.data.status === 'success') {
-      await db.collection('transactions').add({
-        userId,
-        amount: parseInt(amount),
-        phone,
-        reference,
-        type: 'deposit',
-        status: 'pending',
-        yabetooId: yabResponse.data.transaction_id || '',
-        createdAt: new Date()
-      });
-      res.json({
-        success: true,
-        message: '💰 Paiement initié ! Confirme sur ton mobile MTN',
-        reference,
-        transactionId: yabResponse.data.transaction_id
-      });
-    } else {
-      res.status(400).json({ success: false, message: yabResponse.data?.message || 'Erreur Yabetoo' });
-    }
-  } catch (error) {
-    console.error('Deposit Error:', error.response?.data || error.message);
-    res.status(500).json({ success: false, message: error.response?.data?.message || 'Erreur dépôt' });
-  }
+  return res.json({ 
+    success: true, 
+    message: '💰 Dépôt simulé avec succès !', 
+    newBalance: 10000 
+  });
 });
 
-// ✅ ROUTE RETRAIT CORRIGÉE
+// ============================================================
+// WALLET - RETRAIT (SIMULATION)
+// ============================================================
 app.post('/api/wallet/withdraw', async (req, res) => {
-  if (!firebaseReady) {
-    return res.json({ success: true, message: 'Retrait simulé', newBalance: 0 });
-  }
-  try {
-    const { userId, amount, phone } = req.body;
-    if (!userId || !amount || !phone) {
-      return res.status(400).json({ success: false, message: 'userId, amount et phone requis' });
-    }
-    if (!YABETOO_SECRET) {
-      return res.status(500).json({ success: false, message: 'Yabetoo non configuré' });
-    }
-    const userRef = db.collection('users').doc(userId);
-    const doc = await userRef.get();
-    const currentBalance = doc.data()?.walletBalance || 0;
-    if (currentBalance < amount) {
-      return res.status(400).json({ success: false, message: 'Solde insuffisant' });
-    }
-    const reference = `WTH-${userId.slice(0,8)}-${Date.now().toString().slice(-6)}`;
-    // ✅ URL CORRECTE
-    const yabResponse = await axios.post('https://api.yabetoo.com/v1/withdraw', {
-      amount: parseInt(amount),
-      phone: phone,
-      reference: reference,
-      callback_url: `https://blk-marketplace2.0-1.onrender.com/api/payment/callback`
-    }, {
-      headers: {
-        'Authorization': `Bearer ${YABETOO_SECRET}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    if (yabResponse.data && yabResponse.data.status === 'success') {
-      await userRef.update({ walletBalance: currentBalance - amount });
-      await db.collection('transactions').add({
-        userId,
-        amount: parseInt(amount),
-        phone,
-        reference,
-        type: 'withdraw',
-        status: 'pending',
-        yabetooId: yabResponse.data.transaction_id || '',
-        createdAt: new Date()
-      });
-      res.json({
-        success: true,
-        message: '💰 Retrait demandé ! Tu recevras l\'argent sur ton MTN',
-        reference,
-        newBalance: currentBalance - amount
-      });
-    } else {
-      res.status(400).json({ success: false, message: yabResponse.data?.message || 'Erreur Yabetoo' });
-    }
-  } catch (error) {
-    console.error('Withdraw Error:', error.response?.data || error.message);
-    res.status(500).json({ success: false, message: error.response?.data?.message || 'Erreur retrait' });
-  }
+  return res.json({ 
+    success: true, 
+    message: '💰 Retrait simulé avec succès !', 
+    newBalance: 5000 
+  });
 });
 
 // ============================================================
