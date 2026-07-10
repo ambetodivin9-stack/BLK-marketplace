@@ -397,6 +397,7 @@ app.get('/api/wallet/:userId', async (req, res) => {
   }
 });
 
+// ✅ ROUTE DÉPÔT CORRIGÉE (URL YABETOO AVEC UN POINT)
 app.post('/api/wallet/deposit', async (req, res) => {
   if (!firebaseReady) {
     return res.json({ success: true, message: 'Dépôt simulé', newBalance: 10000 });
@@ -410,6 +411,7 @@ app.post('/api/wallet/deposit', async (req, res) => {
       return res.status(500).json({ success: false, message: 'Yabetoo non configuré' });
     }
     const reference = `DEP-${userId.slice(0,8)}-${Date.now().toString().slice(-6)}`;
+    // ✅ URL CORRECTE (avec un point, pas un underscore)
     const yabResponse = await axios.post('https://api.yabetoo.com/v1/payment/initiate', {
       amount: parseInt(amount),
       phone: phone,
@@ -448,6 +450,7 @@ app.post('/api/wallet/deposit', async (req, res) => {
   }
 });
 
+// ✅ ROUTE RETRAIT CORRIGÉE
 app.post('/api/wallet/withdraw', async (req, res) => {
   if (!firebaseReady) {
     return res.json({ success: true, message: 'Retrait simulé', newBalance: 0 });
@@ -467,6 +470,7 @@ app.post('/api/wallet/withdraw', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Solde insuffisant' });
     }
     const reference = `WTH-${userId.slice(0,8)}-${Date.now().toString().slice(-6)}`;
+    // ✅ URL CORRECTE
     const yabResponse = await axios.post('https://api.yabetoo.com/v1/withdraw', {
       amount: parseInt(amount),
       phone: phone,
@@ -695,6 +699,7 @@ app.post('/api/orders/confirm', async (req, res) => {
       orderId: orderId
     });
 
+    // ✅ COMMISSION ADMIN AVEC YABETOO (URL CORRECTE)
     if (ADMIN_PHONE && adminTotal > 0) {
       try {
         const adminRef = `ADMIN-${Date.now().toString().slice(-6)}`;
@@ -1098,7 +1103,6 @@ app.get('/api/messages/:userId', async (req, res) => {
       .get();
     const messages = [];
     snapshot.forEach(doc => messages.push({ id: doc.id, ...doc.data() }));
-    // Marquer comme lus
     for (const msg of messages) {
       if (msg.receiverId === userId && !msg.read) {
         await db.collection('messages').doc(msg.id).update({ read: true });
@@ -1120,7 +1124,6 @@ app.post('/api/messages', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Message ou audio requis' });
     }
 
-    // Vérifier si le destinataire est bloqué
     const receiverDoc = await db.collection('users').doc(receiverId).get();
     const blockedUsers = receiverDoc.data()?.blockedUsers || [];
     if (blockedUsers.includes(senderId)) {
@@ -1142,7 +1145,6 @@ app.post('/api/messages', async (req, res) => {
 
     const docRef = await db.collection('messages').add(message);
 
-    // Notification en temps réel (optionnelle)
     await db.collection('notifications').add({
       userId: receiverId,
       message: `💬 Nouveau message de ${senderName || 'Anonyme'}`,
