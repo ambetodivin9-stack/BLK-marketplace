@@ -371,7 +371,11 @@
 </nav>
 
 <script>
-    const BACKEND_URL = 'https://blk-marketplace2.0-1.onrender.com';
+    // ============================================================
+    // NOUVELLE URL DU BACKEND (SANS POINT)
+    // ============================================================
+    const BACKEND_URL = 'https://blk-backend.onrender.com';
+
     const STORAGE_KEY = 'blk_user_id';
     let currentUser = null, currentUserId = null, allProducts = [], selectedCategory = 'all';
     let activeConversationId = null, typingTimeoutId = null, mediaRecorder = null, audioChunks = [], isRecording = false;
@@ -382,6 +386,7 @@
         b.textContent = m; b.className = 'alert active alert-'+t;
         clearTimeout(b._timeout); b._timeout = setTimeout(() => b.classList.remove('active'), 4000);
     }
+
     function showConfirmation() {
         const o = document.getElementById('confirmationOverlay');
         o.classList.add('active'); setTimeout(() => o.classList.remove('active'), 2500);
@@ -397,7 +402,6 @@
         document.getElementById('welcomeBtn').addEventListener('click', () => {
             document.getElementById('welcomeScreen').classList.remove('active');
             showMainApp(); showAlert('✅ Bienvenue ' + currentUser.name + ' !', 'success');
-            // Mettre à jour le statut en ligne
             fetch(BACKEND_URL+'/api/users/online', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: currentUserId, online: true }) });
         });
     }
@@ -444,7 +448,6 @@
         if (currentUser?.isSeller) badge.style.display = 'inline-block'; else badge.style.display = 'none';
         const now = new Date();
         document.getElementById('statsDate').textContent = now.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) + ' · ' + now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-        // Mettre à jour le statut en ligne périodiquement
         setInterval(() => {
             fetch(BACKEND_URL+'/api/users/online', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: currentUserId, online: true }) });
         }, 30000);
@@ -546,7 +549,6 @@
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             const targetTab = document.querySelector('.tab-btn[data-page="pageMessages"]');
             if (targetTab) { targetTab.classList.add('active'); document.getElementById('pageMessages').classList.add('active'); }
-            // Ouvrir la discussion avec ce vendeur
             openDiscussion(product.sellerId, product.sellerName);
             showAlert('💬 Vous pouvez maintenant envoyer un message au vendeur.', 'info');
         });
@@ -572,7 +574,6 @@
             if (data.success) {
                 showAlert('✅ Commande créée !', 'success');
                 loadWallet(); loadOrders(); loadProducts();
-                // Vérifier si on a commandé à ce vendeur
                 if (product.sellerId === activeConversationId) {
                     hasOrderedFromCurrentSeller = true;
                     updateOrderButtonInChat();
@@ -787,10 +788,9 @@
     };
 
     // ============================================================
-    // MESSAGERIE AVANCÉE (WhatsApp-like)
+    // MESSAGERIE AVANCÉE
     // ============================================================
     let discussionContact = null;
-    let messageInterval = null;
 
     async function loadMessages() {
         if (!currentUserId) return;
@@ -810,7 +810,6 @@
 
             empty.style.display = 'none';
 
-            // Extraire les contacts uniques
             const contactsMap = {};
             data.data.forEach(msg => {
                 const otherId = msg.senderId === currentUserId ? msg.receiverId : msg.senderId;
@@ -827,7 +826,6 @@
                 } else if (msg.receiverId === currentUserId && !msg.read) {
                     contactsMap[otherId].unread = (contactsMap[otherId].unread || 0) + 1;
                 }
-                // Mettre à jour le dernier message
                 const msgTime = new Date(msg.createdAt);
                 const currentTime = new Date(contactsMap[otherId].time);
                 if (msgTime > currentTime) {
@@ -836,7 +834,6 @@
                 }
             });
 
-            // Récupérer les statuts en ligne pour chaque contact
             for (const contactId of Object.keys(contactsMap)) {
                 try {
                     const userRes = await fetch(BACKEND_URL+'/api/users/'+contactId);
@@ -848,7 +845,6 @@
                 } catch(e) {}
             }
 
-            // Afficher les contacts
             contactsContainer.innerHTML = Object.keys(contactsMap).sort((a, b) => {
                 const timeA = new Date(contactsMap[a].time);
                 const timeB = new Date(contactsMap[b].time);
@@ -864,23 +860,19 @@
                 </div>
             `).join('');
 
-            // Gestion du clic sur un contact
             document.querySelectorAll('.contact-chip').forEach(el => {
                 el.addEventListener('click', function() {
                     const contactId = this.dataset.id;
                     activeConversationId = contactId;
                     document.querySelectorAll('.contact-chip').forEach(c => c.classList.remove('active'));
                     this.classList.add('active');
-                    // Charger la conversation avec ce contact
                     openDiscussion(contactId, contactsMap[contactId]?.name || 'Utilisateur');
                 });
             });
 
-            // Si un contact est actif, charger sa conversation
             if (activeConversationId && contactsMap[activeConversationId]) {
                 openDiscussion(activeConversationId, contactsMap[activeConversationId].name);
             } else {
-                // Sinon charger le premier contact
                 const firstChip = document.querySelector('.contact-chip');
                 if (firstChip) { firstChip.click(); }
             }
@@ -898,7 +890,6 @@
         discussionView.style.display = 'block';
         empty.style.display = 'none';
 
-        // Récupérer les infos du contact
         try {
             const res = await fetch(BACKEND_URL+'/api/users/'+contactId);
             const data = await res.json();
@@ -910,7 +901,6 @@
                 else avatar.innerHTML = (user.name || 'U')[0].toUpperCase() + '<div class="online-dot '+(user.online?'online':'offline')+'"></div>';
                 document.getElementById('discussionStatus').textContent = user.online ? '🟢 En ligne' : '⚪ Hors ligne';
                 document.getElementById('discussionOnlineDot').className = 'online-dot '+(user.online?'online':'offline');
-                // Vérifier si une commande a déjà été passée à ce vendeur
                 hasOrderedFromCurrentSeller = false;
                 const ordersRes = await fetch(BACKEND_URL+'/api/orders/'+currentUserId);
                 const ordersData = await ordersRes.json();
@@ -918,13 +908,10 @@
                     hasOrderedFromCurrentSeller = ordersData.some(o => o.sellerId === contactId && o.status !== 'annulé' && o.status !== 'remboursé');
                 }
                 updateOrderButtonInChat();
-
-                // Pré-remplir le champ de message
                 document.getElementById('chatReceiver').value = contactId;
             }
         } catch(e) { console.error(e); }
 
-        // Charger les messages de la conversation
         await loadConversation(contactId);
     }
 
@@ -933,7 +920,6 @@
         if (!hasOrderedFromCurrentSeller && discussionContact) {
             container.innerHTML = `<button class="btn btn-success btn-sm order-btn-in-chat" id="btnOrderInChat">🛒 Commander à ce vendeur</button>`;
             document.getElementById('btnOrderInChat').addEventListener('click', async () => {
-                // Récupérer les articles du vendeur
                 try {
                     const res = await fetch(BACKEND_URL+'/api/articles/seller/'+discussionContact);
                     const data = await res.json();
@@ -995,7 +981,6 @@
                 return da - db;
             });
 
-            // Récupérer le nom et la photo du contact
             let contactName = 'Utilisateur', contactPhoto = '';
             try {
                 const userRes = await fetch(BACKEND_URL+'/api/users/'+contactId);
@@ -1028,7 +1013,6 @@
                 `;
             }).join('');
 
-            // Marquer les messages comme lus
             const unreadMessages = allMessages.filter(msg => msg.receiverId === currentUserId && !msg.read);
             for (const msg of unreadMessages) {
                 await fetch(BACKEND_URL+'/api/messages/read/'+msg.id, { method: 'POST' });
@@ -1036,7 +1020,6 @@
 
             container.scrollTop = container.scrollHeight;
 
-            // Vérifier les commandes pour ce vendeur
             const ordersRes = await fetch(BACKEND_URL+'/api/orders/'+currentUserId);
             const ordersData = await ordersRes.json();
             if (ordersData && ordersData.length > 0) {
@@ -1108,7 +1091,6 @@
         if (e.key === 'Enter') { e.preventDefault(); const text = document.getElementById('messageInput').value.trim(); if (text) sendMessage(text); }
     });
 
-    // Typing indicator
     document.getElementById('messageInput').addEventListener('input', function() {
         const receiverId = activeConversationId;
         if (!receiverId) return;
@@ -1278,18 +1260,14 @@
     });
 
     document.getElementById('btnLogout').addEventListener('click', () => {
-        // Mettre à jour le statut hors ligne
         fetch(BACKEND_URL+'/api/users/online', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: currentUserId, online: false }) });
         localStorage.removeItem(STORAGE_KEY);
         location.reload();
     });
 
-    // ============================================================
-    // VERIFICATION AU CHARGEMENT
-    // ============================================================
     const savedId = localStorage.getItem(STORAGE_KEY);
     if (savedId) {
-        // L'utilisateur s'est déjà connecté
+        // utilisateur déjà connecté
     }
 
     console.log('✅ BLK Marketplace - Mode localStorage (persistant)');
