@@ -135,7 +135,7 @@ app.get('/api/categories', (req, res) => {
 });
 
 // ============================================================
-// ARTICLES (collection "products")
+// ARTICLES
 // ============================================================
 app.get('/api/articles', async (req, res) => {
   if (!firebaseReady) {
@@ -231,7 +231,7 @@ app.post('/api/articles/view/:id', async (req, res) => {
 });
 
 // ============================================================
-// UPLOAD IMAGE (ImgBB)
+// UPLOAD
 // ============================================================
 app.post('/api/upload', async (req, res) => {
   try {
@@ -259,9 +259,6 @@ app.post('/api/upload', async (req, res) => {
   }
 });
 
-// ============================================================
-// UPLOAD AUDIO (note vocale)
-// ============================================================
 app.post('/api/upload-audio', async (req, res) => {
   try {
     const { base64 } = req.body;
@@ -349,9 +346,6 @@ app.put('/api/users/:userId', async (req, res) => {
   }
 });
 
-// ============================================================
-// BLOCAGE UTILISATEUR
-// ============================================================
 app.post('/api/users/block', async (req, res) => {
   if (!firebaseReady) return res.json({ success: true, message: 'Simulation' });
   try {
@@ -395,7 +389,7 @@ app.get('/api/wallet/:userId', async (req, res) => {
 });
 
 // ============================================================
-// WALLET - DÉPÔT YABETOO (RÉEL) - URL CORRIGÉE
+// WALLET - DÉPÔT YABETOO (RÉEL)
 // ============================================================
 app.post('/api/wallet/deposit', async (req, res) => {
   console.log('📩 Requête de dépôt reçue !');
@@ -411,25 +405,22 @@ app.post('/api/wallet/deposit', async (req, res) => {
       return res.status(400).json({ success: false, message: 'userId, amount et phone requis' });
     }
 
-    // 🔐 Vérifier que YABETOO_SECRET est configuré
     if (!YABETOO_SECRET) {
       console.error('❌ YABETOO_SECRET manquant');
       return res.status(500).json({ success: false, message: 'Configuration paiement manquante' });
     }
 
-    // 🧾 Générer une référence unique
     const reference = `DEP-${Date.now()}-${userId.slice(-6)}`;
 
-    // 💰 Appeler Yabetoo pour initier le paiement
-    // 🔥 URL CORRECTE (avec deux "o")
+    // 🔥 URL YABETOO CORRECTE (API v1)
     const paymentResponse = await axios.post(
-      'https://api.yabetoo.com/v1/payment',  // ← ici corrigé
+      'https://api.yabetoo.com/v1/payment',
       {
         amount: amount,
         phone: phone,
         reference: reference,
-        callback_url: `https://blk-backend.onrender.com/api/payment/callback`,
-        description: `Dépôt BLK Marketplace - ${userId}`
+        callback_url: 'https://blk-backend.onrender.com/api/payment/callback',
+        description: `Dépôt BLK - ${userId}`
       },
       {
         headers: {
@@ -440,7 +431,6 @@ app.post('/api/wallet/deposit', async (req, res) => {
     );
 
     if (paymentResponse.data.success) {
-      // 📝 Sauvegarder la transaction en attente
       await db.collection('transactions').add({
         userId,
         amount,
@@ -460,7 +450,7 @@ app.post('/api/wallet/deposit', async (req, res) => {
         transactionId: paymentResponse.data.transaction_id
       });
     } else {
-      console.error('❌ Erreur Yabetoo:', paymentResponse.data.message);
+      console.error('❌ Erreur Yabetoo:', paymentResponse.data);
       res.status(400).json({ success: false, message: paymentResponse.data.message || 'Erreur paiement' });
     }
 
@@ -480,7 +470,6 @@ app.post('/api/payment/callback', async (req, res) => {
   try {
     const { reference, status, transaction_id } = req.body;
 
-    // Vérifier que la référence existe
     const snapshot = await db.collection('transactions')
       .where('reference', '==', reference)
       .limit(1)
@@ -495,7 +484,6 @@ app.post('/api/payment/callback', async (req, res) => {
     const data = doc.data();
 
     if (status === 'success') {
-      // 💰 Créditer le wallet de l'utilisateur
       if (data.type === 'deposit') {
         const userRef = db.collection('users').doc(data.userId);
         const userDoc = await userRef.get();
@@ -511,7 +499,6 @@ app.post('/api/payment/callback', async (req, res) => {
         console.log(`💰 Wallet mis à jour: ${currentBalance} → ${newBalance}`);
       }
 
-      // Mettre à jour la transaction
       await doc.ref.update({
         status: 'completed',
         yabetooId: transaction_id,
@@ -520,7 +507,6 @@ app.post('/api/payment/callback', async (req, res) => {
 
       res.json({ success: true });
     } else {
-      // Transaction échouée
       await doc.ref.update({
         status: 'failed',
         yabetooId: transaction_id,
@@ -536,7 +522,7 @@ app.post('/api/payment/callback', async (req, res) => {
 });
 
 // ============================================================
-// WALLET - RETRAIT (SIMULATION)
+// WALLET - RETRAIT
 // ============================================================
 app.post('/api/wallet/withdraw', async (req, res) => {
   if (!firebaseReady) {
@@ -731,12 +717,11 @@ app.post('/api/orders/confirm', async (req, res) => {
     if (ADMIN_PHONE && adminTotal > 0) {
       try {
         const adminRef = `ADMIN-${Date.now().toString().slice(-6)}`;
-        // 🔥 URL CORRECTE pour le retrait
         await axios.post('https://api.yabetoo.com/v1/withdraw', {
           amount: adminTotal,
           phone: ADMIN_PHONE,
           reference: `COM-${orderId.slice(0,8)}-${adminRef}`,
-          callback_url: `https://blk-backend.onrender.com/api/payment/callback`
+          callback_url: 'https://blk-backend.onrender.com/api/payment/callback'
         }, {
           headers: {
             'Authorization': `Bearer ${YABETOO_SECRET}`,
@@ -1144,9 +1129,6 @@ app.post('/api/messages', async (req, res) => {
   }
 });
 
-// ============================================================
-// TYPING INDICATOR
-// ============================================================
 app.post('/api/messages/typing', async (req, res) => {
   if (!firebaseReady) {
     return res.json({ success: true });
@@ -1163,9 +1145,6 @@ app.post('/api/messages/typing', async (req, res) => {
   }
 });
 
-// ============================================================
-// NOTIFICATIONS
-// ============================================================
 app.get('/api/notifications/:userId', async (req, res) => {
   if (!firebaseReady) {
     return res.json({ success: true, data: [] });
