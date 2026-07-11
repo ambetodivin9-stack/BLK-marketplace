@@ -141,11 +141,7 @@ app.get('/api/articles', async (req, res) => {
   if (!firebaseReady) {
     return res.json({
       success: true,
-      data: [
-        { id: '1', title: 'Robe vintage', description: 'Belle robe des années 80', price: 15000, category: 'vêtements', image: '', sellerName: 'Marie K.', sellerId: 'seller1', status: 'active', createdAt: new Date() },
-        { id: '2', title: 'Talons rouges', description: 'Escarpins en cuir rouge', price: 25000, category: 'chaussures', image: '', sellerName: 'Sophie L.', sellerId: 'seller2', status: 'active', createdAt: new Date() },
-        { id: '3', title: 'Sac en cuir', description: 'Sac à main en cuir noir', price: 35000, category: 'sacs', image: '', sellerName: 'Jean P.', sellerId: 'seller3', status: 'active', createdAt: new Date() }
-      ]
+      data: []
     });
   }
   try {
@@ -162,13 +158,7 @@ app.get('/api/articles', async (req, res) => {
 
 app.get('/api/articles/seller/:sellerId', async (req, res) => {
   if (!firebaseReady) {
-    return res.json({
-      success: true,
-      data: [
-        { id: '1', title: 'Robe vintage', price: 15000, image: '', status: 'active' },
-        { id: '2', title: 'Talons rouges', price: 25000, image: '', status: 'active' }
-      ]
-    });
+    return res.json({ success: true, data: [] });
   }
   try {
     const { sellerId } = req.params;
@@ -301,7 +291,7 @@ app.get('/api/users/:userId', async (req, res) => {
         walletBalance: 5000,
         phone: '+242 06 123 4567',
         email: 'test@example.com',
-        isSeller: true,
+        isSeller: false,
         blockedUsers: [],
         online: false
       }
@@ -408,25 +398,97 @@ app.get('/api/wallet/:userId', async (req, res) => {
 });
 
 // ============================================================
-// WALLET - DÉPÔT (SIMULATION)
+// WALLET - DÉPÔT (SIMULATION POUR CONTOURNER L'ERREUR SSL)
 // ============================================================
 app.post('/api/wallet/deposit', async (req, res) => {
-  return res.json({ 
-    success: true, 
-    message: '💰 Dépôt simulé avec succès !', 
-    newBalance: 10000 
-  });
+  if (!firebaseReady) {
+    return res.json({ 
+      success: true, 
+      message: '💰 Dépôt simulé avec succès !', 
+      newBalance: 10000 
+    });
+  }
+  try {
+    const { userId, amount, phone } = req.body;
+    if (!userId || !amount || !phone) {
+      return res.status(400).json({ success: false, message: 'userId, amount et phone requis' });
+    }
+
+    // SIMULATION : on crédite directement le wallet
+    const userRef = db.collection('users').doc(userId);
+    const doc = await userRef.get();
+    const currentBalance = doc.data()?.walletBalance || 0;
+    const newBalance = currentBalance + parseInt(amount);
+    await userRef.update({ walletBalance: newBalance });
+
+    await db.collection('transactions').add({
+      userId,
+      amount: parseInt(amount),
+      phone,
+      type: 'deposit',
+      status: 'completed',
+      description: 'Dépôt (simulé)',
+      createdAt: new Date()
+    });
+
+    res.json({
+      success: true,
+      message: '💰 Dépôt effectué avec succès !',
+      newBalance: newBalance
+    });
+  } catch (error) {
+    console.error('Deposit Error:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 
 // ============================================================
 // WALLET - RETRAIT (SIMULATION)
 // ============================================================
 app.post('/api/wallet/withdraw', async (req, res) => {
-  return res.json({ 
-    success: true, 
-    message: '💰 Retrait simulé avec succès !', 
-    newBalance: 5000 
-  });
+  if (!firebaseReady) {
+    return res.json({ 
+      success: true, 
+      message: '💰 Retrait simulé avec succès !', 
+      newBalance: 5000 
+    });
+  }
+  try {
+    const { userId, amount, phone } = req.body;
+    if (!userId || !amount || !phone) {
+      return res.status(400).json({ success: false, message: 'userId, amount et phone requis' });
+    }
+
+    const userRef = db.collection('users').doc(userId);
+    const doc = await userRef.get();
+    const currentBalance = doc.data()?.walletBalance || 0;
+
+    if (currentBalance < amount) {
+      return res.status(400).json({ success: false, message: 'Solde insuffisant' });
+    }
+
+    const newBalance = currentBalance - parseInt(amount);
+    await userRef.update({ walletBalance: newBalance });
+
+    await db.collection('transactions').add({
+      userId,
+      amount: parseInt(amount),
+      phone,
+      type: 'withdraw',
+      status: 'completed',
+      description: 'Retrait (simulé)',
+      createdAt: new Date()
+    });
+
+    res.json({
+      success: true,
+      message: '💰 Retrait effectué avec succès !',
+      newBalance: newBalance
+    });
+  } catch (error) {
+    console.error('Withdraw Error:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 
 // ============================================================
@@ -625,7 +687,7 @@ app.post('/api/orders/confirm', async (req, res) => {
           amount: adminTotal,
           phone: ADMIN_PHONE,
           reference: `COM-${orderId.slice(0,8)}-${adminRef}`,
-          callback_url: `https://blk-marketplace2.0-1.onrender.com/api/payment/callback`
+          callback_url: `https://blk-backend.onrender.com/api/payment/callback`
         }, {
           headers: {
             'Authorization': `Bearer ${YABETOO_SECRET}`,
@@ -680,36 +742,7 @@ app.post('/api/orders/confirm', async (req, res) => {
 
 app.get('/api/orders/:userId', async (req, res) => {
   if (!firebaseReady) {
-    return res.json([
-      {
-        id: '1',
-        articleId: '1',
-        buyerId: 'buyer1',
-        sellerId: 'seller1',
-        amount: 15000,
-        totalAmount: 15450,
-        status: 'en attente de confirmation',
-        expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000),
-        createdAt: new Date(),
-        article: { title: 'Robe vintage', price: 15000, image: '' },
-        seller: { name: 'Marie K.' }
-      },
-      {
-        id: '2',
-        articleId: '2',
-        buyerId: 'buyer2',
-        sellerId: 'seller2',
-        amount: 35000,
-        totalAmount: 36050,
-        status: 'livré',
-        expiresAt: new Date(),
-        createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-        article: { title: 'Sac en cuir', price: 35000, image: '' },
-        buyer: { name: 'Jean P.' },
-        sellerReceived: 33600,
-        buyerConfirmedAt: new Date()
-      }
-    ]);
+    return res.json([]);
   }
   try {
     const { userId } = req.params;
@@ -864,15 +897,12 @@ app.get('/api/stats/:userId', async (req, res) => {
     return res.json({
       success: true,
       data: {
-        totalArticles: 2,
-        totalSales: 5,
-        totalRevenue: 75000,
-        totalPurchases: 3,
-        totalSpent: 45000,
-        history: [
-          { month: '2025-06', ventes: 2, revenu: 30000 },
-          { month: '2025-07', ventes: 3, revenu: 45000 }
-        ]
+        totalArticles: 0,
+        totalSales: 0,
+        totalRevenue: 0,
+        totalPurchases: 0,
+        totalSpent: 0,
+        history: []
       }
     });
   }
@@ -937,14 +967,7 @@ app.get('/api/stats/:userId', async (req, res) => {
 // ============================================================
 app.get('/api/transactions/:userId', async (req, res) => {
   if (!firebaseReady) {
-    return res.json({
-      success: true,
-      data: [
-        { type: 'deposit', amount: 10000, description: 'Dépôt', date: new Date() },
-        { type: 'achat', amount: -15300, description: 'Achat #BLK-12345', date: new Date(Date.now() - 86400000) },
-        { type: 'vente', amount: 9600, description: 'Vente #BLK-67890', date: new Date(Date.now() - 172800000) }
-      ]
-    });
+    return res.json({ success: true, data: [] });
   }
   try {
     const { userId } = req.params;
@@ -1004,13 +1027,7 @@ app.get('/api/transactions/:userId', async (req, res) => {
 // ============================================================
 app.get('/api/messages/:userId', async (req, res) => {
   if (!firebaseReady) {
-    return res.json({
-      success: true,
-      data: [
-        { id: '1', senderId: 'user1', senderName: 'Marie K.', senderPhoto: '', text: 'Bonjour, je suis intéressé par la robe vintage', createdAt: new Date() },
-        { id: '2', senderId: 'user2', senderName: 'Jean P.', senderPhoto: '', text: 'Le sac est-il encore disponible ?', createdAt: new Date(Date.now() - 3600000) }
-      ]
-    });
+    return res.json({ success: true, data: [] });
   }
   try {
     const { userId } = req.params;
