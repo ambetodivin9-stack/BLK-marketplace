@@ -51,6 +51,9 @@ const IMG_BB_KEY = process.env.IMG_BB_KEY || '08d90ac3321b7689d9e1c35e34a88b6c';
 const YABETOO_SECRET = process.env.YABETOO_SECRET_KEY || '';
 const ADMIN_PHONE = process.env.ADMIN_PHONE || '065918166';
 
+// 🔥 URLs YABETOO CORRECTES (avec "pay.api.yabetoopay.com")
+const YABETOO_BASE_URL = 'https://pay.api.yabetoopay.com/v1';
+
 const COMMISSION_BUYER = 0.03;
 const COMMISSION_SELLER = 0.04;
 
@@ -231,7 +234,7 @@ app.post('/api/articles/view/:id', async (req, res) => {
 });
 
 // ============================================================
-// UPLOAD
+// UPLOAD IMAGE
 // ============================================================
 app.post('/api/upload', async (req, res) => {
   try {
@@ -389,7 +392,7 @@ app.get('/api/wallet/:userId', async (req, res) => {
 });
 
 // ============================================================
-// WALLET - DÉPÔT YABETOO (RÉEL)
+// WALLET - DÉPÔT YABETOO (CORRIGÉ)
 // ============================================================
 app.post('/api/wallet/deposit', async (req, res) => {
   console.log('📩 Requête de dépôt reçue !');
@@ -412,9 +415,9 @@ app.post('/api/wallet/deposit', async (req, res) => {
 
     const reference = `DEP-${Date.now()}-${userId.slice(-6)}`;
 
-    // 🔥 URL YABETOO CORRECTE (API v1)
+    // 🔥 URL CORRECTE (avec "pay.api.yabetoopay.com" et "/v1/payments")
     const paymentResponse = await axios.post(
-      'https://api.yabetoo.com/v1/payment',
+      `${YABETOO_BASE_URL}/payments`,
       {
         amount: amount,
         phone: phone,
@@ -490,10 +493,13 @@ app.post('/api/payment/callback', async (req, res) => {
         const currentBalance = userDoc.data()?.walletBalance || 0;
         const newBalance = currentBalance + data.amount;
 
+        // ✅ Création auto si l'utilisateur n'existe pas
         await userRef.set({
           walletBalance: newBalance,
           phone: data.phone,
-          lastDeposit: admin.firestore.FieldValue.serverTimestamp()
+          lastDeposit: admin.firestore.FieldValue.serverTimestamp(),
+          name: data.userId || 'Utilisateur BLK',
+          createdAt: admin.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
 
         console.log(`💰 Wallet mis à jour: ${currentBalance} → ${newBalance}`);
@@ -522,7 +528,7 @@ app.post('/api/payment/callback', async (req, res) => {
 });
 
 // ============================================================
-// WALLET - RETRAIT
+// WALLET - RETRAIT (SIMULATION)
 // ============================================================
 app.post('/api/wallet/withdraw', async (req, res) => {
   if (!firebaseReady) {
@@ -717,17 +723,22 @@ app.post('/api/orders/confirm', async (req, res) => {
     if (ADMIN_PHONE && adminTotal > 0) {
       try {
         const adminRef = `ADMIN-${Date.now().toString().slice(-6)}`;
-        await axios.post('https://api.yabetoo.com/v1/withdraw', {
-          amount: adminTotal,
-          phone: ADMIN_PHONE,
-          reference: `COM-${orderId.slice(0,8)}-${adminRef}`,
-          callback_url: 'https://blk-backend.onrender.com/api/payment/callback'
-        }, {
-          headers: {
-            'Authorization': `Bearer ${YABETOO_SECRET}`,
-            'Content-Type': 'application/json'
+        // 🔥 URL CORRECTE pour le retrait
+        await axios.post(
+          `${YABETOO_BASE_URL}/withdrawals`,
+          {
+            amount: adminTotal,
+            phone: ADMIN_PHONE,
+            reference: `COM-${orderId.slice(0,8)}-${adminRef}`,
+            callback_url: 'https://blk-backend.onrender.com/api/payment/callback'
+          },
+          {
+            headers: {
+              'Authorization': `Bearer ${YABETOO_SECRET}`,
+              'Content-Type': 'application/json'
+            }
           }
-        });
+        );
         console.log(`✅ Commission ${adminTotal} FCFA envoyée à ${ADMIN_PHONE}`);
       } catch (error) {
         console.error('❌ Erreur envoi commission:', error.message);
@@ -1173,6 +1184,50 @@ app.post('/api/notifications/read/:id', async (req, res) => {
     await db.collection('notifications').doc(id).update({ read: true });
     res.json({ success: true });
   } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================================
+// ADMIN - CRÉDIT MANUEL (POUR TEST)
+// ============================================================
+app.post('/api/wallet/admin-credit', async (req, res) => {
+  console.log('📩 Crédit manuel admin reçu !');
+  console.log('Body:', req.body);
+
+  try {
+    const { userId, amount, phone } = req.body;
+    if (!userId || !amount) {
+      return res.status(400).json({ success: false, message: 'userId et amount requis' });
+    }
+
+    const userRef = db.collection('users').doc(userId);
+    const doc = await userRef.get();
+    const currentBalance = doc.data()?.walletBalance || 0;
+    const newBalance = currentBalance + amount;
+
+    await userRef.set({
+      walletBalance: newBalance,
+      phone: phone || doc.data()?.phone || '',
+      lastDeposit: admin.firestore.FieldValue.serverTimestamp(),
+      name: doc.data()?.name || userId
+    }, { merge: true });
+
+    await db.collection('transactions').add({
+      userId,
+      amount,
+      phone: phone || '065918166',
+      type: 'deposit',
+      status: 'completed',
+      description: 'Dépôt manuel (admin)',
+      createdAt: new Date()
+    });
+
+    console.log(`💰 Wallet mis à jour: ${currentBalance} → ${newBalance}`);
+    res.json({ success: true, message: 'Wallet crédité', newBalance });
+
+  } catch (error) {
+    console.error('❌ Erreur crédit admin:', error.message);
     res.status(500).json({ success: false, message: error.message });
   }
 });
