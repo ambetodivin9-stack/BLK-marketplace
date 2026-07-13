@@ -51,8 +51,18 @@ const IMG_BB_KEY = process.env.IMG_BB_KEY || '08d90ac3321b7689d9e1c35e34a88b6c';
 const YABETOO_SECRET = process.env.YABETOO_SECRET_KEY || '';
 const ADMIN_PHONE = process.env.ADMIN_PHONE || '065918166';
 
-// 🔥 URLs YABETOO CORRECTES (avec "pay.api.yabetoopay.com")
+// 🔥 URLS YABETOO CORRECTES (d'après la documentation)
 const YABETOO_BASE_URL = 'https://pay.api.yabetoopay.com/v1';
+const YABETOO_SANDBOX_URL = 'https://pay.sandbox.yabetoopay.com/v1';
+
+// 🔥 Endpoints Yabetoo
+const YABETOO_ENDPOINTS = {
+  paymentIntent: `${YABETOO_BASE_URL}/payment-intents`,
+  withdrawal: `${YABETOO_BASE_URL}/withdrawals`,
+  // En sandbox
+  paymentIntentSandbox: `${YABETOO_SANDBOX_URL}/payment-intents`,
+  withdrawalSandbox: `${YABETOO_SANDBOX_URL}/withdrawals`
+};
 
 const COMMISSION_BUYER = 0.03;
 const COMMISSION_SELLER = 0.04;
@@ -415,9 +425,9 @@ app.post('/api/wallet/deposit', async (req, res) => {
 
     const reference = `DEP-${Date.now()}-${userId.slice(-6)}`;
 
-    // 🔥 URL CORRECTE (avec "pay.api.yabetoopay.com" et "/v1/payments")
+    // ✅ ENDPOINT CORRECT : /v1/payment-intents
     const paymentResponse = await axios.post(
-      `${YABETOO_BASE_URL}/payments`,
+      YABETOO_ENDPOINTS.paymentIntent,
       {
         amount: amount,
         phone: phone,
@@ -433,7 +443,10 @@ app.post('/api/wallet/deposit', async (req, res) => {
       }
     );
 
-    if (paymentResponse.data.success) {
+    // Vérifier la réponse (certains endpoints retournent 'id' ou 'transaction_id')
+    const transactionId = paymentResponse.data.id || paymentResponse.data.transaction_id;
+
+    if (paymentResponse.data.success !== false && transactionId) {
       await db.collection('transactions').add({
         userId,
         amount,
@@ -441,7 +454,7 @@ app.post('/api/wallet/deposit', async (req, res) => {
         reference,
         type: 'deposit',
         status: 'pending',
-        yabetooId: paymentResponse.data.transaction_id,
+        yabetooId: transactionId,
         createdAt: new Date()
       });
 
@@ -450,7 +463,7 @@ app.post('/api/wallet/deposit', async (req, res) => {
         success: true,
         message: '📲 Vérifie ton téléphone, tu vas recevoir une demande de paiement.',
         reference: reference,
-        transactionId: paymentResponse.data.transaction_id
+        transactionId: transactionId
       });
     } else {
       console.error('❌ Erreur Yabetoo:', paymentResponse.data);
@@ -459,6 +472,9 @@ app.post('/api/wallet/deposit', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Erreur dépôt:', error.message);
+    if (error.response) {
+      console.error('📦 Réponse Yabetoo:', error.response.data);
+    }
     res.status(500).json({ success: false, message: 'Erreur interne du serveur' });
   }
 });
@@ -486,7 +502,7 @@ app.post('/api/payment/callback', async (req, res) => {
     const doc = snapshot.docs[0];
     const data = doc.data();
 
-    if (status === 'success') {
+    if (status === 'success' || status === 'completed') {
       if (data.type === 'deposit') {
         const userRef = db.collection('users').doc(data.userId);
         const userDoc = await userRef.get();
@@ -723,9 +739,8 @@ app.post('/api/orders/confirm', async (req, res) => {
     if (ADMIN_PHONE && adminTotal > 0) {
       try {
         const adminRef = `ADMIN-${Date.now().toString().slice(-6)}`;
-        // 🔥 URL CORRECTE pour le retrait
         await axios.post(
-          `${YABETOO_BASE_URL}/withdrawals`,
+          YABETOO_ENDPOINTS.withdrawal,
           {
             amount: adminTotal,
             phone: ADMIN_PHONE,
@@ -742,6 +757,9 @@ app.post('/api/orders/confirm', async (req, res) => {
         console.log(`✅ Commission ${adminTotal} FCFA envoyée à ${ADMIN_PHONE}`);
       } catch (error) {
         console.error('❌ Erreur envoi commission:', error.message);
+        if (error.response) {
+          console.error('📦 Réponse Yabetoo:', error.response.data);
+        }
       }
     }
 
