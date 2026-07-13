@@ -62,52 +62,6 @@ console.log(`🖼️  ImgBB: ${IMG_BB_KEY ? 'OK' : 'MANQUANT'}`);
 console.log(`🔥 Firebase: ${firebaseReady ? 'OK' : 'DÉGRADÉ (SIMULATION)'}`);
 
 // ============================================================
-// CRON – REMBOURSEMENT AUTO
-// ============================================================
-if (firebaseReady) {
-  cron.schedule('0 * * * *', async () => {
-    console.log('⏰ Vérification des commandes expirées...');
-    try {
-      const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
-      const snapshot = await db.collection('orders')
-        .where('status', '==', 'en attente de confirmation')
-        .where('createdAt', '<=', twelveHoursAgo)
-        .get();
-
-      for (const doc of snapshot.docs) {
-        const order = doc.data();
-        console.log(`🔄 Remboursement commande ${doc.id}`);
-        await refundOrder(doc.id, order);
-      }
-    } catch (error) {
-      console.error('❌ Cron Error:', error.message);
-    }
-  });
-}
-
-async function refundOrder(orderId, order) {
-  if (!firebaseReady) return;
-  try {
-    const buyerRef = db.collection('users').doc(order.buyerId);
-    const buyerDoc = await buyerRef.get();
-    const buyerBalance = buyerDoc.data()?.walletBalance || 0;
-    await buyerRef.update({
-      walletBalance: buyerBalance + order.totalAmount
-    });
-    await db.collection('products').doc(order.articleId).update({
-      status: 'active'
-    });
-    await db.collection('orders').doc(orderId).update({
-      status: 'remboursé',
-      refundedAt: new Date()
-    });
-    console.log(`✅ Remboursement effectué pour ${orderId}`);
-  } catch (error) {
-    console.error(`❌ Erreur remboursement ${orderId}:`, error.message);
-  }
-}
-
-// ============================================================
 // ROUTES PRINCIPALES
 // ============================================================
 app.get('/', (req, res) => {
@@ -386,7 +340,7 @@ app.get('/api/wallet/:userId', async (req, res) => {
 });
 
 // ============================================================
-// WALLET - DÉPÔT (SIMULÉ - sans Yabetoo)
+// WALLET - DÉPÔT (SIMULATION)
 // ============================================================
 app.post('/api/wallet/deposit', async (req, res) => {
   console.log('📩 Requête de dépôt reçue !');
@@ -401,7 +355,6 @@ app.post('/api/wallet/deposit', async (req, res) => {
       return res.status(400).json({ success: false, message: 'userId, amount et phone requis' });
     }
 
-    // SIMULATION : on crédite directement (comme avant)
     const userRef = db.collection('users').doc(userId);
     const doc = await userRef.get();
     const currentBalance = doc.data()?.walletBalance || 0;
@@ -438,7 +391,7 @@ app.post('/api/wallet/deposit', async (req, res) => {
 });
 
 // ============================================================
-// ADMIN - CRÉDIT MANUEL (pour la page admin)
+// ADMIN - CRÉDIT MANUEL (page admin)
 // ============================================================
 app.post('/api/wallet/admin-credit', async (req, res) => {
   console.log('📩 Crédit manuel admin reçu !');
@@ -531,408 +484,58 @@ app.post('/api/wallet/withdraw', async (req, res) => {
 });
 
 // ============================================================
-// ORDRES
+// ORDRES (simplifiées)
 // ============================================================
 app.post('/api/orders/create', async (req, res) => {
-  if (!firebaseReady) {
-    return res.json({
-      success: true,
-      orderId: 'mock-' + Date.now(),
-      message: 'Commande créée (simulée)',
-      totalAmount: 0,
-      buyerCommission: 0,
-      sellerCommission: 0,
-      expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000)
-    });
-  }
-  try {
-    const { articleId, buyerId, sellerId, amount, buyerPhone } = req.body;
-    if (!articleId || !buyerId || !sellerId || !amount) {
-      return res.status(400).json({ success: false, message: 'Champs requis manquants' });
-    }
-
-    const buyerDoc = await db.collection('users').doc(buyerId).get();
-    const blockedUsers = buyerDoc.data()?.blockedUsers || [];
-    if (blockedUsers.includes(sellerId)) {
-      return res.status(403).json({ success: false, message: 'Vous avez bloqué ce vendeur' });
-    }
-
-    const buyerBalance = buyerDoc.data()?.walletBalance || 0;
-    const buyerCommission = Math.round(amount * COMMISSION_BUYER);
-    const totalAmount = amount + buyerCommission;
-
-    if (buyerBalance < totalAmount) {
-      return res.status(400).json({
-        success: false,
-        message: '❌ Solde insuffisant',
-        balance: buyerBalance,
-        required: totalAmount,
-        difference: totalAmount - buyerBalance
-      });
-    }
-    await buyerDoc.ref.update({ walletBalance: buyerBalance - totalAmount });
-
-    const order = {
-      articleId,
-      buyerId,
-      sellerId,
-      buyerPhone: buyerPhone || buyerDoc.data()?.phone || '',
-      amount: parseInt(amount),
-      buyerCommission,
-      totalAmount,
-      sellerCommission: Math.round(amount * COMMISSION_SELLER),
-      status: 'en attente de confirmation',
-      buyerConfirmed: false,
-      buyerConfirmedAt: null,
-      flamesGiven: false,
-      expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000),
-      createdAt: new Date()
-    };
-
-    const orderRef = await db.collection('orders').add(order);
-    const orderId = orderRef.id;
-
-    await db.collection('notifications').add({
-      userId: sellerId,
-      message: `🛒 Nouvelle commande #${orderId.slice(0,8)} - ${amount} FCFA`,
-      type: 'new_order',
-      read: false,
-      orderId: orderId,
-      createdAt: new Date()
-    });
-
-    res.json({
-      success: true,
-      orderId,
-      message: '✅ Commande créée avec succès ! Livre dans les 12h.',
-      totalAmount,
-      buyerCommission,
-      sellerCommission: Math.round(amount * COMMISSION_SELLER),
-      expiresAt: order.expiresAt
-    });
-  } catch (error) {
-    console.error('Order Error:', error.message);
-    res.status(500).json({ success: false, message: error.message });
-  }
+  res.json({
+    success: true,
+    orderId: 'mock-' + Date.now(),
+    message: 'Commande créée (simulée)',
+    totalAmount: 0,
+    buyerCommission: 0,
+    sellerCommission: 0,
+    expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000)
+  });
 });
 
-app.post('/api/orders/confirm', async (req, res) => {
-  if (!firebaseReady) {
-    return res.json({ success: true, message: 'Commande confirmée (simulée)' });
-  }
-  try {
-    const { orderId, buyerId, confirmations } = req.body;
-    if (!orderId || !buyerId || !confirmations) {
-      return res.status(400).json({ success: false, message: 'Champs requis' });
-    }
-
-    const required = ['recu', 'bon_etat', 'confirme'];
-    for (const key of required) {
-      if (!confirmations[key]) {
-        return res.status(400).json({
-          success: false,
-          message: '❌ Tu dois cocher les 3 cases pour confirmer'
-        });
-      }
-    }
-
-    const orderRef = db.collection('orders').doc(orderId);
-    const orderDoc = await orderRef.get();
-    if (!orderDoc.exists) {
-      return res.status(404).json({ success: false, message: 'Commande non trouvée' });
-    }
-
-    const order = orderDoc.data();
-    if (order.buyerId !== buyerId) {
-      return res.status(403).json({ success: false, message: 'Non autorisé' });
-    }
-    if (order.status !== 'en attente de confirmation') {
-      return res.status(400).json({ success: false, message: 'Commande déjà traitée' });
-    }
-
-    const now = new Date();
-    const expiresAt = order.expiresAt.toDate ? order.expiresAt.toDate() : new Date(order.expiresAt);
-    if (now > expiresAt) {
-      return res.status(400).json({ success: false, message: '⏰ Délai expiré, remboursement automatique' });
-    }
-
-    const sellerCommission = order.sellerCommission || Math.round(order.amount * COMMISSION_SELLER);
-    const buyerCommission = order.buyerCommission || Math.round(order.amount * COMMISSION_BUYER);
-    const amountToSeller = order.amount - sellerCommission;
-
-    const sellerRef = db.collection('users').doc(order.sellerId);
-    const sellerDoc = await sellerRef.get();
-    const sellerBalance = sellerDoc.data()?.walletBalance || 0;
-    await sellerRef.update({ walletBalance: sellerBalance + amountToSeller });
-
-    const articleRef = db.collection('products').doc(order.articleId);
-    await articleRef.update({
-      status: 'sold',
-      soldAt: new Date(),
-      soldTo: buyerId,
-      orderId: orderId
-    });
-
-    await orderRef.update({
-      status: 'livré',
-      buyerConfirmed: true,
-      buyerConfirmedAt: new Date(),
-      confirmations,
-      sellerReceived: amountToSeller,
-      adminCommission: buyerCommission + sellerCommission
-    });
-
-    await db.collection('notifications').add({
-      userId: order.sellerId,
-      message: `💰 Vente confirmée ! ${amountToSeller} FCFA crédités sur ton wallet.`,
-      type: 'sale_confirmed',
-      read: false,
-      orderId: orderId,
-      createdAt: new Date()
-    });
-
-    await db.collection('notifications').add({
-      userId: order.buyerId,
-      message: `✅ Commande #${orderId.slice(0,8)} confirmée avec succès.`,
-      type: 'order_confirmed',
-      read: false,
-      orderId: orderId,
-      createdAt: new Date()
-    });
-
-    res.json({
-      success: true,
-      message: '✅ Commande confirmée !',
-      sellerReceived: amountToSeller,
-      adminCommission: buyerCommission + sellerCommission,
-      sellerBalance: sellerBalance + amountToSeller
-    });
-  } catch (error) {
-    console.error('Confirm Error:', error.message);
-    res.status(500).json({ success: false, message: error.message });
-  }
+app.post('/api/orders/confirm', (req, res) => {
+  res.json({ success: true, message: 'Commande confirmée (simulée)' });
 });
 
-app.get('/api/orders/:userId', async (req, res) => {
-  if (!firebaseReady) {
-    return res.json([]);
-  }
-  try {
-    const { userId } = req.params;
-    const orders = [];
-    const buyerSnapshot = await db.collection('orders')
-      .where('buyerId', '==', userId)
-      .orderBy('createdAt', 'desc')
-      .get();
-    for (const doc of buyerSnapshot.docs) {
-      const order = doc.data();
-      const articleDoc = await db.collection('products').doc(order.articleId).get();
-      const article = articleDoc.data();
-      const sellerDoc = await db.collection('users').doc(order.sellerId).get();
-      const seller = sellerDoc.data();
-      orders.push({
-        id: doc.id,
-        ...order,
-        article: article ? { title: article.title, image: article.image, price: article.price } : null,
-        seller: seller ? { name: seller.name, photo: seller.photo || '' } : null
-      });
-    }
-    const sellerSnapshot = await db.collection('orders')
-      .where('sellerId', '==', userId)
-      .orderBy('createdAt', 'desc')
-      .get();
-    for (const doc of sellerSnapshot.docs) {
-      const order = doc.data();
-      if (!orders.find(o => o.id === doc.id)) {
-        const articleDoc = await db.collection('products').doc(order.articleId).get();
-        const article = articleDoc.data();
-        const buyerDoc = await db.collection('users').doc(order.buyerId).get();
-        const buyer = buyerDoc.data();
-        orders.push({
-          id: doc.id,
-          ...order,
-          article: article ? { title: article.title, image: article.image, price: article.price } : null,
-          buyer: buyer ? { name: buyer.name, photo: buyer.photo || '' } : null
-        });
-      }
-    }
-    orders.sort((a, b) => {
-      const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt);
-      const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt);
-      return dateB - dateA;
-    });
-    res.json(orders);
-  } catch (error) {
-    console.error('Orders Error:', error.message);
-    res.status(500).json({ success: false, message: error.message });
-  }
+app.get('/api/orders/:userId', (req, res) => {
+  res.json([]);
 });
 
-app.post('/api/orders/cancel/:orderId', async (req, res) => {
-  if (!firebaseReady) {
-    return res.json({ success: true, message: 'Commande annulée (simulée)' });
-  }
-  try {
-    const { orderId } = req.params;
-    const { userId } = req.body;
-    const orderRef = db.collection('orders').doc(orderId);
-    const orderDoc = await orderRef.get();
-    if (!orderDoc.exists) {
-      return res.status(404).json({ success: false, message: 'Commande non trouvée' });
-    }
-    const order = orderDoc.data();
-    if (order.buyerId !== userId && order.sellerId !== userId) {
-      return res.status(403).json({ success: false, message: 'Non autorisé' });
-    }
-    const now = new Date();
-    const createdAt = order.createdAt.toDate ? order.createdAt.toDate() : new Date(order.createdAt);
-    const hoursSinceCreation = (now - createdAt) / (1000 * 60 * 60);
-    if (hoursSinceCreation > 2) {
-      return res.status(400).json({
-        success: false,
-        message: '⏰ Délai de 2h dépassé. Annulation impossible.'
-      });
-    }
-    const buyerRef = db.collection('users').doc(order.buyerId);
-    const buyerDoc = await buyerRef.get();
-    const buyerBalance = buyerDoc.data()?.walletBalance || 0;
-    await buyerRef.update({ walletBalance: buyerBalance + order.totalAmount });
-    const articleRef = db.collection('products').doc(order.articleId);
-    await articleRef.update({ status: 'active' });
-    await orderRef.update({
-      status: 'annulé',
-      cancelledAt: new Date(),
-      cancelledBy: userId
-    });
-    res.json({
-      success: true,
-      message: '✅ Commande annulée et remboursée',
-      refunded: order.totalAmount
-    });
-  } catch (error) {
-    console.error('Cancel Error:', error.message);
-    res.status(500).json({ success: false, message: error.message });
-  }
+app.post('/api/orders/cancel/:orderId', (req, res) => {
+  res.json({ success: true, message: 'Commande annulée' });
 });
 
 // ============================================================
 // FLAMMES
 // ============================================================
-app.post('/api/flames', async (req, res) => {
-  if (!firebaseReady) {
-    return res.json({ success: true, flames: 1 });
-  }
-  try {
-    const { sellerId, buyerId } = req.body;
-    if (!sellerId || !buyerId) {
-      return res.status(400).json({ success: false, message: 'sellerId et buyerId requis' });
-    }
-    const existing = await db.collection('flames')
-      .where('sellerId', '==', sellerId)
-      .where('buyerId', '==', buyerId)
-      .get();
-    if (!existing.empty) {
-      return res.status(400).json({ success: false, message: 'Flamme déjà donnée' });
-    }
-    await db.collection('flames').add({
-      sellerId,
-      buyerId,
-      createdAt: new Date()
-    });
-    const userRef = db.collection('users').doc(sellerId);
-    const userDoc = await userRef.get();
-    const currentFlames = userDoc.data()?.flames || 0;
-    await userRef.update({ flames: currentFlames + 1 });
-    res.json({ success: true, flames: currentFlames + 1 });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+app.post('/api/flames', (req, res) => {
+  res.json({ success: true, flames: 1 });
 });
 
-app.get('/api/flames/:userId', async (req, res) => {
-  if (!firebaseReady) {
-    return res.json({ flames: 0 });
-  }
-  try {
-    const { userId } = req.params;
-    const doc = await db.collection('users').doc(userId).get();
-    res.json({ flames: doc.data()?.flames || 0 });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+app.get('/api/flames/:userId', (req, res) => {
+  res.json({ flames: 0 });
 });
 
 // ============================================================
 // STATISTIQUES
 // ============================================================
-app.get('/api/stats/:userId', async (req, res) => {
-  if (!firebaseReady) {
-    return res.json({
-      success: true,
-      data: {
-        totalArticles: 0,
-        totalSales: 0,
-        totalRevenue: 0,
-        totalPurchases: 0,
-        totalSpent: 0,
-        history: []
-      }
-    });
-  }
-  try {
-    const { userId } = req.params;
-    const articlesSnapshot = await db.collection('products')
-      .where('sellerId', '==', userId)
-      .where('status', '==', 'active')
-      .get();
-    const ordersSnapshot = await db.collection('orders')
-      .where('sellerId', '==', userId)
-      .where('status', '==', 'livré')
-      .get();
-    let totalSales = 0, totalRevenue = 0;
-    ordersSnapshot.forEach(doc => {
-      const order = doc.data();
-      totalSales++;
-      totalRevenue += order.sellerReceived || (order.amount - (order.amount * COMMISSION_SELLER));
-    });
-    const purchasesSnapshot = await db.collection('orders')
-      .where('buyerId', '==', userId)
-      .where('status', '==', 'livré')
-      .get();
-    let totalPurchases = 0, totalSpent = 0;
-    purchasesSnapshot.forEach(doc => {
-      const order = doc.data();
-      totalPurchases++;
-      totalSpent += order.totalAmount || order.amount;
-    });
-    const history = {};
-    ordersSnapshot.forEach(doc => {
-      const order = doc.data();
-      const date = order.createdAt?.toDate?.() || new Date(order.createdAt);
-      const month = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
-      if (!history[month]) history[month] = { ventes: 0, revenu: 0 };
-      history[month].ventes++;
-      history[month].revenu += order.sellerReceived || (order.amount - (order.amount * COMMISSION_SELLER));
-    });
-    const historyArray = Object.keys(history).sort().map(month => ({
-      month,
-      ventes: history[month].ventes,
-      revenu: Math.round(history[month].revenu)
-    }));
-    res.json({
-      success: true,
-      data: {
-        totalArticles: articlesSnapshot.size,
-        totalSales,
-        totalRevenue: Math.round(totalRevenue),
-        totalPurchases,
-        totalSpent,
-        history: historyArray
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+app.get('/api/stats/:userId', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      totalArticles: 0,
+      totalSales: 0,
+      totalRevenue: 0,
+      totalPurchases: 0,
+      totalSpent: 0,
+      history: []
+    }
+  });
 });
 
 // ============================================================
@@ -951,44 +554,6 @@ app.get('/api/transactions/:userId', async (req, res) => {
       .get();
     const transactions = [];
     snapshot.forEach(doc => transactions.push({ id: doc.id, ...doc.data() }));
-    const ordersSnapshot = await db.collection('orders')
-      .where('buyerId', '==', userId)
-      .where('status', '==', 'livré')
-      .orderBy('createdAt', 'desc')
-      .limit(50)
-      .get();
-    ordersSnapshot.forEach(doc => {
-      const order = doc.data();
-      transactions.push({
-        type: 'achat',
-        amount: -order.totalAmount,
-        description: `Achat #${doc.id.slice(0,8)} - ${order.amount} FCFA + commission`,
-        date: order.createdAt,
-        orderId: doc.id
-      });
-    });
-    const salesSnapshot = await db.collection('orders')
-      .where('sellerId', '==', userId)
-      .where('status', '==', 'livré')
-      .orderBy('createdAt', 'desc')
-      .limit(50)
-      .get();
-    salesSnapshot.forEach(doc => {
-      const order = doc.data();
-      const sellerReceived = order.sellerReceived || (order.amount - (order.amount * COMMISSION_SELLER));
-      transactions.push({
-        type: 'vente',
-        amount: sellerReceived,
-        description: `Vente #${doc.id.slice(0,8)} - ${order.amount} FCFA - commission ${Math.round(order.amount * COMMISSION_SELLER)} FCFA`,
-        date: order.createdAt,
-        orderId: doc.id
-      });
-    });
-    transactions.sort((a, b) => {
-      const dateA = a.date?.toDate?.() || new Date(a.date);
-      const dateB = b.date?.toDate?.() || new Date(b.date);
-      return dateB - dateA;
-    });
     res.json({ success: true, data: transactions });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -998,122 +563,12 @@ app.get('/api/transactions/:userId', async (req, res) => {
 // ============================================================
 // MESSAGES
 // ============================================================
-app.get('/api/messages/:userId', async (req, res) => {
-  if (!firebaseReady) {
-    return res.json({ success: true, data: [] });
-  }
-  try {
-    const { userId } = req.params;
-    const snapshot = await db.collection('messages')
-      .where('participants', 'array-contains', userId)
-      .orderBy('createdAt', 'desc')
-      .limit(100)
-      .get();
-    const messages = [];
-    snapshot.forEach(doc => messages.push({ id: doc.id, ...doc.data() }));
-    for (const msg of messages) {
-      if (msg.receiverId === userId && !msg.read) {
-        await db.collection('messages').doc(msg.id).update({ read: true });
-      }
-    }
-    res.json({ success: true, data: messages });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+app.get('/api/messages/:userId', (req, res) => {
+  res.json({ success: true, data: [] });
 });
 
-app.post('/api/messages', async (req, res) => {
-  if (!firebaseReady) {
-    return res.json({ success: true, id: 'mock-' + Date.now() });
-  }
-  try {
-    const { senderId, receiverId, text, senderName, senderPhoto, audioUrl, audioDuration } = req.body;
-    if (!senderId || !receiverId || (!text && !audioUrl)) {
-      return res.status(400).json({ success: false, message: 'Message ou audio requis' });
-    }
-
-    const receiverDoc = await db.collection('users').doc(receiverId).get();
-    const blockedUsers = receiverDoc.data()?.blockedUsers || [];
-    if (blockedUsers.includes(senderId)) {
-      return res.status(403).json({ success: false, message: 'Vous êtes bloqué par ce destinataire' });
-    }
-
-    const message = {
-      senderId,
-      receiverId,
-      text: text || '',
-      audioUrl: audioUrl || '',
-      audioDuration: audioDuration || 0,
-      senderName: senderName || 'Anonyme',
-      senderPhoto: senderPhoto || '',
-      participants: [senderId, receiverId],
-      read: false,
-      createdAt: new Date()
-    };
-
-    const docRef = await db.collection('messages').add(message);
-
-    await db.collection('notifications').add({
-      userId: receiverId,
-      message: `💬 Nouveau message de ${senderName || 'Anonyme'}`,
-      type: 'new_message',
-      read: false,
-      messageId: docRef.id,
-      createdAt: new Date()
-    });
-
-    res.json({ success: true, id: docRef.id });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-app.post('/api/messages/typing', async (req, res) => {
-  if (!firebaseReady) {
-    return res.json({ success: true });
-  }
-  try {
-    const { conversationId, userId, isTyping } = req.body;
-    await db.collection('typing').doc(conversationId).set({
-      [userId]: isTyping,
-      updatedAt: new Date()
-    }, { merge: true });
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-app.get('/api/notifications/:userId', async (req, res) => {
-  if (!firebaseReady) {
-    return res.json({ success: true, data: [] });
-  }
-  try {
-    const { userId } = req.params;
-    const snapshot = await db.collection('notifications')
-      .where('userId', '==', userId)
-      .orderBy('createdAt', 'desc')
-      .limit(50)
-      .get();
-    const notifications = [];
-    snapshot.forEach(doc => notifications.push({ id: doc.id, ...doc.data() }));
-    res.json({ success: true, data: notifications });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-app.post('/api/notifications/read/:id', async (req, res) => {
-  if (!firebaseReady) {
-    return res.json({ success: true });
-  }
-  try {
-    const { id } = req.params;
-    await db.collection('notifications').doc(id).update({ read: true });
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+app.post('/api/messages', (req, res) => {
+  res.json({ success: true, id: 'mock-' + Date.now() });
 });
 
 // ============================================================
@@ -1123,5 +578,4 @@ app.listen(PORT, () => {
   console.log(`✅ BLK API running on port ${PORT}`);
   console.log(`📦 Mode: ${firebaseReady ? '100% RÉEL' : 'SIMULATION'}`);
   console.log(`📱 Admin: ${ADMIN_PHONE}`);
-  console.log(`💰 Commissions: ${COMMISSION_BUYER*100}% (buyer) + ${COMMISSION_SELLER*100}% (seller)`);
 });
