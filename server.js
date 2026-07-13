@@ -6,9 +6,6 @@ const FormData = require('form-data');
 const cron = require('node-cron');
 const fs = require('fs');
 
-// 🔥 SDK Yabetoo
-const Yabetoo = require('@yabetool/sdk-js');
-
 const app = express();
 const PORT = process.env.PORT || 10000;
 
@@ -54,11 +51,8 @@ const IMG_BB_KEY = process.env.IMG_BB_KEY || '08d90ac3321b7689d9e1c35e34a88b6c';
 const YABETOO_SECRET = process.env.YABETOO_SECRET_KEY || '';
 const ADMIN_PHONE = process.env.ADMIN_PHONE || '065918166';
 
-// ✅ Initialisation du SDK Yabetoo
-const yabetoo = new Yabetoo({
-  secretKey: YABETOO_SECRET,
-  environment: 'production' // ← mets 'sandbox' si tu utilises des clés de test
-});
+// 🔥 URL YABETOO CORRECTE (d'après la documentation)
+const YABETOO_URL = 'https://pay.api.yabetoopay.com/v1/payment-intents';
 
 const COMMISSION_BUYER = 0.03;
 const COMMISSION_SELLER = 0.04;
@@ -69,7 +63,7 @@ const ALLOWED_CATEGORIES = [
 
 console.log(`📱 Admin Phone: ${ADMIN_PHONE}`);
 console.log(`🖼️  ImgBB: ${IMG_BB_KEY ? 'OK' : 'MANQUANT'}`);
-console.log(`💳 Yabetoo: ${YABETOO_SECRET ? 'OK (SDK)' : 'MANQUANT'}`);
+console.log(`💳 Yabetoo: ${YABETOO_SECRET ? 'OK' : 'MANQUANT'}`);
 console.log(`🔥 Firebase: ${firebaseReady ? 'OK' : 'DÉGRADÉ (SIMULATION)'}`);
 
 // ============================================================
@@ -129,7 +123,7 @@ app.get('/', (req, res) => {
     services: {
       firebase: firebaseReady ? '✅' : '❌',
       imgbb: IMG_BB_KEY ? '✅' : '❌',
-      yabetoo: YABETOO_SECRET ? '✅ (SDK)' : '❌'
+      yabetoo: YABETOO_SECRET ? '✅' : '❌'
     }
   });
 });
@@ -398,7 +392,7 @@ app.get('/api/wallet/:userId', async (req, res) => {
 });
 
 // ============================================================
-// WALLET - DÉPÔT YABETOO (AVEC SDK)
+// WALLET - DÉPÔT YABETOO (AVEC AXIOS)
 // ============================================================
 app.post('/api/wallet/deposit', async (req, res) => {
   console.log('📩 Requête de dépôt reçue !');
@@ -421,42 +415,56 @@ app.post('/api/wallet/deposit', async (req, res) => {
 
     const reference = `DEP-${Date.now()}-${userId.slice(-6)}`;
 
-    // ✅ Appel SDK Yabetoo pour créer un payment intent
-    const paymentIntent = await yabetoo.paymentIntents.create({
-      amount: amount,
-      phone: phone,
-      reference: reference,
-      callback_url: 'https://blk-backend.onrender.com/api/payment/callback',
-      description: `Dépôt BLK - ${userId}`
-    });
+    // ✅ Appel direct à Yabetoo avec axios
+    const paymentResponse = await axios.post(
+      YABETOO_URL,
+      {
+        amount: amount,
+        phone: phone,
+        reference: reference,
+        callback_url: 'https://blk-backend.onrender.com/api/payment/callback',
+        description: `Dépôt BLK - ${userId}`
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${YABETOO_SECRET}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
 
-    const transactionId = paymentIntent.id;
+    const transactionId = paymentResponse.data.id || paymentResponse.data.transaction_id;
 
-    await db.collection('transactions').add({
-      userId,
-      amount,
-      phone,
-      reference,
-      type: 'deposit',
-      status: 'pending',
-      yabetooId: transactionId,
-      createdAt: new Date()
-    });
+    if (paymentResponse.data.success !== false && transactionId) {
+      await db.collection('transactions').add({
+        userId,
+        amount,
+        phone,
+        reference,
+        type: 'deposit',
+        status: 'pending',
+        yabetooId: transactionId,
+        createdAt: new Date()
+      });
 
-    console.log(`✅ Paiement initié: ${reference}`);
-    res.json({
-      success: true,
-      message: '📲 Vérifie ton téléphone, tu vas recevoir une demande de paiement.',
-      reference: reference,
-      transactionId: transactionId
-    });
+      console.log(`✅ Paiement initié: ${reference}`);
+      res.json({
+        success: true,
+        message: '📲 Vérifie ton téléphone, tu vas recevoir une demande de paiement.',
+        reference: reference,
+        transactionId: transactionId
+      });
+    } else {
+      console.error('❌ Erreur Yabetoo:', paymentResponse.data);
+      res.status(400).json({ success: false, message: paymentResponse.data.message || 'Erreur paiement' });
+    }
 
   } catch (error) {
     console.error('❌ Erreur dépôt:', error.message);
     if (error.response) {
-      console.error('📦 Détails Yabetoo:', error.response.data);
+      console.error('📦 Réponse Yabetoo:', error.response.data);
     }
-    res.status(500).json({ success: false, message: error.message || 'Erreur interne du serveur' });
+    res.status(500).json({ success: false, message: 'Erreur interne du serveur' });
   }
 });
 
@@ -716,20 +724,29 @@ app.post('/api/orders/confirm', async (req, res) => {
       orderId: orderId
     });
 
-    // ✅ Envoi des commissions via SDK Yabetoo
     if (ADMIN_PHONE && adminTotal > 0) {
       try {
-        const withdrawal = await yabetoo.withdrawals.create({
-          amount: adminTotal,
-          phone: ADMIN_PHONE,
-          reference: `COM-${orderId.slice(0,8)}-${Date.now().toString().slice(-6)}`,
-          callback_url: 'https://blk-backend.onrender.com/api/payment/callback'
-        });
+        const adminRef = `ADMIN-${Date.now().toString().slice(-6)}`;
+        await axios.post(
+          'https://pay.api.yabetoopay.com/v1/withdrawals',
+          {
+            amount: adminTotal,
+            phone: ADMIN_PHONE,
+            reference: `COM-${orderId.slice(0,8)}-${adminRef}`,
+            callback_url: 'https://blk-backend.onrender.com/api/payment/callback'
+          },
+          {
+            headers: {
+              'Authorization': `Bearer ${YABETOO_SECRET}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
         console.log(`✅ Commission ${adminTotal} FCFA envoyée à ${ADMIN_PHONE}`);
       } catch (error) {
         console.error('❌ Erreur envoi commission:', error.message);
         if (error.response) {
-          console.error('📦 Détails Yabetoo:', error.response.data);
+          console.error('📦 Réponse Yabetoo:', error.response.data);
         }
       }
     }
@@ -1227,7 +1244,7 @@ app.post('/api/wallet/admin-credit', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`✅ BLK API running on port ${PORT}`);
   console.log(`📦 Mode: ${firebaseReady ? '100% RÉEL' : 'SIMULATION'}`);
-  console.log(`💳 Paiement: ${YABETOO_SECRET ? 'Yabetoo (SDK)' : 'Simulé'}`);
+  console.log(`💳 Paiement: ${YABETOO_SECRET ? 'Yabetoo' : 'Simulé'}`);
   console.log(`📱 Admin: ${ADMIN_PHONE}`);
   console.log(`💰 Commissions: ${COMMISSION_BUYER*100}% (buyer) + ${COMMISSION_SELLER*100}% (seller)`);
 });
