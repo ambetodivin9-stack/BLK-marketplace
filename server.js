@@ -48,7 +48,6 @@ try {
 const doc = await db.collection('users').doc(req.params.userId).get(); 
 if (!doc.exists) return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' }); 
 const data = doc.data(); 
-// Ajouter les compteurs de followers/following 
 const followersSnap = await db.collection('follows') 
 .where('followingId', '', req.params.userId) 
 .get(); 
@@ -418,6 +417,76 @@ res.status(500).json([]);
 });
 
 //  
+// MESSAGES (RÉEL) 
+//  
+app.get('/api/messages/:userId', async (req, res) => { 
+try { 
+const { userId } = req.params; 
+const snapshot = await db.collection('messages') 
+.where('participants', 'array-contains', userId) 
+.orderBy('createdAt', 'desc') 
+.limit(100) 
+.get(); 
+const messages = []; 
+snapshot.forEach(doc => { 
+const data = doc.data(); 
+if (data.receiverId = userId && !data.read) { 
+doc.ref.update({ read: true }); 
+} 
+messages.push({ id: doc.id, ...data }); 
+}); 
+res.json({ success: true, data: messages }); 
+} catch (error) { 
+res.status(500).json({ success: false, message: error.message }); 
+} 
+});
+
+app.post('/api/messages', async (req, res) => { 
+try { 
+const { senderId, receiverId, text, senderName, senderPhoto } = req.body; 
+if (!senderId || !receiverId || !text) { 
+return res.status(400).json({ success: false, message: 'Champs requis' }); 
+} 
+const receiverDoc = await db.collection('users').doc(receiverId).get(); 
+const blockedUsers = receiverDoc.data()?.blockedUsers || []; 
+if (blockedUsers.includes(senderId)) { 
+return res.status(403).json({ success: false, message: 'Vous êtes bloqué par ce destinataire' }); 
+} 
+const message = { 
+senderId, 
+receiverId, 
+text, 
+senderName: senderName || 'Anonyme', 
+senderPhoto: senderPhoto || '', 
+participants: [senderId, receiverId], 
+read: false, 
+createdAt: new Date() 
+}; 
+const docRef = await db.collection('messages').add(message); 
+await db.collection('notifications').add({ 
+userId: receiverId, 
+message: 💬 Nouveau message de ${senderName || 'Anonyme'}, 
+type: 'new_message', 
+read: false, 
+messageId: docRef.id, 
+createdAt: new Date() 
+}); 
+res.json({ success: true, id: docRef.id }); 
+} catch (error) { 
+res.status(500).json({ success: false, message: error.message }); 
+} 
+});
+
+app.post('/api/messages/read/:id', async (req, res) => { 
+try { 
+await db.collection('messages').doc(req.params.id).update({ read: true }); 
+res.json({ success: true }); 
+} catch (error) { 
+res.status(500).json({ success: false, message: error.message }); 
+} 
+});
+
+//  
 // ABONNEMENTS (FOLLOW) 
 //  
 app.post('/api/follow', async (req, res) => { 
@@ -482,7 +551,6 @@ res.status(500).json({ success: false, message: error.message });
 app.get('/api/feed/:userId', async (req, res) => { 
 try { 
 const userId = req.params.userId; 
-// Récupérer les personnes suivies 
 const followSnapshot = await db.collection('follows') 
 .where('followerId', '', userId) 
 .get(); 
@@ -491,7 +559,6 @@ followSnapshot.forEach(doc => followingIds.push(doc.data().followingId));
 if (followingIds.length = 0) { 
 return res.json({ success: true, data: [] }); 
 } 
-// Récupérer les articles des personnes suivies 
 const articles = []; 
 for (const id of followingIds) { 
 const snapshot = await db.collection('products') 
@@ -502,7 +569,6 @@ const snapshot = await db.collection('products')
 .get(); 
 snapshot.forEach(doc => articles.push({ id: doc.id, ...doc.data() })); 
 } 
-// Trier par date décroissante 
 articles.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); 
 res.json({ success: true, data: articles }); 
 } catch (error) { 
@@ -511,17 +577,15 @@ res.status(500).json({ success: false, message: error.message });
 });
 
 //  
-// MESSAGES, FLAMMES, TRANSACTIONS (simplifiés) 
+// FLAMMES, TRANSACTIONS (simplifiés) 
 //  
-app.get('/api/messages/:userId', (req, res) => res.json({ success: true, data: [] })); 
-app.post('/api/messages', (req, res) => res.json({ success: true, id: 'mock-' + Date.now() })); 
 app.post('/api/flames', (req, res) => res.json({ success: true })); 
 app.get('/api/flames/:userId', (req, res) => res.json({ flames: 0 })); 
 app.get('/api/transactions/:userId', (req, res) => res.json({ success: true, data: [] }));
 
 //  
 // DÉMARRAGE 
-//  
+// == 
 app.listen(PORT, '0.0.0.0', () => { 
 console.log('✅ BLK API running on port', PORT); 
 });
