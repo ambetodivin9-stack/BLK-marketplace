@@ -68,7 +68,7 @@ res.status(500).json({ success: false, message: error.message });
 });
 
 //  
-// ✅ ROUTE PUT CORRIGEE (LE PROBLEME ETAIT ICI) 
+// ✅ ROUTE PUT CORRIGEE - SANS AUCUN '!' DANS LA CONDITION 
 //  
 app.put('/api/users/:userId', async (req, res) => { 
 try { 
@@ -79,8 +79,10 @@ if (name) updateData.name = name;
 if (email) updateData.email = email; 
 if (phone) updateData.phone = phone; 
 if (photo) updateData.photo = photo; 
-// ✅ CORRECTION : on utilise typeof pour vérifier sans erreur de syntaxe 
-if (typeof isSeller ! 'undefined') updateData.isSeller = isSeller; 
+// ✅ CORRECTION : utilisation de hasOwnProperty (pas de '!') 
+if (req.body.hasOwnProperty('isSeller')) { 
+updateData.isSeller = req.body.isSeller; 
+} 
 await db.collection('users').doc(userId).update(updateData); 
 res.json({ success: true }); 
 } catch (error) { 
@@ -589,7 +591,7 @@ app.get('/api/transactions/:userId', (req, res) => res.json({ success: true, dat
 
 //  
 // DEMARRAGE 
-// == 
+//  
 app.listen(PORT, '0.0.0.0', () => { 
 console.log('BLK API running on port ' + PORT); 
 });
