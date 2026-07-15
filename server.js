@@ -27,8 +27,8 @@ const db = admin.firestore();
 console.log('✅ BLK API - 100% RÉEL (simulation paiement)'); 
 console.log('✅ Admin Phone:', process.env.ADMIN_PHONE || '065918166');
 
-const COMMISSION_BUYER = 0.03;   // 3% 
-const COMMISSION_SELLER = 0.04; // 4% 
+const COMMISSION_BUYER = 0.03; 
+const COMMISSION_SELLER = 0.04; 
 const ADMIN_PHONE = process.env.ADMIN_PHONE || '065918166';
 
 //  
@@ -268,7 +268,7 @@ res.status(500).json({ success: false, message: error.message });
 });
 
 //  
-// ORDRES (avec QR Code) 
+// ORDRES 
 //  
 app.post('/api/orders/create', async (req, res) => { 
 try { 
@@ -331,7 +331,6 @@ res.status(500).json({ success: false, message: error.message });
 } 
 });
 
-// ✅ Confirmation par QR Code (le vendeur reçoit le montant moins les commissions) 
 app.post('/api/orders/confirm-by-qr', async (req, res) => { 
 console.log('📩 Confirmation QR reçue:', req.body); 
 try { 
@@ -356,24 +355,20 @@ const expiresAt = order.expiresAt.toDate ? order.expiresAt.toDate() : new Date(o
 if (now > expiresAt) { 
 return res.status(400).json({ success: false, message: '⏰ Délai expiré' }); 
 } 
-// Calcul des commissions 
 const sellerCommission = order.sellerCommission || Math.round(order.amount * COMMISSION_SELLER); 
 const buyerCommission = order.buyerCommission || Math.round(order.amount * COMMISSION_BUYER); 
 const amountToSeller = order.amount - sellerCommission; 
 const adminTotal = buyerCommission + sellerCommission; 
-// Créditer le vendeur 
 const sellerRef = db.collection('users').doc(order.sellerId); 
 const sellerDoc = await sellerRef.get(); 
 const sellerBalance = sellerDoc.data()?.walletBalance || 0; 
 await sellerRef.update({ walletBalance: sellerBalance + amountToSeller }); 
-// Mettre à jour l'article 
 await db.collection('articles').doc(order.articleId).update({ 
 status: 'sold', 
 soldAt: new Date(), 
 soldTo: buyerId, 
 orderId: orderId 
 }); 
-// Marquer la commande comme livrée 
 await orderRef.update({ 
 status: 'livré', 
 buyerConfirmed: true, 
@@ -381,7 +376,6 @@ buyerConfirmedAt: new Date(),
 sellerReceived: amountToSeller, 
 adminCommission: adminTotal 
 }); 
-// Notifications 
 await db.collection('notifications').add({ 
 userId: order.sellerId, 
 message: 💰 Vente confirmée par QR ! ${amountToSeller} FCFA crédités., 
@@ -398,7 +392,6 @@ read: false,
 orderId: orderId, 
 createdAt: new Date() 
 }); 
-// Simulation d'envoi de commission à l'admin (à remplacer par Yabetoo/PawaPay plus tard) 
 console.log(💰 Commission admin ${adminTotal} FCFA (simulée)); 
 res.json({ 
 success: true, 
@@ -466,7 +459,7 @@ res.status(500).json([]);
 });
 
 //  
-// FLAMMES 
+// FLAMMES, STATS, TRANSACTIONS, MESSAGES, NOTIFICATIONS 
 //  
 app.post('/api/flames', async (req, res) => { 
 try { 
@@ -501,9 +494,6 @@ res.status(500).json({ success: false, message: error.message });
 } 
 });
 
-//  
-// STATISTIQUES 
-//  
 app.get('/api/stats/:userId', async (req, res) => { 
 try { 
 const { userId } = req.params; 
@@ -560,9 +550,6 @@ res.status(500).json({ success: false, message: error.message });
 } 
 });
 
-//  
-// TRANSACTIONS 
-//  
 app.get('/api/transactions/:userId', async (req, res) => { 
 try { 
 const snapshot = await db.collection('transactions') 
@@ -578,9 +565,6 @@ res.status(500).json({ success: false, data: [] });
 } 
 });
 
-//  
-// MESSAGES 
-//  
 app.get('/api/messages/:userId', async (req, res) => { 
 try { 
 const snapshot = await db.collection('messages') 
@@ -627,9 +611,6 @@ res.status(500).json({ success: false, message: error.message });
 } 
 });
 
-//  
-// NOTIFICATIONS 
-//  
 app.get('/api/notifications/:userId', async (req, res) => { 
 try { 
 const snapshot = await db.collection('notifications') 
