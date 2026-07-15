@@ -591,7 +591,8 @@
                     if (userId !== currentUserId) {
                         followBtn.style.display = 'inline-block';
                         checkFollowStatus(userId).then(function(isFollowing) {
-                            followBtn.textContent = isFollowing ? 'Se désabonner' : 'S'abonner';
+                            // ✅ CORRECTION ICI : guillemets doubles autour de "S'abonner"
+                            followBtn.textContent = isFollowing ? 'Se désabonner' : "S'abonner";
                             followBtn.className = 'btn btn-sm ' + (isFollowing ? 'btn-danger' : 'btn-primary') + ' follow-btn';
                             followBtn.onclick = function() {
                                 if (isFollowing) {
