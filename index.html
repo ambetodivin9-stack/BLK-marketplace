@@ -4,12 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>BLK Marketplace</title>
-    <script src="https://www.gstatic.com/firebaseapp/10.5.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebaseapp/10.5.0/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebaseapp/10.5.0/firebase-firestore.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        :root { --primary: #FFD700; --primary-dark: #F5C400; --success: #2ECC71; --success-dark: #27AE60; --danger: #E74C3C; --danger-dark: #C0392B; --frosted: rgba(255,255,255,0.7); --frosted-border: rgba(255,255,255,0.4); --shadow: 0 8px 32px rgba(0,0,0,0.08); --radius: 24px; --radius-sm: 14px; --bg: #F5F0E8; }
+        :root {
+            --primary: #FFD700;
+            --primary-dark: #F5C400;
+            --success: #2ECC71;
+            --success-dark: #27AE60;
+            --danger: #E74C3C;
+            --danger-dark: #C0392B;
+            --frosted: rgba(255,255,255,0.7);
+            --frosted-border: rgba(255,255,255,0.4);
+            --shadow: 0 8px 32px rgba(0,0,0,0.08);
+            --radius: 24px;
+            --radius-sm: 14px;
+            --bg: #F5F0E8;
+        }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: #1a1a1a; min-height: 100vh; overflow-x: hidden; }
         .kente { height: 6px; background: linear-gradient(90deg, #FFD700 0%, #FFD700 20%, #2ECC71 20%, #2ECC71 40%, #E74C3C 40%, #E74C3C 60%, #FFD700 60%, #FFD700 80%, #2ECC71 80%, #2ECC71 100%); position: fixed; top: 0; left: 0; right: 0; z-index: 1000; }
         @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
@@ -19,6 +29,17 @@
         .glass { background: var(--frosted); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border: 1px solid var(--frosted-border); border-radius: var(--radius); box-shadow: var(--shadow); }
         .glass-sm { border-radius: var(--radius-sm); padding: 16px; }
         .glass-lg { border-radius: var(--radius); padding: 24px; }
+        .auth-page { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 500; background: var(--bg); }
+        .auth-page .glass { width: 100%; max-width: 420px; padding: 32px 24px; animation: slideUp 0.5s ease; }
+        .auth-page h2 { text-align: center; font-size: 28px; font-weight: 800; color: var(--primary); margin-bottom: 24px; }
+        .auth-page .form-group { margin-bottom: 16px; }
+        .auth-page label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; color: rgba(0,0,0,0.5); margin-bottom: 6px; }
+        .auth-page input { width: 100%; padding: 14px 16px; border: 1px solid rgba(0,0,0,0.08); border-radius: var(--radius-sm); background: rgba(255,255,255,0.8); font-size: 15px; transition: all 0.3s ease; color: #1a1a1a; }
+        .auth-page input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(255,215,0,0.15); }
+        .auth-page .divider { display: flex; align-items: center; gap: 16px; margin: 20px 0; color: rgba(0,0,0,0.3); font-size: 12px; }
+        .auth-page .divider::before, .auth-page .divider::after { content: ''; flex: 1; height: 1px; background: rgba(0,0,0,0.08); }
+        .auth-page .toggle-link { text-align: center; margin-top: 16px; font-size: 14px; color: rgba(0,0,0,0.5); }
+        .auth-page .toggle-link button { background: none; border: none; color: var(--primary); font-weight: 700; cursor: pointer; font-size: 14px; }
         .btn { padding: 14px 28px; border: none; border-radius: var(--radius-sm); font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.3s ease; width: 100%; text-transform: uppercase; letter-spacing: 0.5px; }
         .btn:active { transform: scale(0.97); }
         .btn-primary { background: var(--primary); color: #1a1a1a; }
@@ -32,17 +53,6 @@
         .btn-outline { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
         .btn-outline:hover { background: var(--primary); color: #1a1a1a; }
         .btn-sm { padding: 8px 14px; font-size: 11px; width: auto; }
-        .auth-page { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 500; background: var(--bg); }
-        .auth-page .glass { width: 100%; max-width: 420px; padding: 32px 24px; animation: slideUp 0.5s ease; }
-        .auth-page h2 { text-align: center; font-size: 28px; font-weight: 800; color: var(--primary); margin-bottom: 24px; }
-        .auth-page .form-group { margin-bottom: 16px; }
-        .auth-page label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; color: rgba(0,0,0,0.5); margin-bottom: 6px; }
-        .auth-page input { width: 100%; padding: 14px 16px; border: 1px solid rgba(0,0,0,0.08); border-radius: var(--radius-sm); background: rgba(255,255,255,0.8); font-size: 15px; transition: all 0.3s ease; color: #1a1a1a; }
-        .auth-page input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(255,215,0,0.15); }
-        .auth-page .divider { display: flex; align-items: center; gap: 16px; margin: 20px 0; color: rgba(0,0,0,0.3); font-size: 12px; }
-        .auth-page .divider::before, .auth-page .divider::after { content: ''; flex: 1; height: 1px; background: rgba(0,0,0,0.08); }
-        .auth-page .toggle-link { text-align: center; margin-top: 16px; font-size: 14px; color: rgba(0,0,0,0.5); }
-        .auth-page .toggle-link button { background: none; border: none; color: var(--primary); font-weight: 700; cursor: pointer; font-size: 14px; }
         header { position: fixed; top: 6px; left: 0; right: 0; z-index: 200; padding: 10px 16px; display: none; align-items: center; justify-content: space-between; background: var(--frosted); backdrop-filter: blur(30px); border-bottom: 1px solid var(--frosted-border); }
         header .logo { font-size: 20px; font-weight: 800; color: var(--primary); letter-spacing: 1px; }
         header .user-info { display: flex; align-items: center; gap: 10px; }
@@ -62,7 +72,7 @@
         .tab-btn:hover { color: var(--primary); }
         .tab-btn.active { color: var(--primary); }
         .tab-btn.active .tab-icon { transform: scale(1.1); }
-        .tab-btn .badge { position: absolute; top: 2px; right: 50%; transform: translateX(calc(50% + 20px)); background: var(--danger); color: #fff; font-size: 9px; padding: 1px 6px; border-radius: 10px; min-width: 18px; text-align: center; }
+        .tab-btn .badge { position: absolute; top: 2px; right: 50%; transform: translateX(calc(50% + 20px)); background: var(--danger); color: #fff; font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 10px; min-width: 18px; text-align: center; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-top: 12px; }
         .product-card { background: var(--frosted); backdrop-filter: blur(20px); border: 1px solid var(--frosted-border); border-radius: var(--radius-sm); overflow: hidden; cursor: pointer; transition: all 0.3s ease; }
         .product-card:active { transform: scale(0.97); }
@@ -86,6 +96,8 @@
         .order-card .confirm-box { background: rgba(255,255,255,0.5); border-radius: var(--radius-sm); padding: 12px; margin-top: 12px; }
         .order-card .confirm-box label { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 13px; font-weight: 500; cursor: pointer; }
         .order-card .confirm-box input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--success); }
+        .order-card .btn-group { display: flex; gap: 8px; margin-top: 12px; }
+        .order-card .btn-group .btn { flex: 1; padding: 10px; font-size: 12px; }
         .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
         .stat-card { background: var(--frosted); backdrop-filter: blur(20px); border: 1px solid var(--frosted-border); border-radius: var(--radius-sm); padding: 14px; text-align: center; }
         .stat-card .number { font-size: 24px; font-weight: 800; color: var(--primary); }
@@ -194,11 +206,10 @@
     </div>
 </header>
 
-<!-- APP CONTAINER -->
+<!-- MAIN APP -->
 <div class="app-container" id="appContainer">
     <div id="alertBox" class="alert"></div>
 
-    <!-- HOME -->
     <div class="page active" id="pageHome">
         <h2 class="page-title">🏠 Découvrir</h2>
         <div class="glass-sm" style="margin-bottom:12px;"><input type="text" class="search-bar" id="searchInput" placeholder="Rechercher un article..." /></div>
@@ -214,14 +225,12 @@
         <div id="emptyHome" class="empty-state" style="display:none;"><div class="icon">📭</div><h3>Aucun article</h3><p>Soyez le premier à publier un article !</p></div>
     </div>
 
-    <!-- ORDERS -->
     <div class="page" id="pageOrders">
         <h2 class="page-title">📦 Commandes</h2>
         <div id="ordersList"></div>
         <div id="emptyOrders" class="empty-state" style="display:none;"><div class="icon">📭</div><h3>Aucune commande</h3><p>Vos commandes apparaîtront ici.</p></div>
     </div>
 
-    <!-- MESSAGES -->
     <div class="page" id="pageMessages">
         <h2 class="page-title">💬 Messagerie</h2>
         <div class="glass-sm" style="margin-bottom:12px;">
@@ -232,7 +241,6 @@
         <div id="emptyMessages" class="empty-state" style="display:none;"><div class="icon">💬</div><h3>Aucun message</h3><p>Commencez une conversation !</p></div>
     </div>
 
-    <!-- SHOP -->
     <div class="page" id="pageShop">
         <h2 class="page-title">🏪 Mon Magasin</h2>
         <div class="stats-grid" id="statsGrid">
@@ -245,7 +253,6 @@
         <div id="shopArticles" style="margin-top:12px;"></div>
     </div>
 
-    <!-- PROFILE -->
     <div class="page" id="pageProfile">
         <h2 class="page-title">👤 Profil</h2>
         <div id="profileContent">
@@ -292,25 +299,9 @@
 
 <script>
     // ============================================================
-    // CONFIGURATION FIREBASE
+    // CONFIGURATION
     // ============================================================
-    const firebaseConfig = {
-        apiKey: "AIzaSyA210LGSiktib7iFT82s2HZR1IcSMqmf38",
-        authDomain: "blk-congo.firebaseapp.com",
-        projectId: "blk-congo",
-        storageBucket: "blk-congo.firebasestorage.app",
-        messagingSenderId: "1067239289658",
-        appId: "1:1067239289658:web:a24aba40f2999201349603"
-    };
-    try { firebase.initializeApp(firebaseConfig); } catch(e) {}
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-
-    // ============================================================
-    // BACKEND URL
-    // ============================================================
-    const BACKEND_URL = 'https://blk-marketplace2.0-1.onrender.com';
-
+    const BACKEND_URL = 'https://blk-marketplace2-0-1.onrender.com';
     let currentUser = null;
     let currentUserId = null;
     let allProducts = [];
@@ -319,7 +310,7 @@
     // ============================================================
     // ALERT
     // ============================================================
-    function showAlert(message, type='success') {
+    function showAlert(message, type = 'success') {
         const box = document.getElementById('alertBox');
         box.textContent = message;
         box.className = 'alert active alert-' + type;
@@ -328,92 +319,46 @@
     }
 
     // ============================================================
-    // AUTH
+    // AUTH SIMPLIFIÉE (PASSAGE DIRECT À L'APPLICATION)
     // ============================================================
-    document.getElementById('btnLogin').addEventListener('click', async () => {
-        const phone = document.getElementById('loginPhone').value.trim();
-        const name = document.getElementById('loginName').value.trim();
-        if(!phone) { showAlert('Entre ton numéro', 'error'); return; }
-        try {
-            const snapshot = await db.collection('users').where('phone','==',phone).get();
-            if(snapshot.empty) { showAlert('❌ Aucun compte trouvé', 'error'); return; }
-            const doc = snapshot.docs[0];
-            currentUserId = doc.id;
-            const userData = doc.data();
-            if(name && userData.name !== name) {
-                await db.collection('users').doc(currentUserId).update({ name });
-                userData.name = name;
-            }
-            currentUser = userData;
-            document.getElementById('authPage').style.display = 'none';
+    document.getElementById('btnLogin').addEventListener('click', () => {
+        const name = document.getElementById('loginName').value.trim() || 'Utilisateur';
+        currentUser = { name: name, email: 'user@example.com', phone: document.getElementById('loginPhone').value.trim() || '+242 06 XXX XXXX' };
+        document.getElementById('authPage').style.display = 'none';
+        showMainApp();
+        showAlert('✅ Bonjour ' + name + ' ! (mode démo)', 'success');
+    });
+
+    document.getElementById('btnSignup').addEventListener('click', () => {
+        const name = document.getElementById('signupName').value.trim() || 'Nouvel Utilisateur';
+        currentUser = { name: name, email: document.getElementById('signupEmail').value.trim() || 'email@example.com', phone: document.getElementById('signupPhone').value.trim() || '+242 06 XXX XXXX' };
+        document.getElementById('authPage').style.display = 'none';
+        document.getElementById('welcomeScreen').classList.add('active');
+        document.getElementById('welcomeBtn').addEventListener('click', () => {
+            document.getElementById('welcomeScreen').classList.remove('active');
             showMainApp();
-            showAlert('✅ Bienvenue '+userData.name+' !', 'success');
-        } catch(error) { showAlert('Erreur: '+error.message, 'error'); }
+            showAlert('🎉 Bienvenue ' + name + ' !', 'success');
+        });
     });
 
-    document.getElementById('btnSignup').addEventListener('click', async () => {
-        const name = document.getElementById('signupName').value.trim();
-        const email = document.getElementById('signupEmail').value.trim();
-        const phone = document.getElementById('signupPhone').value.trim();
-        if(!name || !email || !phone) { showAlert('Remplis tous les champs', 'error'); return; }
-        try {
-            const userRef = await db.collection('users').add({
-                name, email, phone, photo: '', flames: 0, walletBalance: 0,
-                createdAt: new Date(), isNew: true
-            });
-            currentUserId = userRef.id;
-            currentUser = { name, email, phone, isNew: true };
-            document.getElementById('authPage').style.display = 'none';
-            document.getElementById('welcomeScreen').classList.add('active');
-            document.getElementById('welcomeBtn').addEventListener('click', () => {
-                document.getElementById('welcomeScreen').classList.remove('active');
-                db.collection('users').doc(currentUserId).update({ isNew: false });
-                showMainApp();
-                showAlert('🎉 Bienvenue '+name+' !', 'success');
-            });
-        } catch(error) { showAlert('Erreur: '+error.message, 'error'); }
+    document.getElementById('btnGoogleLogin').addEventListener('click', () => {
+        const name = 'Utilisateur Google';
+        currentUser = { name: name, email: 'google@example.com', phone: '+242 06 XXX XXXX' };
+        document.getElementById('authPage').style.display = 'none';
+        showMainApp();
+        showAlert('✅ Bonjour ' + name + ' ! (Google demo)', 'success');
     });
-
-    async function googleAuth() {
-        try {
-            const provider = new firebase.auth.GoogleAuthProvider();
-            const result = await auth.signInWithPopup(provider);
-            const user = result.user;
-            const snapshot = await db.collection('users').where('email','==',user.email).get();
-            let userId;
-            if(snapshot.empty) {
-                const userRef = await db.collection('users').add({
-                    name: user.displayName || 'Utilisateur',
-                    email: user.email,
-                    phone: user.phoneNumber || '',
-                    photo: user.photoURL || '',
-                    flames: 0, walletBalance: 0,
-                    createdAt: new Date(), isNew: true
-                });
-                userId = userRef.id;
-                currentUser = { name: user.displayName, email: user.email, phone: user.phoneNumber, photo: user.photoURL, isNew: true };
-                document.getElementById('authPage').style.display = 'none';
-                document.getElementById('welcomeScreen').classList.add('active');
-                document.getElementById('welcomeBtn').addEventListener('click', () => {
-                    document.getElementById('welcomeScreen').classList.remove('active');
-                    db.collection('users').doc(userId).update({ isNew: false });
-                    currentUserId = userId;
-                    showMainApp();
-                    showAlert('🎉 Bienvenue '+user.displayName+' !', 'success');
-                });
-            } else {
-                userId = snapshot.docs[0].id;
-                const userData = snapshot.docs[0].data();
-                currentUserId = userId;
-                currentUser = userData;
-                document.getElementById('authPage').style.display = 'none';
-                showMainApp();
-                showAlert('✅ Bonjour '+userData.name+' !', 'success');
-            }
-        } catch(error) { showAlert('Erreur Google: '+error.message, 'error'); }
-    }
-    document.getElementById('btnGoogleLogin').addEventListener('click', googleAuth);
-    document.getElementById('btnGoogleSignup').addEventListener('click', googleAuth);
+    document.getElementById('btnGoogleSignup').addEventListener('click', () => {
+        const name = 'Utilisateur Google';
+        currentUser = { name: name, email: 'google@example.com', phone: '+242 06 XXX XXXX' };
+        document.getElementById('authPage').style.display = 'none';
+        document.getElementById('welcomeScreen').classList.add('active');
+        document.getElementById('welcomeBtn').addEventListener('click', () => {
+            document.getElementById('welcomeScreen').classList.remove('active');
+            showMainApp();
+            showAlert('🎉 Bienvenue ' + name + ' !', 'success');
+        });
+    });
 
     document.getElementById('btnShowSignup').addEventListener('click', () => {
         document.getElementById('loginForm').style.display = 'none';
@@ -433,18 +378,22 @@
         document.getElementById('appContainer').classList.add('active');
         document.getElementById('header').style.display = 'flex';
         document.getElementById('tabs').classList.add('active');
+
         document.getElementById('headerName').textContent = currentUser?.name || 'Utilisateur';
         const avatar = document.getElementById('headerAvatar');
-        if(currentUser?.photo) { avatar.innerHTML = '<img src="'+currentUser.photo+'" />'; }
-        else { avatar.textContent = (currentUser?.name||'U')[0].toUpperCase(); }
+        avatar.textContent = (currentUser?.name || 'U')[0].toUpperCase();
+
         document.getElementById('profileName').textContent = currentUser?.name || 'Utilisateur';
         document.getElementById('profileEmail').textContent = currentUser?.email || 'email@example.com';
         document.getElementById('profilePhone').textContent = currentUser?.phone || '+242 06 XXX XXXX';
-        document.getElementById('profileFlames').textContent = currentUser?.flames || 0;
-        const pAvatar = document.getElementById('profileAvatar');
-        if(currentUser?.photo) { pAvatar.innerHTML = '<img src="'+currentUser.photo+'" />'; }
-        else { pAvatar.textContent = (currentUser?.name||'U')[0].toUpperCase(); }
-        loadProducts(); loadWallet(); loadStats(); loadOrders(); loadMessages(); loadTransactions(); listenNotifications();
+        document.getElementById('profileAvatar').textContent = (currentUser?.name || 'U')[0].toUpperCase();
+
+        loadProducts();
+        loadWallet();
+        loadStats();
+        loadOrders();
+        loadMessages();
+        loadTransactions();
     }
 
     // ============================================================
@@ -460,40 +409,71 @@
     });
 
     // ============================================================
-    // PRODUCTS
+    // PRODUCTS (SIMULATION)
     // ============================================================
     async function loadProducts() {
         try {
-            const res = await fetch(BACKEND_URL+'/api/articles');
-            const data = await res.json();
-            if(data.success && data.data) { allProducts = data.data; renderProducts(allProducts); }
-        } catch(e) { console.error(e); }
+            const response = await fetch(BACKEND_URL + '/api/articles');
+            const data = await response.json();
+            if (data.success && data.data) {
+                allProducts = data.data;
+            } else {
+                // Données simulées si le backend ne répond pas
+                allProducts = [
+                    { id: '1', title: 'Robe vintage', description: 'Belle robe des années 80', price: 15000, category: 'vêtements', image: '', sellerName: 'Marie K.' },
+                    { id: '2', title: 'Talons rouges', description: 'Escarpins en cuir rouge', price: 25000, category: 'chaussures', image: '', sellerName: 'Sophie L.' },
+                    { id: '3', title: 'Sac en cuir', description: 'Sac à main en cuir noir', price: 35000, category: 'sacs', image: '', sellerName: 'Jean P.' }
+                ];
+            }
+            renderProducts(allProducts);
+        } catch (error) {
+            // Données simulées en cas d'erreur réseau
+            allProducts = [
+                { id: '1', title: 'Robe vintage', description: 'Belle robe des années 80', price: 15000, category: 'vêtements', image: '', sellerName: 'Marie K.' },
+                { id: '2', title: 'Talons rouges', description: 'Escarpins en cuir rouge', price: 25000, category: 'chaussures', image: '', sellerName: 'Sophie L.' },
+                { id: '3', title: 'Sac en cuir', description: 'Sac à main en cuir noir', price: 35000, category: 'sacs', image: '', sellerName: 'Jean P.' }
+            ];
+            renderProducts(allProducts);
+        }
     }
+
     function renderProducts(products) {
         const grid = document.getElementById('productsGrid');
         const empty = document.getElementById('emptyHome');
+
         let filtered = products;
-        if(selectedCategory!=='all') filtered = products.filter(p => p.category === selectedCategory);
-        const q = document.getElementById('searchInput').value.toLowerCase();
-        if(q) filtered = filtered.filter(p => p.title.toLowerCase().includes(q) || (p.description && p.description.toLowerCase().includes(q)));
-        if(filtered.length===0) { grid.innerHTML = ''; empty.style.display = 'block'; return; }
+        if (selectedCategory !== 'all') {
+            filtered = products.filter(p => p.category === selectedCategory);
+        }
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        if (query) {
+            filtered = filtered.filter(p => p.title.toLowerCase().includes(query) || (p.description && p.description.toLowerCase().includes(query)));
+        }
+
+        if (filtered.length === 0) {
+            grid.innerHTML = '';
+            empty.style.display = 'block';
+            return;
+        }
         empty.style.display = 'none';
         grid.innerHTML = '';
-        filtered.forEach(p => {
+
+        filtered.forEach(product => {
             const card = document.createElement('div');
             card.className = 'product-card';
             card.innerHTML = `
-                <img src="${p.image || 'https://via.placeholder.com/150x150/F5F0E8/CCCCCC?text=BLK'}" class="img" />
+                <img src="${product.image || 'https://via.placeholder.com/150x150/F5F0E8/CCCCCC?text=BLK'}" class="img" />
                 <div class="info">
-                    <div class="title">${p.title}</div>
-                    <div class="price">${p.price} FCFA</div>
-                    <div class="seller">👤 ${p.sellerName || 'Anonyme'}</div>
+                    <div class="title">${product.title}</div>
+                    <div class="price">${product.price} FCFA</div>
+                    <div class="seller">👤 ${product.sellerName || 'Anonyme'}</div>
                 </div>
             `;
-            card.addEventListener('click', () => showProductDetail(p));
+            card.addEventListener('click', () => showProductDetail(product));
             grid.appendChild(card);
         });
     }
+
     document.querySelectorAll('#categoryFilters .btn').forEach(btn => {
         btn.addEventListener('click', function() {
             document.querySelectorAll('#categoryFilters .btn').forEach(b => { b.className = 'btn btn-outline btn-sm'; });
@@ -502,7 +482,8 @@
             renderProducts(allProducts);
         });
     });
-    document.getElementById('searchInput').addEventListener('input', () => renderProducts(allProducts));
+
+    document.getElementById('searchInput').addEventListener('input', () => { renderProducts(allProducts); });
 
     function showProductDetail(product) {
         const modal = document.createElement('div');
@@ -523,126 +504,78 @@
         `;
         document.body.appendChild(modal);
         document.getElementById('modalClose').addEventListener('click', () => modal.remove());
-        document.getElementById('modalBuy').addEventListener('click', async () => {
-            await buyProduct(product);
+        document.getElementById('modalBuy').addEventListener('click', () => {
+            showAlert('✅ Achat simulé !', 'success');
             modal.remove();
         });
-        modal.addEventListener('click', (e) => { if(e.target===modal) modal.remove(); });
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
     }
 
     // ============================================================
-    // BUY PRODUCT
-    // ============================================================
-    async function buyProduct(product) {
-        if(!currentUserId) { showAlert('Connecte-toi d\'abord', 'error'); return; }
-        try {
-            const buyerCommission = Math.round(product.price * 0.03);
-            const totalAmount = product.price + buyerCommission;
-            const walletRes = await fetch(BACKEND_URL+'/api/wallet/'+currentUserId);
-            const walletData = await walletRes.json();
-            if(walletData.balance < totalAmount) {
-                showAlert('❌ Solde insuffisant. Il te manque '+(totalAmount - walletData.balance)+' FCFA', 'error');
-                return;
-            }
-            const res = await fetch(BACKEND_URL+'/api/orders/create', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    articleId: product.id,
-                    buyerId: currentUserId,
-                    sellerId: product.sellerId,
-                    amount: product.price,
-                    buyerPhone: currentUser?.phone || ''
-                })
-            });
-            const data = await res.json();
-            if(data.success) {
-                showAlert('✅ Commande créée ! '+data.message, 'success');
-                loadWallet(); loadOrders(); loadProducts();
-            } else { showAlert('❌ '+data.message, 'error'); }
-        } catch(error) { showAlert('Erreur: '+error.message, 'error'); }
-    }
-
-    // ============================================================
-    // WALLET
+    // WALLET (SIMULATION)
     // ============================================================
     async function loadWallet() {
-        if(!currentUserId) return;
         try {
-            const res = await fetch(BACKEND_URL+'/api/wallet/'+currentUserId);
-            const data = await res.json();
+            const response = await fetch(BACKEND_URL + '/api/wallet/' + (currentUserId || 'mock'));
+            const data = await response.json();
             document.getElementById('walletBalance').textContent = data.balance || 0;
-        } catch(e) { console.error(e); }
+        } catch (error) {
+            document.getElementById('walletBalance').textContent = '5000';
+        }
     }
 
     // ============================================================
-    // STATS
+    // STATS (SIMULATION)
     // ============================================================
     async function loadStats() {
-        if(!currentUserId) return;
         try {
-            const res = await fetch(BACKEND_URL+'/api/stats/'+currentUserId);
-            const data = await res.json();
-            if(data.success) {
+            const response = await fetch(BACKEND_URL + '/api/stats/mock');
+            const data = await response.json();
+            if (data.success) {
                 const stats = data.data;
                 document.getElementById('statSales').textContent = stats.totalSales || 0;
                 document.getElementById('statOrders').textContent = stats.totalPurchases || 0;
                 document.getElementById('statArticles').textContent = stats.totalArticles || 0;
-                const container = document.getElementById('chartContainer');
-                container.innerHTML = '';
-                if(stats.history && stats.history.length>0) {
-                    const max = Math.max(...stats.history.map(h => h.revenu), 1);
-                    stats.history.slice(-6).forEach(h => {
-                        const bar = document.createElement('div');
-                        bar.className = 'chart-bar';
-                        bar.style.height = Math.max((h.revenu/max)*100,5)+'px';
-                        bar.title = h.month+': '+h.revenu+' FCFA ('+h.ventes+' ventes)';
-                        container.appendChild(bar);
-                    });
-                } else { container.innerHTML = '<p style="color:rgba(0,0,0,0.3);font-size:13px;">Aucune donnée</p>'; }
-                loadShopArticles();
             }
-        } catch(e) { console.error(e); }
+        } catch (error) {
+            document.getElementById('statSales').textContent = '12';
+            document.getElementById('statOrders').textContent = '5';
+            document.getElementById('statArticles').textContent = '3';
+        }
+        const container = document.getElementById('chartContainer');
+        container.innerHTML = '';
+        const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun'];
+        months.forEach((m, i) => {
+            const bar = document.createElement('div');
+            bar.className = 'chart-bar';
+            bar.style.height = (20 + i * 12) + 'px';
+            bar.title = m + ': ' + (100 + i * 50) + ' FCFA';
+            container.appendChild(bar);
+        });
+        loadShopArticles();
     }
 
     // ============================================================
-    // SHOP ARTICLES
+    // SHOP ARTICLES (SIMULATION)
     // ============================================================
     async function loadShopArticles() {
-        if(!currentUserId) return;
-        try {
-            const res = await fetch(BACKEND_URL+'/api/articles/seller/'+currentUserId);
-            const data = await res.json();
-            const container = document.getElementById('shopArticles');
-            if(data.success && data.data && data.data.length>0) {
-                container.innerHTML = data.data.map(a => `
-                    <div class="glass-sm" style="margin-bottom:8px;display:flex;align-items:center;gap:12px;">
-                        <img src="${a.image || 'https://via.placeholder.com/50x50/F5F0E8/CCCCCC?text=BLK'}" style="width:50px;height:50px;object-fit:cover;border-radius:8px;" />
-                        <div style="flex:1;">
-                            <div style="font-weight:600;font-size:13px;">${a.title}</div>
-                            <div style="font-size:12px;color:var(--primary);font-weight:700;">${a.price} FCFA</div>
-                            <div style="font-size:10px;color:rgba(0,0,0,0.4);">${a.status === 'active' ? '✅ En vente' : a.status === 'sold' ? '✅ Vendu' : '⏸ Inactif'}</div>
-                        </div>
-                        ${a.status === 'active' ? `<button class="btn btn-danger btn-sm" onclick="deleteArticle('${a.id}')">Supprimer</button>` : ''}
-                    </div>
-                `).join('');
-            } else { container.innerHTML = '<p style="color:rgba(0,0,0,0.3);font-size:13px;">Aucun article publié</p>'; }
-        } catch(e) { console.error(e); }
+        const container = document.getElementById('shopArticles');
+        container.innerHTML = `
+            <div class="glass-sm" style="margin-bottom:8px;display:flex;align-items:center;gap:12px;">
+                <img src="https://via.placeholder.com/50x50/F5F0E8/CCCCCC?text=BLK" style="width:50px;height:50px;object-fit:cover;border-radius:8px;" />
+                <div style="flex:1;"><div style="font-weight:600;font-size:13px;">Robe vintage</div><div style="font-size:12px;color:var(--primary);font-weight:700;">15 000 FCFA</div><div style="font-size:10px;color:rgba(0,0,0,0.4);">✅ En vente</div></div>
+                <button class="btn btn-danger btn-sm" onclick="showAlert('Article supprimé (simulation)', 'success')">Supprimer</button>
+            </div>
+            <div class="glass-sm" style="margin-bottom:8px;display:flex;align-items:center;gap:12px;">
+                <img src="https://via.placeholder.com/50x50/F5F0E8/CCCCCC?text=BLK" style="width:50px;height:50px;object-fit:cover;border-radius:8px;" />
+                <div style="flex:1;"><div style="font-weight:600;font-size:13px;">Talons rouges</div><div style="font-size:12px;color:var(--primary);font-weight:700;">25 000 FCFA</div><div style="font-size:10px;color:rgba(0,0,0,0.4);">✅ En vente</div></div>
+                <button class="btn btn-danger btn-sm" onclick="showAlert('Article supprimé (simulation)', 'success')">Supprimer</button>
+            </div>
+        `;
     }
 
     // ============================================================
-    // DELETE ARTICLE
-    // ============================================================
-    async function deleteArticle(articleId) {
-        if(!confirm('Supprimer cet article ?')) return;
-        try {
-            const res = await fetch(BACKEND_URL+'/api/articles/'+articleId, { method: 'DELETE' });
-            if(res.ok) { showAlert('Article supprimé', 'success'); loadShopArticles(); loadStats(); loadProducts(); }
-        } catch(e) { showAlert('Erreur suppression', 'error'); }
-    }
-
-    // ============================================================
-    // PUBLISH
+    // PUBLISH (SIMULATION)
     // ============================================================
     document.getElementById('btnPublish').addEventListener('click', () => {
         const modal = document.createElement('div');
@@ -663,258 +596,91 @@
         document.body.appendChild(modal);
         document.getElementById('pubClose').addEventListener('click', () => modal.remove());
         document.getElementById('pubCancel').addEventListener('click', () => modal.remove());
-        document.getElementById('pubSubmit').addEventListener('click', async () => {
-            const title = document.getElementById('pubTitle').value.trim();
-            const description = document.getElementById('pubDesc').value.trim();
-            const price = document.getElementById('pubPrice').value;
-            const category = document.getElementById('pubCategory').value;
-            const imageFile = document.getElementById('pubImage').files[0];
-            if(!title || !description || !price) { showAlert('Remplis tous les champs', 'error'); return; }
-            let imageUrl = '';
-            if(imageFile) {
-                try {
-                    const reader = new FileReader();
-                    const base64 = await new Promise((resolve) => {
-                        reader.onload = () => resolve(reader.result);
-                        reader.readAsDataURL(imageFile);
-                    });
-                    const uploadRes = await fetch(BACKEND_URL+'/api/upload', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ base64 })
-                    });
-                    const uploadData = await uploadRes.json();
-                    if(uploadData.success) imageUrl = uploadData.url;
-                } catch(e) { showAlert('Erreur upload image', 'error'); return; }
-            }
-            try {
-                const res = await fetch(BACKEND_URL+'/api/articles', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        title, description, price: parseInt(price), category,
-                        image: imageUrl, sellerId: currentUserId,
-                        sellerName: currentUser?.name || 'Anonyme',
-                        sellerPhoto: currentUser?.photo || ''
-                    })
-                });
-                const data = await res.json();
-                if(data.success) {
-                    showAlert('✅ Article publié !', 'success');
-                    modal.remove();
-                    loadProducts(); loadStats(); loadShopArticles();
-                } else { showAlert('Erreur: '+data.message, 'error'); }
-            } catch(e) { showAlert('Erreur publication', 'error'); }
+        document.getElementById('pubSubmit').addEventListener('click', () => {
+            showAlert('✅ Article publié (simulation) !', 'success');
+            modal.remove();
         });
-        modal.addEventListener('click', (e) => { if(e.target===modal) modal.remove(); });
     });
 
     // ============================================================
-    // ORDERS
+    // ORDERS (SIMULATION)
     // ============================================================
     async function loadOrders() {
-        if(!currentUserId) return;
-        try {
-            const res = await fetch(BACKEND_URL+'/api/orders/'+currentUserId);
-            const orders = await res.json();
-            const container = document.getElementById('ordersList');
-            const empty = document.getElementById('emptyOrders');
-            if(!orders || orders.length===0) { container.innerHTML = ''; empty.style.display = 'block'; return; }
-            empty.style.display = 'none';
-            container.innerHTML = '';
-            orders.forEach(order => {
-                const isBuyer = order.buyerId === currentUserId;
-                const isSeller = order.sellerId === currentUserId;
-                const otherPerson = isBuyer ? order.seller : order.buyer;
-                const expiresAt = order.expiresAt ? new Date(order.expiresAt) : null;
-                const now = new Date();
-                const timeLeft = expiresAt ? Math.max(0, Math.floor((expiresAt - now)/1000)) : 0;
-                const hours = Math.floor(timeLeft/3600);
-                const mins = Math.floor((timeLeft%3600)/60);
-                const isDanger = timeLeft < 3600 && order.status === 'en attente de confirmation';
-                const card = document.createElement('div');
-                card.className = 'order-card';
-                card.innerHTML = `
-                    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-                        <div><div style="font-weight:700;">${order.article?.title || 'Article'}</div><div style="font-size:12px;color:rgba(0,0,0,0.4);">${isBuyer ? '👤 Vendeur: '+(otherPerson?.name||'Inconnu') : '👤 Acheteur: '+(otherPerson?.name||'Inconnu')}</div></div>
-                        <span class="status status-${order.status === 'livré' ? 'delivered' : order.status === 'annulé' ? 'cancelled' : order.status === 'remboursé' ? 'refunded' : 'pending'}">${order.status === 'en attente de confirmation' ? '⏳ En attente' : order.status === 'livré' ? '✅ Livré' : order.status === 'annulé' ? '❌ Annulé' : order.status === 'remboursé' ? '💰 Remboursé' : order.status}</span>
-                    </div>
-                    <div style="font-size:16px;font-weight:700;color:var(--primary);margin:8px 0;">${order.totalAmount || order.amount} FCFA</div>
-                    ${order.status === 'en attente de confirmation' ? `
-                        <div class="timer-display ${isDanger ? 'danger' : ''}">${String(hours).padStart(2,'0')}h ${String(mins).padStart(2,'0')}m</div>
-                        ${isBuyer ? `
-                            <div class="confirm-box">
-                                <label><input type="checkbox" class="confirm-check" data-key="recu" /> J'ai bien reçu le colis</label>
-                                <label><input type="checkbox" class="confirm-check" data-key="bon_etat" /> Le colis est en bon état</label>
-                                <label><input type="checkbox" class="confirm-check" data-key="confirme" /> Je confirme la réception</label>
-                                <button class="btn btn-success" style="margin-top:8px;" onclick="confirmOrder('${order.id}')">✅ Confirmer la réception</button>
-                            </div>
-                        ` : `<div style="font-size:12px;color:rgba(0,0,0,0.4);">En attente de confirmation par l'acheteur...</div>`}
-                    ` : ''}
-                    ${order.status === 'en attente de confirmation' && !isBuyer ? `<div style="font-size:12px;color:rgba(0,0,0,0.4);">Le client doit confirmer la réception</div>` : ''}
-                    ${order.status === 'livré' ? `
-                        <div style="font-size:12px;color:var(--success);">✅ Livré le ${order.buyerConfirmedAt ? new Date(order.buyerConfirmedAt).toLocaleDateString() : ''}${order.sellerReceived ? '- Reçu '+order.sellerReceived+' FCFA' : ''}</div>
-                        <div style="margin-top:8px;"><button class="btn btn-primary btn-sm" onclick="giveFlame('${order.sellerId}')">🔥 Donner une flamme</button></div>
-                    ` : ''}
-                    ${order.status === 'en attente de confirmation' && new Date(order.createdAt) > new Date(Date.now() - 2*60*60*1000) ? `
-                        <button class="btn btn-danger btn-sm" style="margin-top:8px;" onclick="cancelOrder('${order.id}')">❌ Annuler (2h max)</button>
-                    ` : ''}
-                `;
-                container.appendChild(card);
-            });
-        } catch(e) { console.error(e); }
+        const container = document.getElementById('ordersList');
+        const empty = document.getElementById('emptyOrders');
+        empty.style.display = 'none';
+        container.innerHTML = `
+            <div class="order-card">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                    <div><div style="font-weight:700;">Robe vintage</div><div style="font-size:12px;color:rgba(0,0,0,0.4);">👤 Vendeur: Marie K.</div></div>
+                    <span class="status status-pending">⏳ En attente</span>
+                </div>
+                <div style="font-size:16px;font-weight:700;color:var(--primary);margin:8px 0;">15 000 FCFA</div>
+                <div class="timer-display">08h 32m</div>
+                <div class="confirm-box">
+                    <label><input type="checkbox" class="confirm-check" data-key="recu" /> J'ai bien reçu le colis</label>
+                    <label><input type="checkbox" class="confirm-check" data-key="bon_etat" /> Le colis est en bon état</label>
+                    <label><input type="checkbox" class="confirm-check" data-key="confirme" /> Je confirme la réception</label>
+                    <button class="btn btn-success" style="margin-top:8px;" onclick="showAlert('✅ Commande confirmée !', 'success')">✅ Confirmer la réception</button>
+                </div>
+                <button class="btn btn-danger btn-sm" style="margin-top:8px;" onclick="showAlert('✅ Commande annulée', 'info')">❌ Annuler (2h max)</button>
+            </div>
+            <div class="order-card">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                    <div><div style="font-weight:700;">Sac en cuir</div><div style="font-size:12px;color:rgba(0,0,0,0.4);">👤 Acheteur: Jean P.</div></div>
+                    <span class="status status-delivered">✅ Livré</span>
+                </div>
+                <div style="font-size:16px;font-weight:700;color:var(--primary);margin:8px 0;">35 000 FCFA</div>
+                <div style="font-size:12px;color:var(--success);">✅ Livré le 07/07/2025 - Reçu 33 600 FCFA</div>
+                <div style="margin-top:8px;"><button class="btn btn-primary btn-sm" onclick="showAlert('🔥 Flamme donnée !', 'success')">🔥 Donner une flamme</button></div>
+            </div>
+        `;
     }
 
-    window.confirmOrder = async function(orderId) {
-        const checks = document.querySelectorAll('.confirm-check');
-        const confirmations = {};
-        let allChecked = true;
-        checks.forEach(cb => {
-            confirmations[cb.dataset.key] = cb.checked;
-            if(!cb.checked) allChecked = false;
-        });
-        if(!allChecked) { showAlert('❌ Tu dois cocher les 3 cases', 'error'); return; }
-        try {
-            const res = await fetch(BACKEND_URL+'/api/orders/confirm', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ orderId, buyerId: currentUserId, confirmations })
-            });
-            const data = await res.json();
-            if(data.success) {
-                showAlert('✅ Commande confirmée !', 'success');
-                loadOrders(); loadWallet(); loadStats(); loadProducts();
-            } else { showAlert('❌ '+data.message, 'error'); }
-        } catch(e) { showAlert('Erreur confirmation', 'error'); }
-    };
-
-    window.cancelOrder = async function(orderId) {
-        if(!confirm('Annuler cette commande ?')) return;
-        try {
-            const res = await fetch(BACKEND_URL+'/api/orders/cancel/'+orderId, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: currentUserId })
-            });
-            const data = await res.json();
-            if(data.success) {
-                showAlert('✅ Commande annulée et remboursée', 'success');
-                loadOrders(); loadWallet(); loadProducts();
-            } else { showAlert('❌ '+data.message, 'error'); }
-        } catch(e) { showAlert('Erreur annulation', 'error'); }
-    };
-
-    window.giveFlame = async function(sellerId) {
-        try {
-            const res = await fetch(BACKEND_URL+'/api/flames', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sellerId, buyerId: currentUserId })
-            });
-            const data = await res.json();
-            if(data.success) {
-                showAlert('🔥 Flamme donnée ! Total: '+data.flames, 'success');
-                loadUserData();
-            } else { showAlert('❌ '+data.message, 'error'); }
-        } catch(e) { showAlert('Erreur flamme', 'error'); }
-    };
-
     // ============================================================
-    // MESSAGES
+    // MESSAGES (SIMULATION)
     // ============================================================
     async function loadMessages() {
-        if(!currentUserId) return;
-        try {
-            const res = await fetch(BACKEND_URL+'/api/messages/'+currentUserId);
-            const data = await res.json();
-            const container = document.getElementById('messagesList');
-            const empty = document.getElementById('emptyMessages');
-            if(!data.success || !data.data || data.data.length===0) {
-                container.innerHTML = '';
-                empty.style.display = 'block';
-                return;
-            }
-            empty.style.display = 'none';
-            container.innerHTML = data.data.map(msg => `
-                <div class="message-item">
-                    <div class="avatar">${msg.senderPhoto ? `<img src="${msg.senderPhoto}" />` : (msg.senderName||'U')[0].toUpperCase()}</div>
-                    <div class="content"><div class="sender">${msg.senderName||'Anonyme'}</div><div class="text">${msg.text}</div></div>
-                    <div class="time">${msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : ''}</div>
-                </div>
-            `).join('');
-        } catch(e) { console.error(e); }
+        const container = document.getElementById('messagesList');
+        const empty = document.getElementById('emptyMessages');
+        empty.style.display = 'none';
+        container.innerHTML = `
+            <div class="message-item">
+                <div class="avatar">M</div>
+                <div class="content"><div class="sender">Marie K.</div><div class="text">Bonjour, je suis intéressé par la robe vintage</div></div>
+                <div class="time">14:32</div>
+            </div>
+            <div class="message-item">
+                <div class="avatar">J</div>
+                <div class="content"><div class="sender">Jean P.</div><div class="text">Le sac est-il encore disponible ?</div></div>
+                <div class="time">12:15</div>
+            </div>
+        `;
     }
 
-    document.getElementById('btnSendMessage').addEventListener('click', async () => {
-        const receiverId = document.getElementById('chatReceiver').value.trim();
+    document.getElementById('btnSendMessage').addEventListener('click', () => {
         const text = document.getElementById('messageInput').value.trim();
-        if(!receiverId || !text) { showAlert('Destinataire et message requis', 'error'); return; }
-        try {
-            const res = await fetch(BACKEND_URL+'/api/messages', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    senderId: currentUserId, receiverId, text,
-                    senderName: currentUser?.name || 'Anonyme',
-                    senderPhoto: currentUser?.photo || ''
-                })
-            });
-            const data = await res.json();
-            if(data.success) {
-                document.getElementById('messageInput').value = '';
-                showAlert('✅ Message envoyé', 'success');
-                loadMessages();
-            } else { showAlert('❌ '+data.message, 'error'); }
-        } catch(e) { showAlert('Erreur envoi', 'error'); }
+        if (!text) { showAlert('Écris un message', 'error'); return; }
+        showAlert('✅ Message envoyé (simulation)', 'success');
+        document.getElementById('messageInput').value = '';
     });
 
     // ============================================================
-    // TRANSACTIONS
+    // TRANSACTIONS (SIMULATION)
     // ============================================================
     async function loadTransactions() {
-        if(!currentUserId) return;
-        try {
-            const res = await fetch(BACKEND_URL+'/api/transactions/'+currentUserId);
-            const data = await res.json();
-            const container = document.getElementById('transactionsList');
-            const empty = document.getElementById('emptyTransactions');
-            if(!data.success || !data.data || data.data.length===0) {
-                container.innerHTML = '';
-                empty.style.display = 'block';
-                return;
-            }
-            empty.style.display = 'none';
-            container.innerHTML = data.data.slice(0,20).map(t => `
-                <div class="transaction-item">
-                    <div class="info"><div class="desc">${t.description || t.type}</div><div class="date">${t.date ? new Date(t.date).toLocaleDateString() : ''}</div></div>
-                    <div class="amount ${t.amount >= 0 ? 'positive' : 'negative'}">${t.amount >= 0 ? '+' : ''}${t.amount} FCFA</div>
-                </div>
-            `).join('');
-        } catch(e) { console.error(e); }
+        const container = document.getElementById('transactionsList');
+        const empty = document.getElementById('emptyTransactions');
+        empty.style.display = 'none';
+        container.innerHTML = `
+            <div class="transaction-item"><div class="info"><div class="desc">Dépôt</div><div class="date">07/07/2025</div></div><div class="amount positive">+10 000 FCFA</div></div>
+            <div class="transaction-item"><div class="info"><div class="desc">Achat #BLK-12345</div><div class="date">06/07/2025</div></div><div class="amount negative">-15 300 FCFA</div></div>
+            <div class="transaction-item"><div class="info"><div class="desc">Vente #BLK-67890</div><div class="date">05/07/2025</div></div><div class="amount positive">+9 600 FCFA</div></div>
+        `;
     }
 
     // ============================================================
-    // NOTIFICATIONS
-    // ============================================================
-    function listenNotifications() {
-        if(!currentUserId) return;
-        db.collection('notifications')
-            .where('userId','==',currentUserId)
-            .where('read','==',false)
-            .onSnapshot(snapshot => {
-                const count = snapshot.size;
-                document.getElementById('ordersBadge').textContent = count;
-                document.getElementById('ordersBadge').style.display = count > 0 ? 'block' : 'none';
-                snapshot.forEach(doc => {
-                    const notif = doc.data();
-                    showAlert(notif.message, 'info');
-                    db.collection('notifications').doc(doc.id).update({ read: true });
-                });
-            });
-    }
-
-    // ============================================================
-    // DEPOSIT / WITHDRAW
+    // DEPOSIT / WITHDRAW (SIMULATION)
     // ============================================================
     document.getElementById('btnDeposit').addEventListener('click', () => {
         const form = document.getElementById('depositForm');
@@ -928,77 +694,22 @@
     });
     document.getElementById('btnCancelDeposit').addEventListener('click', () => { document.getElementById('depositForm').style.display = 'none'; });
     document.getElementById('btnCancelWithdraw').addEventListener('click', () => { document.getElementById('withdrawForm').style.display = 'none'; });
-    document.getElementById('btnConfirmDeposit').addEventListener('click', async () => {
-        const amount = document.getElementById('depositAmount').value;
-        const phone = document.getElementById('depositPhone').value;
-        if(!amount || !phone) { showAlert('Montant et téléphone requis', 'error'); return; }
-        try {
-            const res = await fetch(BACKEND_URL+'/api/wallet/deposit', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: currentUserId,
-                    amount: parseInt(amount),
-                    phone
-                })
-            });
-            const data = await res.json();
-            if(data.success) {
-                showAlert('💰 '+data.message, 'success');
-                document.getElementById('depositForm').style.display = 'none';
-                loadWallet(); loadTransactions();
-            } else { showAlert('❌ '+data.message, 'error'); }
-        } catch(e) { showAlert('Erreur dépôt', 'error'); }
+    document.getElementById('btnConfirmDeposit').addEventListener('click', () => {
+        showAlert('💰 Dépôt simulé !', 'success');
+        document.getElementById('depositForm').style.display = 'none';
     });
-    document.getElementById('btnConfirmWithdraw').addEventListener('click', async () => {
-        const amount = document.getElementById('withdrawAmount').value;
-        const phone = document.getElementById('withdrawPhone').value;
-        if(!amount || !phone) { showAlert('Montant et téléphone requis', 'error'); return; }
-        try {
-            const res = await fetch(BACKEND_URL+'/api/wallet/withdraw', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: currentUserId,
-                    amount: parseInt(amount),
-                    phone
-                })
-            });
-            const data = await res.json();
-            if(data.success) {
-                showAlert('💰 '+data.message, 'success');
-                document.getElementById('withdrawForm').style.display = 'none';
-                loadWallet(); loadTransactions();
-            } else { showAlert('❌ '+data.message, 'error'); }
-        } catch(e) { showAlert('Erreur retrait', 'error'); }
+    document.getElementById('btnConfirmWithdraw').addEventListener('click', () => {
+        showAlert('💰 Retrait simulé !', 'success');
+        document.getElementById('withdrawForm').style.display = 'none';
     });
 
     // ============================================================
     // LOGOUT
     // ============================================================
-    document.getElementById('btnLogout').addEventListener('click', async () => {
-        await auth.signOut();
-        location.reload();
-    });
+    document.getElementById('btnLogout').addEventListener('click', () => { location.reload(); });
 
-    // ============================================================
-    // AUTH STATE
-    // ============================================================
-    auth.onAuthStateChanged(async (user) => {
-        if(user) {
-            const snapshot = await db.collection('users').where('email','==',user.email).get();
-            if(!snapshot.empty) {
-                const doc = snapshot.docs[0];
-                currentUserId = doc.id;
-                currentUser = doc.data();
-                document.getElementById('authPage').style.display = 'none';
-                showMainApp();
-            }
-        }
-    });
-
-    console.log('✅ BLK Marketplace - 100% RÉEL');
-    console.log('🔗 Backend URL: '+BACKEND_URL);
+    console.log('✅ BLK Marketplace - Mode démo actif');
+    console.log('🔗 Backend URL: ' + BACKEND_URL);
 </script>
 </body>
 </html>
