@@ -14,14 +14,14 @@ app.use(express.json({ limit: '10mb' }));
 // FIREBASE 
 //  
 if (!process.env.FIREBASE_SERVICE_ACCOUNT) { 
-console.error('❌ FIREBASE_SERVICE_ACCOUNT manquant'); 
+console.error('FIREBASE_SERVICE_ACCOUNT manquant'); 
 process.exit(1); 
 } 
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT); 
 admin.initializeApp({ credential: admin.credential.cert(serviceAccount) }); 
 const db = admin.firestore();
 
-console.log('✅ BLK API - 100% RÉEL');
+console.log('BLK API demarree');
 
 //  
 // ROUTES DE BASE 
@@ -46,7 +46,7 @@ res.status(500).json({ success: false, message: error.message });
 app.get('/api/users/:userId', async (req, res) => { 
 try { 
 const doc = await db.collection('users').doc(req.params.userId).get(); 
-if (!doc.exists) return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' }); 
+if (!doc.exists) return res.status(404).json({ success: false, message: 'Utilisateur non trouve' }); 
 const data = doc.data(); 
 const followersSnap = await db.collection('follows') 
 .where('followingId', '', req.params.userId) 
@@ -148,9 +148,9 @@ app.delete('/api/articles/:id', async (req, res) => {
 try { 
 const { id } = req.params; 
 const doc = await db.collection('products').doc(id).get(); 
-if (!doc.exists) return res.status(404).json({ success: false, message: 'Article non trouvé' }); 
+if (!doc.exists) return res.status(404).json({ success: false, message: 'Article non trouve' }); 
 if (doc.data().status = 'sold') { 
-return res.status(400).json({ success: false, message: 'Cet article a déjà été vendu' }); 
+return res.status(400).json({ success: false, message: 'Cet article a deja ete vendu' }); 
 } 
 await db.collection('products').doc(id).update({ status: 'inactive' }); 
 res.json({ success: true }); 
@@ -197,7 +197,7 @@ const articlesSnapshot = await db.collection('products')
 
     const ordersSnapshot = await db.collection('orders')
         .where('sellerId', '==', userId)
-        .where('status', '==', 'livré')
+        .where('status', '==', 'livre')
         .get();
 
     let totalSales = 0;
@@ -210,7 +210,7 @@ const articlesSnapshot = await db.collection('products')
 
     const purchasesSnapshot = await db.collection('orders')
         .where('buyerId', '==', userId)
-        .where('status', '==', 'livré')
+        .where('status', '==', 'livre')
         .get();
 
     let totalPurchases = 0;
@@ -225,7 +225,7 @@ const articlesSnapshot = await db.collection('products')
     ordersSnapshot.forEach(doc => {
         const order = doc.data();
         const date = order.createdAt?.toDate?.() || new Date(order.createdAt);
-        const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        const month = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
         if (!history[month]) history[month] = { ventes: 0, revenu: 0 };
         history[month].ventes += 1;
         history[month].revenu += order.sellerReceived || (order.amount - (order.amount * 0.04));
@@ -278,8 +278,8 @@ const doc = await userRef.get();
 const currentBalance = doc.data()?.walletBalance || 0; 
 const newBalance = currentBalance + amount; 
 await userRef.set({ walletBalance: newBalance, phone: phone, lastDeposit: admin.firestore.FieldValue.serverTimestamp() }, { merge: true }); 
-await db.collection('transactions').add({ userId, amount, phone, type: 'deposit', status: 'completed', description: 'Dépôt (simulé)', createdAt: new Date() }); 
-res.json({ success: true, message: '💰 Dépôt effectué !', newBalance }); 
+await db.collection('transactions').add({ userId, amount, phone, type: 'deposit', status: 'completed', description: 'Depot (simule)', createdAt: new Date() }); 
+res.json({ success: true, message: 'Depot effectue', newBalance }); 
 } catch (error) { 
 res.status(500).json({ success: false, message: 'Erreur interne' }); 
 } 
@@ -294,8 +294,8 @@ const doc = await userRef.get();
 const currentBalance = doc.data()?.walletBalance || 0; 
 const newBalance = currentBalance + amount; 
 await userRef.set({ walletBalance: newBalance, phone: phone || doc.data()?.phone || '', lastDeposit: admin.firestore.FieldValue.serverTimestamp() }, { merge: true }); 
-await db.collection('transactions').add({ userId, amount, phone: phone || '065918166', type: 'deposit', status: 'completed', description: 'Dépôt manuel (admin)', createdAt: new Date() }); 
-res.json({ success: true, message: 'Wallet crédité', newBalance }); 
+await db.collection('transactions').add({ userId, amount, phone: phone || '065918166', type: 'deposit', status: 'completed', description: 'Depot manuel (admin)', createdAt: new Date() }); 
+res.json({ success: true, message: 'Wallet credite', newBalance }); 
 } catch (error) { 
 res.status(500).json({ success: false, message: error.message }); 
 } 
@@ -315,7 +315,7 @@ const buyerBalance = buyerDoc.data()?.walletBalance || 0;
 const buyerCommission = Math.round(amount * 0.03); 
 const totalAmount = amount + buyerCommission; 
 if (buyerBalance < totalAmount) { 
-return res.status(400).json({ success: false, message: '❌ Solde insuffisant' }); 
+return res.status(400).json({ success: false, message: 'Solde insuffisant' }); 
 } 
 await buyerDoc.ref.update({ walletBalance: buyerBalance - totalAmount }); 
 const order = { 
@@ -337,7 +337,7 @@ createdAt: new Date()
 const orderRef = await db.collection('orders').add(order); 
 const orderId = orderRef.id; 
 await db.collection('products').doc(articleId).update({ status: 'sold' }); 
-res.json({ success: true, orderId, message: '✅ Commande créée !', totalAmount }); 
+res.json({ success: true, orderId, message: 'Commande creee', totalAmount }); 
 } catch (error) { 
 res.status(500).json({ success: false, message: error.message }); 
 } 
@@ -351,13 +351,13 @@ return res.status(400).json({ success: false, message: 'orderId et buyerId requi
 } 
 const orderRef = db.collection('orders').doc(orderId); 
 const orderDoc = await orderRef.get(); 
-if (!orderDoc.exists) return res.status(404).json({ success: false, message: 'Commande non trouvée' }); 
+if (!orderDoc.exists) return res.status(404).json({ success: false, message: 'Commande non trouvee' }); 
 const order = orderDoc.data(); 
-if (order.buyerId ! buyerId) return res.status(403).json({ success: false, message: 'Non autorisé' }); 
-if (order.status ! 'en attente de confirmation') return res.status(400).json({ success: false, message: 'Commande déjà traitée' }); 
+if (order.buyerId ! buyerId) return res.status(403).json({ success: false, message: 'Non autorise' }); 
+if (order.status ! 'en attente de confirmation') return res.status(400).json({ success: false, message: 'Commande deja traitee' }); 
 const now = new Date(); 
 const expiresAt = order.expiresAt.toDate ? order.expiresAt.toDate() : new Date(order.expiresAt); 
-if (now > expiresAt) return res.status(400).json({ success: false, message: '⏰ Délai expiré' });
+if (now > expiresAt) return res.status(400).json({ success: false, message: 'Delai expire' });
 
     const sellerCommission = order.sellerCommission || Math.round(order.amount * 0.04);
     const buyerCommission = order.buyerCommission || Math.round(order.amount * 0.03);
@@ -370,14 +370,14 @@ if (now > expiresAt) return res.status(400).json({ success: false, message: '⏰
     await sellerRef.update({ walletBalance: sellerBalance + amountToSeller });
 
     await orderRef.update({
-        status: 'livré',
+        status: 'livre',
         buyerConfirmed: true,
         buyerConfirmedAt: new Date(),
         sellerReceived: amountToSeller,
         adminCommission: adminTotal
     });
 
-    res.json({ success: true, message: '✅ Commande confirmée par QR !', sellerReceived: amountToSeller });
+    res.json({ success: true, message: 'Commande confirmee par QR', sellerReceived: amountToSeller });
 } catch (error) {
     res.status(500).json({ success: false, message: error.message });
 }
@@ -417,7 +417,7 @@ res.status(500).json([]);
 });
 
 //  
-// MESSAGES (RÉEL) 
+// MESSAGES (REEL) 
 //  
 app.get('/api/messages/:userId', async (req, res) => { 
 try { 
@@ -450,7 +450,7 @@ return res.status(400).json({ success: false, message: 'Champs requis' });
 const receiverDoc = await db.collection('users').doc(receiverId).get(); 
 const blockedUsers = receiverDoc.data()?.blockedUsers || []; 
 if (blockedUsers.includes(senderId)) { 
-return res.status(403).json({ success: false, message: 'Vous êtes bloqué par ce destinataire' }); 
+return res.status(403).json({ success: false, message: 'Vous etes bloque par ce destinataire' }); 
 } 
 const message = { 
 senderId, 
@@ -465,7 +465,7 @@ createdAt: new Date()
 const docRef = await db.collection('messages').add(message); 
 await db.collection('notifications').add({ 
 userId: receiverId, 
-message: 💬 Nouveau message de ${senderName || 'Anonyme'}, 
+message: 'Nouveau message de ' + (senderName || 'Anonyme'), 
 type: 'new_message', 
 read: false, 
 messageId: docRef.id, 
@@ -493,14 +493,14 @@ app.post('/api/follow', async (req, res) => {
 try { 
 const { followerId, followingId } = req.body; 
 if (!followerId || !followingId) return res.status(400).json({ success: false, message: 'IDs requis' }); 
-if (followerId = followingId) return res.status(400).json({ success: false, message: 'Vous ne pouvez pas vous abonner à vous-même' }); 
+if (followerId = followingId) return res.status(400).json({ success: false, message: 'Vous ne pouvez pas vous abonner a vous-meme' }); 
 const existing = await db.collection('follows') 
 .where('followerId', '', followerId) 
 .where('followingId', '', followingId) 
 .get(); 
-if (!existing.empty) return res.status(400).json({ success: false, message: 'Déjà abonné' }); 
+if (!existing.empty) return res.status(400).json({ success: false, message: 'Deja abonne' }); 
 await db.collection('follows').add({ followerId, followingId, createdAt: new Date() }); 
-res.json({ success: true, message: 'Abonné !' }); 
+res.json({ success: true, message: 'Abonne' }); 
 } catch (error) { 
 res.status(500).json({ success: false, message: error.message }); 
 } 
@@ -514,9 +514,9 @@ const snapshot = await db.collection('follows')
 .where('followerId', '', followerId) 
 .where('followingId', '', followingId) 
 .get(); 
-if (snapshot.empty) return res.status(404).json({ success: false, message: 'Abonnement non trouvé' }); 
+if (snapshot.empty) return res.status(404).json({ success: false, message: 'Abonnement non trouve' }); 
 snapshot.forEach(doc => doc.ref.delete()); 
-res.json({ success: true, message: 'Désabonné !' }); 
+res.json({ success: true, message: 'Desabonne' }); 
 } catch (error) { 
 res.status(500).json({ success: false, message: error.message }); 
 } 
@@ -577,15 +577,15 @@ res.status(500).json({ success: false, message: error.message });
 });
 
 //  
-// FLAMMES, TRANSACTIONS (simplifiés) 
+// FLAMMES, TRANSACTIONS (simplifies) 
 //  
 app.post('/api/flames', (req, res) => res.json({ success: true })); 
 app.get('/api/flames/:userId', (req, res) => res.json({ flames: 0 })); 
 app.get('/api/transactions/:userId', (req, res) => res.json({ success: true, data: [] }));
 
 //  
-// DÉMARRAGE 
+// DEMARRAGE 
 // == 
 app.listen(PORT, '0.0.0.0', () => { 
-console.log('✅ BLK API running on port', PORT); 
+console.log('BLK API running on port ' + PORT); 
 });
