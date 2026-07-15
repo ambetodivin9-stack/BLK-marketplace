@@ -10,9 +10,6 @@ const PORT = process.env.PORT || 10000;
 app.use(cors()); 
 app.use(express.json({ limit: '10mb' }));
 
-//  
-// FIREBASE 
-//  
 if (!process.env.FIREBASE_SERVICE_ACCOUNT) { 
 console.error('❌ FIREBASE_SERVICE_ACCOUNT manquant'); 
 process.exit(1); 
@@ -21,24 +18,15 @@ const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 admin.initializeApp({ credential: admin.credential.cert(serviceAccount) }); 
 const db = admin.firestore();
 
-//  
-// CONFIG 
-//  
 console.log('✅ BLK API - 100% RÉEL (simulation paiement)'); 
 console.log('✅ Admin Phone:', process.env.ADMIN_PHONE || '065918166');
 
 const COMMISSION_BUYER = 0.03; 
 const COMMISSION_SELLER = 0.04;
 
-//  
-// ROUTES 
-//  
 app.get('/', (req, res) => res.json({ status: 'OK', message: 'BLK API' })); 
 app.get('/api', (req, res) => res.json({ success: true, message: 'API OK' }));
 
-//  
-// UTILISATEURS 
-//  
 app.post('/api/users/online', async (req, res) => { 
 try { 
 const { userId, online } = req.body; 
@@ -88,9 +76,6 @@ res.status(500).json({ success: false, message: error.message });
 } 
 });
 
-//  
-// ARTICLES 
-//  
 app.get('/api/articles', async (req, res) => { 
 try { 
 const snapshot = await db.collection('articles') 
@@ -157,9 +142,6 @@ res.status(500).json({ success: false, message: error.message });
 } 
 });
 
-//  
-// UPLOAD IMAGE 
-//  
 app.post('/api/upload', async (req, res) => { 
 try { 
 const { base64 } = req.body; 
@@ -183,9 +165,6 @@ res.status(500).json({ success: false, message: 'Erreur upload' });
 } 
 });
 
-//  
-// WALLET 
-//  
 app.get('/api/wallet/:userId', async (req, res) => { 
 try { 
 const doc = await db.collection('users').doc(req.params.userId).get(); 
@@ -260,9 +239,6 @@ res.status(500).json({ success: false, message: error.message });
 } 
 });
 
-//  
-// ORDRES (simplifiées pour le test) 
-//  
 app.post('/api/orders/create', async (req, res) => { 
 res.json({ success: true, orderId: 'mock-' + Date.now() }); 
 });
@@ -275,9 +251,6 @@ app.get('/api/orders/:userId', async (req, res) => {
 res.json([]); 
 });
 
-//  
-// FLAMMES, STATS, TRANSACTIONS, MESSAGES (simplifiés) 
-//  
 app.post('/api/flames', (req, res) => res.json({ success: true })); 
 app.get('/api/flames/:userId', (req, res) => res.json({ flames: 0 })); 
 app.get('/api/stats/:userId', (req, res) => res.json({ success: true, data: {} })); 
@@ -287,9 +260,6 @@ app.post('/api/messages', (req, res) => res.json({ success: true, id: 'mock-' + 
 app.get('/api/notifications/:userId', (req, res) => res.json({ success: true, data: [] })); 
 app.post('/api/notifications/read/:id', (req, res) => res.json({ success: true }));
 
-//  
-// DÉMARRAGE 
-//  
 app.listen(PORT, '0.0.0.0', () => { 
 console.log('✅ BLK API running on port', PORT); 
 });
