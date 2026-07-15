@@ -1,1357 +1,946 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>BLK Marketplace</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    :root {
-      --primary: #E74C3C;
-      --primary-dark: #C0392B;
-      --success: #2ECC71;
-      --danger: #E74C3C;
-      --frosted: rgba(255,255,255,0.65);
-      --frosted-border: rgba(255,255,255,0.4);
-      --shadow: 0 8px 32px rgba(0,0,0,0.08);
-      --radius: 24px;
-      --radius-sm: 14px;
-      --bg: #F5F0E8;
-    }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: #1a1a1a; min-height: 100vh; overflow-x: hidden; padding-bottom: 80px; }
-    .kente { height: 6px; background: linear-gradient(90deg, #FFD700 0%, #FFD700 20%, #2ECC71 20%, #2ECC71 40%, #E74C3C 40%, #E74C3C 60%, #FFD700 60%, #FFD700 80%, #2ECC71 80%, #2ECC71 100%); position: fixed; top: 0; left: 0; right: 0; z-index: 1000; }
-    @keyframes slideUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
-    @keyframes float { 0%,100% { transform:translateY(0px); } 50% { transform:translateY(-10px); } }
-    @keyframes gradientShift { 0%{background-position:0% 50%;} 50%{background-position:100% 50%;} 100%{background-position:0% 50%;} }
-    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
-    .glass { background: var(--frosted); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border: 1px solid var(--frosted-border); border-radius: var(--radius); box-shadow: var(--shadow); }
-    .glass-sm { border-radius: var(--radius-sm); padding: 16px; }
-    .glass-lg { border-radius: var(--radius); padding: 24px; }
-    .btn { padding: 14px 28px; border: none; border-radius: var(--radius-sm); font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.3s ease; width: 100%; text-transform: uppercase; letter-spacing: 0.5px; }
-    .btn:active { transform: scale(0.97); }
-    .btn-primary { background: var(--primary); color: #fff; }
-    .btn-primary:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(231,76,60,0.3); }
-    .btn-success { background: var(--success); color: #fff; }
-    .btn-success:hover { background: #27AE60; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(46,204,113,0.3); }
-    .btn-danger { background: var(--danger); color: #fff; }
-    .btn-outline { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
-    .btn-outline:hover { background: var(--primary); color: #fff; }
-    .btn-sm { padding: 8px 14px; font-size: 11px; width: auto; }
-    .auth-page { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 500; background: linear-gradient(135deg, #FFD700, #FF8C00); background-size: 200% 200%; animation: gradientShift 10s ease infinite; }
-    .auth-page .glass { width: 100%; max-width: 420px; padding: 32px 24px; animation: slideUp 0.5s ease; background: rgba(255,255,255,0.7); backdrop-filter: blur(30px); border: 1px solid rgba(255,255,255,0.5); }
-    .auth-page h2 { text-align: center; font-size: 28px; font-weight: 800; color: #1a1a1a; margin-bottom: 8px; }
-    .auth-page .subtitle { text-align: center; font-size: 14px; color: rgba(0,0,0,0.5); margin-bottom: 24px; }
-    .auth-page .form-group { margin-bottom: 16px; }
-    .auth-page label { display:block; font-size:12px; font-weight:600; text-transform:uppercase; color:rgba(0,0,0,0.5); margin-bottom:6px; }
-    .auth-page input { width:100%; padding:14px 16px; border:1px solid rgba(0,0,0,0.1); border-radius:var(--radius-sm); background:rgba(255,255,255,0.8); font-size:15px; transition:all 0.3s ease; color:#1a1a1a; }
-    .auth-page input:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(231,76,60,0.15); background:#fff; }
-    .auth-page .divider { display: flex; align-items: center; gap: 16px; margin: 20px 0; color: rgba(0,0,0,0.3); font-size: 12px; }
-    .auth-page .divider::before, .auth-page .divider::after { content: ''; flex: 1; height: 1px; background: rgba(0,0,0,0.1); }
-    .auth-page .toggle-link { text-align: center; margin-top: 16px; font-size: 14px; color: rgba(0,0,0,0.5); }
-    .auth-page .toggle-link button { background: none; border: none; color: var(--primary); font-weight: 700; cursor: pointer; font-size: 14px; }
-    .auth-page .warning { background: rgba(231,76,60,0.08); border-left: 4px solid var(--danger); padding: 12px 16px; border-radius: var(--radius-sm); margin-bottom: 20px; font-size: 13px; color: var(--danger); display: flex; align-items: center; gap: 10px; }
-    .welcome-screen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: none; align-items: center; justify-content: center; z-index: 600; background: linear-gradient(135deg, #FFD700, #2ECC71, #E74C3C); background-size: 400% 400%; animation: gradientShift 8s ease infinite; padding: 40px; text-align: center; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BLK Marketplace</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f0e8; color: #1a1a1a; padding-bottom: 80px; }
+        .kente { height: 6px; background: linear-gradient(90deg, #FFD700 20%, #2ECC71 40%, #E74C3C 60%, #FFD700 80%); position: fixed; top: 0; left: 0; right: 0; z-index: 1000; }
+
+    /* Boutons */
+    .btn { padding: 14px; border: none; border-radius: 14px; font-weight: 700; font-size: 16px; cursor: pointer; width: 100%; transition: 0.3s; }
+    .btn-primary { background: #E74C3C; color: white; }
+    .btn-primary:hover { background: #C0392B; }
+    .btn-success { background: #2ECC71; color: white; }
+    .btn-success:hover { background: #27AE60; }
+    .btn-danger { background: #E74C3C; color: white; }
+    .btn-danger:hover { background: #C0392B; }
+    .btn-outline { background: transparent; color: #E74C3C; border: 2px solid #E74C3C; }
+    .btn-sm { padding: 8px 14px; font-size: 12px; width: auto; }
+
+    .glass { background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); border-radius: 20px; padding: 20px; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+
+    .auth-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; background: linear-gradient(135deg, #FFD700, #FF8C00); }
+    .auth-page .card { background: rgba(255,255,255,0.85); padding: 32px; border-radius: 24px; max-width: 400px; width: 100%; }
+    .auth-page h1 { text-align: center; font-size: 32px; font-weight: 800; }
+    .auth-page .sub { text-align: center; color: #666; margin-bottom: 24px; }
+    .auth-page input { width: 100%; padding: 14px 16px; border: 1px solid #ddd; border-radius: 14px; font-size: 16px; margin-bottom: 12px; background: white; }
+    .auth-page input:focus { outline: none; border-color: #E74C3C; }
+
+    .welcome-screen { display: none; align-items: center; justify-content: center; min-height: 100vh; padding: 40px; background: linear-gradient(135deg, #FFD700, #2ECC71, #E74C3C); text-align: center; color: white; }
     .welcome-screen.active { display: flex; }
-    .welcome-screen .content { animation: float 3s ease-in-out infinite; }
-    .welcome-screen .logo-big { font-size: 72px; font-weight: 900; color: #fff; text-shadow: 0 4px 20px rgba(0,0,0,0.2); letter-spacing: 4px; margin-bottom: 16px; }
-    .welcome-screen .logo-big span { color: #1a1a1a; }
-    .welcome-screen h1 { font-size: 36px; color: #fff; font-weight: 800; margin-bottom: 8px; text-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-    .welcome-screen p { font-size: 16px; color: rgba(255,255,255,0.85); max-width: 320px; margin: 0 auto 32px; line-height: 1.6; }
-    .welcome-screen .btn { max-width: 280px; margin: 0 auto; background: #fff; color: #1a1a1a; }
-    .welcome-screen .btn:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.2); }
-    header { position: fixed; top:6px; left:0; right:0; z-index:200; padding:10px 16px; display:none; align-items:center; justify-content:space-between; background:var(--frosted); backdrop-filter:blur(30px); border-bottom:1px solid var(--frosted-border); }
-    header .logo { font-size:20px; font-weight:800; color:var(--primary); letter-spacing:1px; }
-    header .user-info { display:flex; align-items:center; gap:10px; }
-    header .user-avatar { width:36px; height:36px; border-radius:50%; object-fit:cover; border:2px solid var(--primary); background:var(--primary); display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:700; color:#fff; overflow:hidden; }
-    header .user-avatar img { width:100%; height:100%; object-fit:cover; }
-    header .user-name { font-size:13px; font-weight:600; color:#1a1a1a; max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .app-container { max-width: 800px; margin: 0 auto; padding: 70px 16px 100px; display: none; }
-    .app-container.active { display: block; }
-    .page { display: none; animation: slideUp 0.4s ease; }
+    .welcome-screen h1 { font-size: 48px; font-weight: 900; text-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+    .welcome-screen h1 span { color: #1a1a1a; }
+    .welcome-screen p { font-size: 18px; max-width: 300px; margin: 16px auto 32px; opacity: 0.9; }
+    .welcome-screen .btn { background: white; color: #1a1a1a; max-width: 280px; margin: 0 auto; }
+
+    .app { display: none; max-width: 600px; margin: 0 auto; padding: 80px 16px 100px; }
+    .app.active { display: block; }
+
+    /* Barre de recherche */
+    .search-bar { display: flex; gap: 12px; background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); border-radius: 14px; padding: 6px 16px; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.4); }
+    .search-bar input { flex: 1; padding: 10px 0; border: none; background: transparent; font-size: 16px; outline: none; }
+
+    /* Onglets (en bas) – texte seulement, sans emojis */
+    .tabs { position: fixed; bottom: 0; left: 0; right: 0; display: flex; background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); border-top: 1px solid rgba(255,255,255,0.4); padding: 8px; z-index: 100; }
+    .tab-btn { flex: 1; display: flex; flex-direction: column; align-items: center; border: none; background: transparent; cursor: pointer; font-size: 12px; font-weight: 600; color: #999; padding: 4px; border-radius: 10px; transition: 0.3s; }
+    .tab-btn.active { color: #E74C3C; background: rgba(231,76,60,0.1); }
+
+    .page { display: none; }
     .page.active { display: block; }
-    .page-title { font-size: 22px; font-weight: 800; color: var(--primary); margin-bottom: 16px; letter-spacing: -0.5px; }
-    .tabs { position: fixed; bottom:0; left:0; right:0; display: none; background: rgba(255,255,255,0.5); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border-top: 1px solid rgba(255,255,255,0.8); padding: 8px 8px env(safe-area-inset-bottom); z-index: 150; }
-    .tabs.active { display: flex; }
-    .tab-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border: none; background: none; cursor: pointer; font-size: 9px; font-weight: 600; color: rgba(0,0,0,0.4); transition: all 0.3s ease; border-radius: var(--radius-sm); position: relative; }
-    .tab-btn .tab-icon { font-size: 22px; transition: all 0.3s ease; line-height: 1; }
-    .tab-btn .tab-icon svg { width: 22px; height: 22px; fill: currentColor; }
-    .tab-btn .tab-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.3px; }
-    .tab-btn:hover { color: var(--primary); }
-    .tab-btn.active { color: var(--primary); background: rgba(231,76,60,0.1); }
-    .tab-btn.active .tab-icon { transform: scale(1.1); }
-    .tab-btn .badge { position: absolute; top: 2px; right: 50%; transform: translateX(calc(50% + 20px)); background: var(--danger); color: #fff; font-size: 9px; padding: 1px 6px; border-radius: 10px; min-width: 18px; text-align: center; }
-    .search-container { display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.5); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.8); border-radius: var(--radius-sm); padding: 6px 16px; margin-bottom: 12px; }
-    .search-container .logo-icon { font-size: 22px; font-weight: 800; color: var(--primary); flex-shrink: 0; }
-    .search-container .search-bar { flex: 1; padding: 10px 0; border: none; background: transparent; font-size: 14px; color: #1a1a1a; outline: none; }
-    .search-container .search-bar::placeholder { color: rgba(0,0,0,0.3); }
-    .category-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-    .category-filters .btn { width: auto; padding: 6px 14px; font-size: 11px; }
-    .category-filters .btn-primary { background: var(--primary); color: #fff; border: none; }
-    .category-filters .btn-outline { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-top: 12px; }
-    .product-card { background: var(--frosted); backdrop-filter: blur(20px); border: 1px solid var(--frosted-border); border-radius: var(--radius-sm); overflow: hidden; cursor: pointer; transition: all 0.3s ease; }
-    .product-card:active { transform: scale(0.97); }
-    .product-card .img { width: 100%; height: 150px; object-fit: cover; background: linear-gradient(135deg, #f0ebe3, #e8e0d8); }
+
+    /* Alertes */
+    .alert { padding: 12px 16px; border-radius: 12px; margin-bottom: 12px; display: none; }
+    .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    .empty { text-align: center; color: #999; padding: 20px; }
+
+    /* Produits */
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+    .product-card { background: rgba(255,255,255,0.8); border-radius: 14px; overflow: hidden; cursor: pointer; border: 1px solid rgba(255,255,255,0.4); }
+    .product-card .img { width: 100%; height: 150px; object-fit: cover; background: #e8e0d8; }
     .product-card .info { padding: 12px; }
-    .product-card .title { font-size: 13px; font-weight: 700; color: #1a1a1a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .product-card .price { font-size: 15px; font-weight: 800; color: var(--primary); margin-top: 4px; }
-    .product-card .seller { font-size: 11px; color: rgba(0,0,0,0.4); margin-top: 4px; }
-    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
-    .stat-card { background: var(--frosted); backdrop-filter: blur(20px); border: 1px solid var(--frosted-border); border-radius: var(--radius-sm); padding: 14px; text-align: center; }
-    .stat-card .number { font-size: 24px; font-weight: 800; color: var(--primary); }
-    .stat-card .label { font-size: 10px; text-transform: uppercase; color: rgba(0,0,0,0.4); margin-top: 4px; }
-    .stat-card .trend { font-size: 11px; font-weight: 600; margin-top: 2px; }
-    .stat-card .trend.up { color: var(--success); }
-    .stat-card .trend.down { color: var(--danger); }
-    .chart-container { height: 120px; margin-top: 8px; display: flex; align-items: flex-end; gap: 8px; padding: 8px 0; }
-    .chart-bar { flex: 1; background: var(--primary); border-radius: 4px 4px 0 0; min-height: 4px; transition: height 0.3s ease; }
-    .stats-date { font-size: 11px; color: rgba(0,0,0,0.4); text-align: right; margin-top: 4px; }
-    .order-card { background: var(--frosted); backdrop-filter: blur(20px); border: 1px solid var(--frosted-border); border-radius: var(--radius-sm); padding: 16px; margin-bottom: 12px; }
-    .order-card .status { font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 20px; display: inline-block; }
-    .order-card .status-pending { background: rgba(255,215,0,0.2); color: #B7950B; }
-    .order-card .status-delivered { background: rgba(46,204,113,0.2); color: #27AE60; }
-    .order-card .status-cancelled { background: rgba(231,76,60,0.2); color: #C0392B; }
-    .order-card .status-refunded { background: rgba(52,152,219,0.2); color: #2980B9; }
-    .timer-display { font-size: 28px; font-weight: 800; font-family: 'Courier New', monospace; text-align: center; padding: 8px 0; }
-    .timer-display.danger { animation: timerDanger 1s infinite; }
-    .order-card .confirm-box { background: rgba(255,255,255,0.5); border-radius: var(--radius-sm); padding: 12px; margin-top: 12px; }
-    .order-card .confirm-box label { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 13px; font-weight: 500; cursor: pointer; }
-    .order-card .confirm-box input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--success); }
-    .message-item { background: var(--frosted); backdrop-filter: blur(20px); border: 1px solid var(--frosted-border); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 8px; display: flex; align-items: flex-start; gap: 12px; }
-    .message-item .avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; flex-shrink: 0; overflow: hidden; position: relative; }
-    .message-item .avatar img { width:100%; height:100%; object-fit:cover; }
-    .message-item .avatar .online-dot { position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; }
-    .message-item .avatar .online-dot.online { background: var(--success); }
-    .message-item .avatar .online-dot.offline { background: #ccc; }
-    .message-item .content { flex:1; min-width:0; }
-    .message-item .sender { font-weight:700; font-size:13px; display: flex; align-items: center; gap: 8px; }
-    .message-item .sender .online-badge { font-size: 10px; font-weight: 400; color: var(--success); }
-    .message-item .sender .offline-badge { font-size: 10px; font-weight: 400; color: #999; }
-    .message-item .text { font-size:13px; color:rgba(0,0,0,0.6); }
-    .message-item .time { font-size:10px; color:rgba(0,0,0,0.3); margin-top:2px; }
-    .message-item .audio { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.05); border-radius: 20px; padding: 4px 12px 4px 8px; width: fit-content; }
-    .message-item .audio audio { height: 32px; max-width: 150px; }
-    .contact-chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; background: var(--frosted); border-radius: 20px; cursor: pointer; border: 1px solid var(--frosted-border); font-size: 13px; transition: all 0.2s; white-space: nowrap; position: relative; }
-    .contact-chip:hover { border-color: var(--primary); background: rgba(231,76,60,0.05); }
-    .contact-chip.active { border-color: var(--primary); background: rgba(231,76,60,0.1); }
-    .contact-chip .online-dot-small { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-left: 2px; }
-    .contact-chip .online-dot-small.online { background: var(--success); }
-    .contact-chip .online-dot-small.offline { background: #ccc; }
-    .transaction-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(0,0,0,0.04); }
-    .transaction-item:last-child { border-bottom: none; }
-    .transaction-item .info { display: flex; flex-direction: column; }
-    .transaction-item .desc { font-size: 13px; font-weight: 600; }
-    .transaction-item .date { font-size: 11px; color: rgba(0,0,0,0.3); }
-    .transaction-item .amount { font-weight: 700; font-size: 15px; }
-    .transaction-item .amount.positive { color: var(--success); }
-    .transaction-item .amount.negative { color: var(--danger); }
-    .profile-avatar { width: 80px; height: 80px; border-radius: 50%; background: var(--primary); margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 800; color: #fff; border: 3px solid var(--primary); overflow: hidden; position: relative; }
-    .profile-avatar img { width:100%; height:100%; object-fit:cover; }
-    .profile-avatar .online-dot-big { position: absolute; bottom: 4px; right: 4px; width: 16px; height: 16px; border-radius: 50%; border: 2px solid #fff; }
-    .profile-avatar .online-dot-big.online { background: var(--success); }
-    .profile-avatar .online-dot-big.offline { background: #ccc; }
-    .profile-badge { display: inline-block; background: var(--primary); color: #fff; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-    .confirmation-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: none; align-items: center; justify-content: center; z-index: 2000; background: rgba(0,0,0,0.4); backdrop-filter: blur(10px); animation: fadeInOut 2.5s ease forwards; }
-    .confirmation-overlay.active { display: flex; }
-    .confirmation-overlay .box { background: #fff; padding: 40px 32px; border-radius: var(--radius); text-align: center; max-width: 360px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.2); animation: slideUp 0.4s ease; }
-    .confirmation-overlay .box .icon { font-size: 56px; margin-bottom: 12px; }
-    .confirmation-overlay .box h3 { font-size: 20px; color: var(--success); margin-bottom: 8px; }
-    .confirmation-overlay .box p { color: rgba(0,0,0,0.6); font-size: 14px; }
-    .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
-    .modal-content { background: rgba(255,255,255,0.95); backdrop-filter: blur(30px); border-radius: var(--radius); padding: 24px; max-width: 400px; width: 100%; max-height: 90vh; overflow-y: auto; border: 1px solid var(--frosted-border); }
-    .modal-content .form-group { margin-bottom: 16px; }
-    .modal-content .form-group label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; color: rgba(0,0,0,0.5); margin-bottom: 4px; }
-    .modal-content .form-group input, .modal-content .form-group textarea, .modal-content .form-group select { width: 100%; padding: 10px 14px; border: 1px solid rgba(0,0,0,0.08); border-radius: var(--radius-sm); background: rgba(255,255,255,0.8); font-size: 14px; }
-    .modal-content .form-group textarea { resize: vertical; }
-    .modal-content .form-group input:focus, .modal-content .form-group textarea:focus, .modal-content .form-group select:focus { outline: none; border-color: var(--primary); }
-    .modal-close { float: right; background: none; border: none; font-size: 24px; cursor: pointer; color: #666; }
-    .alert { padding: 12px 16px; border-radius: var(--radius-sm); margin-bottom: 16px; font-size: 13px; display: none; animation: slideUp 0.3s ease; border-left: 4px solid; }
-    .alert.active { display: block; }
-    .alert-success { background: rgba(46,204,113,0.1); color: #27AE60; border-left-color: var(--success); }
-    .alert-error { background: rgba(231,76,60,0.1); color: var(--danger); border-left-color: var(--danger); }
-    .alert-info { background: rgba(255,215,0,0.1); color: #B7950B; border-left-color: var(--primary); }
-    .empty-state { text-align:center; padding:40px 20px; color:rgba(0,0,0,0.3); }
-    .empty-state .icon { font-size:48px; margin-bottom:12px; }
-    .empty-state h3 { font-size:18px; color:rgba(0,0,0,0.5); margin-bottom:4px; }
-    .empty-state p { font-size:13px; }
-    .hidden { display:none !important; }
-    @media (max-width:480px) { .stats-grid { grid-template-columns: repeat(2,1fr); } .grid { grid-template-columns: repeat(auto-fill, minmax(130px,1fr)); } .auth-page .glass { padding:24px 16px; } .welcome-screen .logo-big { font-size:48px; } .welcome-screen h1 { font-size:24px; } }
-    .camera-btn { background: var(--primary); color: #fff; padding: 8px 12px; border: none; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; }
-    .camera-btn:hover { background: var(--primary-dark); }
-    .camera-btn input { display: none; }
-    .voice-btn { background: var(--primary); color: #fff; border: none; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; transition: all 0.3s; flex-shrink: 0; }
-    .voice-btn:hover { transform: scale(1.05); }
-    .voice-btn.recording { background: var(--danger); animation: pulse 1s infinite; }
-    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
-    .voice-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .call-btn { background: var(--success); color: #fff; border: none; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; transition: all 0.3s; flex-shrink: 0; }
-    .call-btn:hover { transform: scale(1.05); }
-    .discussion-header { display: flex; align-items: center; gap: 12px; padding: 8px 0; margin-bottom: 12px; border-bottom: 1px solid var(--frosted-border); }
-    .discussion-header .avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; overflow: hidden; position: relative; flex-shrink: 0; }
-    .discussion-header .avatar img { width:100%; height:100%; object-fit:cover; }
-    .discussion-header .avatar .online-dot { position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; }
-    .discussion-header .avatar .online-dot.online { background: var(--success); }
-    .discussion-header .avatar .online-dot.offline { background: #ccc; }
-    .discussion-header .info { flex: 1; }
-    .discussion-header .info .name { font-weight: 700; font-size: 15px; }
-    .discussion-header .info .status { font-size: 12px; color: rgba(0,0,0,0.4); }
-    .discussion-header .actions { display: flex; gap: 8px; }
-    .order-btn-in-chat { margin-top: 8px; }
-  </style>
+    .product-card .title { font-weight: 700; font-size: 14px; }
+    .product-card .price { font-weight: 800; color: #E74C3C; }
+    .product-card .seller { font-size: 12px; color: #999; }
+
+    .profile-avatar { width: 80px; height: 80px; border-radius: 50%; background: #E74C3C; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 800; color: white; }
+    .wallet-balance { font-size: 32px; font-weight: 800; color: #2ECC71; }
+
+    .order-card { background: rgba(255,255,255,0.8); border-radius: 14px; padding: 16px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.4); }
+    .order-card .status { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .status-pending { background: #fff3cd; color: #856404; }
+    .status-delivered { background: #d4edda; color: #155724; }
+    .status-cancelled { background: #f8d7da; color: #721c24; }
+
+    .contact-chip { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: rgba(255,255,255,0.8); border-radius: 20px; cursor: pointer; border: 1px solid rgba(255,255,255,0.4); font-size: 13px; font-weight: 600; margin: 4px; }
+    .contact-chip:hover { background: rgba(231,76,60,0.05); border-color: #E74C3C; }
+    .contact-chip.active { background: rgba(231,76,60,0.1); border-color: #E74C3C; color: #E74C3C; }
+
+    .admin-card { max-width: 500px; margin: 40px auto; background: white; padding: 24px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+    .admin-card input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; }
+    .admin-card .btn { margin-top: 8px; }
+
+    @media (max-width: 480px) { .grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); } }
+</style>
 </head>
 <body>
-  <div class="kente"></div>
-  <div class="confirmation-overlay" id="confirmationOverlay">
-    <div class="box"><div class="icon">✅</div><h3>Article publié !</h3><p>Votre article a été ajouté avec succès à la marketplace.</p></div>
-  </div>
+    <div class="kente"></div>
 
-  <!-- AUTH PAGE (simplifiée) -->
-  <div id="authPage" class="auth-page">
-    <div class="glass">
-      <h2>BLK</h2>
-      <p class="subtitle">Rejoignez l'univers BLK Marketplace</p>
-      <div id="authForm">
-        <div class="warning">
-          ⚠️ Veuillez renseigner votre véritable nom, prénom et adresse mail pour une expérience optimale.
-        </div>
-        <div class="form-group">
-          <label>Prénom</label>
-          <input type="text" id="authFirstName" placeholder="Divin" />
-        </div>
-        <div class="form-group">
-          <label>Nom</label>
-          <input type="text" id="authLastName" placeholder="Ambeto" />
-        </div>
-        <div class="form-group">
-          <label>Adresse e-mail</label>
-          <input type="email" id="authEmail" placeholder="divin@blk.com" />
-        </div>
-        <button class="btn btn-primary" id="btnAuthSubmit">Rejoindre l'univers BLK</button>
-        <p style="text-align:center; margin-top:12px; font-size:12px; color:rgba(0,0,0,0.3);">
-          En vous inscrivant, vous acceptez nos conditions générales.
-        </p>
-      </div>
+<!-- AUTH -->
+<div class="auth-page" id="authPage">
+    <div class="card">
+        <h1>BLK</h1>
+        <p class="sub">Bienvenue sur BLK Marketplace</p>
+        <input type="text" id="loginName" placeholder="Nom complet" value="Divin Ambeto">
+        <input type="email" id="loginEmail" placeholder="Adresse e-mail" value="ambetodivin9@gmail.com">
+        <button class="btn btn-primary" id="btnLogin">Se connecter</button>
     </div>
-  </div>
+</div>
 
-  <!-- WELCOME SCREEN -->
-  <div class="welcome-screen" id="welcomeScreen">
-    <div class="content">
-      <div class="logo-big">BLK<span>.</span></div>
-      <h1>Bienvenue dans l'univers<br>BLK Marketplace</h1>
-      <p>La mode et les accessoires à portée de main.</p>
-      <button class="btn" id="welcomeBtn">Découvrir</button>
+<!-- WELCOME -->
+<div class="welcome-screen" id="welcomeScreen">
+    <div>
+        <h1>BLK<span>.</span></h1>
+        <p>Bienvenue dans l'univers BLK</p>
+        <p>La mode et les accessoires à portée de main.</p>
+        <button class="btn" id="welcomeBtn">Découvrir</button>
     </div>
-  </div>
+</div>
 
-  <header id="header">
-    <span class="logo">BLK</span>
-    <div class="user-info">
-      <span class="user-name" id="headerName">Utilisateur</span>
-      <div class="user-avatar" id="headerAvatar">U</div>
-    </div>
-  </header>
-
-  <div class="app-container" id="appContainer">
+<!-- APP -->
+<div class="app" id="appContainer">
     <div id="alertBox" class="alert"></div>
 
-<!-- HOME -->
-<div class="page active" id="pageHome">
-  <div class="search-container"><span class="logo-icon">BLK</span><input type="text" class="search-bar" id="searchInput" placeholder="Rechercher..." /></div>
-  <div class="category-filters" id="categoryFilters">
-    <button class="btn btn-primary btn-sm" data-cat="all">Tous</button>
-    <button class="btn btn-outline btn-sm" data-cat="vêtements">Vêtements</button>
-    <button class="btn btn-outline btn-sm" data-cat="chaussures">Chaussures</button>
-    <button class="btn btn-outline btn-sm" data-cat="sacs">Sacs</button>
-    <button class="btn btn-outline btn-sm" data-cat="bijoux">Bijoux</button>
-    <button class="btn btn-outline btn-sm" data-cat="accessoires">Accessoires</button>
-  </div>
-  <div id="productsGrid" class="grid"></div>
-  <div id="emptyHome" class="empty-state" style="display:none;"><div class="icon">📭</div><h3>Aucun article</h3><p>Soyez le premier à publier un article !</p></div>
+    <!-- ACCUEIL -->
+    <div class="page active" id="pageHome">
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="Rechercher...">
+        </div>
+        <div id="categoryFilters" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+            <button class="btn btn-sm btn-primary" data-cat="all">Tous</button>
+            <button class="btn btn-sm btn-outline" data-cat="vêtements">Vêtements</button>
+            <button class="btn btn-sm btn-outline" data-cat="chaussures">Chaussures</button>
+            <button class="btn btn-sm btn-outline" data-cat="sacs">Sacs</button>
+            <button class="btn btn-sm btn-outline" data-cat="bijoux">Bijoux</button>
+            <button class="btn btn-sm btn-outline" data-cat="accessoires">Accessoires</button>
+        </div>
+        <div id="productsGrid" class="grid"></div>
+        <div id="emptyHome" class="empty" style="display:none;">Aucun article</div>
+    </div>
+
+    <!-- MON MAGASIN -->
+    <div class="page" id="pageShop">
+        <h2 style="color:#E74C3C; margin-bottom:16px;">Mon Magasin</h2>
+        <button class="btn btn-primary" id="btnPublish">📤 Publier un article</button>
+        <div id="shopArticles" style="margin-top:12px;"></div>
+    </div>
+
+    <!-- MESSAGERIE -->
+    <div class="page" id="pageMessages">
+        <h2 style="color:#E74C3C; margin-bottom:16px;">Messagerie</h2>
+        <div id="contactsList" style="display:flex; flex-wrap:wrap; margin-bottom:12px;"></div>
+        <div id="discussionView" style="display:none;">
+            <div class="glass">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <h3 id="discussionName">Utilisateur</h3>
+                    <button class="btn btn-sm btn-outline" id="btnCloseDiscussion" style="width:auto; padding:4px 12px;">✕</button>
+                </div>
+                <div id="messagesList" style="max-height:300px; overflow-y:auto; padding:4px 0;"></div>
+                <div style="display:flex; gap:8px; margin-top:8px;">
+                    <input type="text" id="messageInput" placeholder="Écris ton message..." style="flex:1; padding:12px; border:1px solid #ddd; border-radius:14px; font-size:16px;">
+                    <button class="btn btn-primary" id="btnSendMessage" style="width:auto; padding:12px 20px;">Envoyer</button>
+                </div>
+            </div>
+        </div>
+        <div id="emptyMessages" class="empty" style="display:block;">Aucune discussion</div>
+    </div>
+
+    <!-- MES COMMANDES -->
+    <div class="page" id="pageOrders">
+        <h2 style="color:#E74C3C; margin-bottom:16px;">Mes Commandes</h2>
+        <div id="ordersList"></div>
+        <div id="emptyOrders" class="empty" style="display:none;">Aucune commande</div>
+        <div id="qrScannerContainer" style="display:none; margin-top:16px;">
+            <div class="glass">
+                <h3>📷 Scanner le QR Code</h3>
+                <p>Placez le QR code du vendeur devant la caméra.</p>
+                <div id="reader"></div>
+                <button class="btn btn-danger" id="btnStopScanner" style="margin-top:12px;">Arrêter</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MON PROFIL -->
+    <div class="page" id="pageProfile">
+        <h2 style="color:#E74C3C; margin-bottom:16px;">Mon Profil</h2>
+        <div class="glass" style="text-align:center;">
+            <div class="profile-avatar" id="profileAvatar">U</div>
+            <h3 id="profileName">Utilisateur</h3>
+            <p style="color:#666;" id="profileEmail">email@example.com</p>
+            <p style="color:#666;" id="profilePhone">+242 06 XXX XXXX</p>
+            <p>🔥 <span id="profileFlames">0</span> flammes <span id="profileSellerBadge" style="display:none; background:#E74C3C; color:white; padding:2px 10px; border-radius:20px; font-size:12px;">Vendeur</span></p>
+        </div>
+        <div class="glass">
+            <h3 style="color:#2ECC71;">💰 Wallet BLK</h3>
+            <p class="wallet-balance"><span id="walletBalance">0</span> FCFA</p>
+            <button class="btn btn-success" id="btnDeposit">Déposer</button>
+            <button class="btn btn-primary" id="btnWithdraw" style="margin-top:8px;">Retirer</button>
+        </div>
+        <div class="glass">
+            <h3>📋 Historique</h3>
+            <div id="transactionsList"></div>
+            <div id="emptyTransactions" class="empty" style="display:none;">Aucune transaction</div>
+        </div>
+        <button class="btn btn-danger" id="btnLogout">🚪 Déconnexion</button>
+    </div>
 </div>
 
-<!-- ORDERS -->
-<div class="page" id="pageOrders">
-  <h2 class="page-title">📦 Mes Commandes</h2>
-  <div id="ordersList"></div>
-  <div id="emptyOrders" class="empty-state" style="display:none;"><div class="icon">📭</div><h3>Aucune commande</h3><p>Vos commandes apparaîtront ici.</p></div>
+<!-- TABS (en bas) – 5 onglets texte seulement -->
+<div class="tabs" id="tabs">
+    <button class="tab-btn active" data-page="pageHome">Accueil</button>
+    <button class="tab-btn" data-page="pageShop">Mon Magasin</button>
+    <button class="tab-btn" data-page="pageMessages">Messagerie</button>
+    <button class="tab-btn" data-page="pageOrders">Mes Commandes</button>
+    <button class="tab-btn" data-page="pageProfile">Mon Profil</button>
 </div>
 
-<!-- MESSAGES -->
-<div class="page" id="pageMessages">
-  <h2 class="page-title">💬 Messagerie</h2>
-  <div id="contactsList" style="margin-bottom:12px; display:flex; gap:8px; flex-wrap:wrap; overflow-x:auto; padding-bottom:8px;"></div>
-  <div id="discussionView" style="display:none;">
-    <div class="discussion-header" id="discussionHeader">
-      <div class="avatar" id="discussionAvatar"><span>U</span><div class="online-dot offline" id="discussionOnlineDot"></div></div>
-      <div class="info">
-        <div class="name" id="discussionName">Utilisateur</div>
-        <div class="status" id="discussionStatus">Hors ligne</div>
-      </div>
-      <div class="actions">
-        <button class="call-btn" id="btnCall" title="Appel audio">📞</button>
-      </div>
-    </div>
-    <div id="discussionOrderBtn" style="margin-bottom:8px;"></div>
-    <div id="messagesList" style="max-height:320px; overflow-y:auto; padding:4px 0;"></div>
-    <div style="display:flex; gap:8px; margin-top:8px;">
-      <input type="text" id="messageInput" placeholder="Écris ton message..." style="flex:1; padding:10px 12px; border:1px solid rgba(0,0,0,0.08); border-radius:var(--radius-sm);" />
-      <button class="voice-btn" id="btnRecordVoice" title="Note vocale">🎤</button>
-      <button class="btn btn-primary" style="width:auto; padding:10px 16px;" id="btnSendMessage">Envoyer</button>
-    </div>
-  </div>
-  <div id="emptyMessages" class="empty-state" style="display:block;"><div class="icon">💬</div><h3>Aucune discussion</h3><p>Cliquez sur "Contacter le vendeur" depuis un article.</p></div>
-</div>
-
-<!-- SHOP -->
-<div class="page" id="pageShop">
-  <h2 class="page-title">🏪 Mon Magasin</h2>
-  <div class="stats-grid" id="statsGrid">
-    <div class="stat-card"><div class="number" id="statSales">0</div><div class="label">Ventes</div><div class="trend up" id="trendSales">⬆️ 0%</div></div>
-    <div class="stat-card"><div class="number" id="statOrders">0</div><div class="label">Commandes</div><div class="trend up" id="trendOrders">⬆️ 0%</div></div>
-    <div class="stat-card"><div class="number" id="statArticles">0</div><div class="label">Articles</div><div class="trend up" id="trendArticles">⬆️ 0%</div></div>
-  </div>
-  <div class="glass-sm" style="margin-bottom:12px;"><h3 style="font-size:16px;">📈 Évolution des ventes</h3><div class="chart-container" id="chartContainer"></div><div class="stats-date" id="statsDate"></div></div>
-  <button class="btn btn-primary" id="btnPublish">📤 Publier un article</button>
-  <div id="shopArticles" style="margin-top:12px;"></div>
-</div>
-
-<!-- PROFILE -->
-<div class="page" id="pageProfile">
-  <h2 class="page-title">👤 Mon Profil</h2>
-  <div id="profileContent">
-    <div class="glass-lg" style="text-align:center;">
-      <div class="profile-avatar" id="profileAvatar">U<div class="online-dot-big offline" id="profileOnlineDot"></div></div>
-      <h3 id="profileName">Utilisateur</h3>
-      <p style="color:rgba(0,0,0,0.4);font-size:13px;" id="profileEmail">email@example.com</p>
-      <p style="color:rgba(0,0,0,0.4);font-size:13px;" id="profilePhone">+242 06 XXX XXXX</p>
-      <div style="margin-top:8px;">
-        <span style="font-size:14px;">🔥 <span id="profileFlames">0</span> flammes</span>
-        <span class="profile-badge" id="profileSellerBadge" style="display:none;">Vendeur</span>
-      </div>
-      <div id="profileOrderBtn" style="margin-top:12px; display:none;"><button class="btn btn-success" id="btnOrderFromProfile">Commander</button></div>
-    </div>
-    <div class="glass-lg" style="margin-top:12px;">
-      <h3 style="color:var(--success);">💰 Wallet BLK</h3>
-      <p style="font-size:32px;font-weight:800;color:var(--success);margin:8px 0;"><span id="walletBalance">0</span> FCFA</p>
-      <div style="display:flex;gap:8px;"><button class="btn btn-success" style="flex:1;" id="btnDeposit">Déposer</button><button class="btn btn-primary" style="flex:1;" id="btnWithdraw">Retirer</button></div>
-    </div>
-    <div class="glass-lg" style="margin-top:12px;display:none;" id="depositForm">
-      <h3>💳 Dépôt</h3>
-      <div class="form-group"><label>Montant (FCFA)</label><input type="number" id="depositAmount" placeholder="10000" /></div>
-      <div class="form-group"><label>Numéro MTN</label><input type="tel" id="depositPhone" placeholder="+242 06 XXX XXXX" /></div>
-      <button class="btn btn-success" id="btnConfirmDeposit">Confirmer le dépôt</button>
-      <button class="btn btn-outline" style="margin-top:8px;" id="btnCancelDeposit">Annuler</button>
-    </div>
-    <div class="glass-lg" style="margin-top:12px;display:none;" id="withdrawForm">
-      <h3>💳 Retrait</h3>
-      <div class="form-group"><label>Montant (FCFA)</label><input type="number" id="withdrawAmount" placeholder="5000" /></div>
-      <div class="form-group"><label>Numéro MTN</label><input type="tel" id="withdrawPhone" placeholder="+242 06 XXX XXXX" /></div>
-      <button class="btn btn-danger" id="btnConfirmWithdraw">Confirmer le retrait</button>
-      <button class="btn btn-outline" style="margin-top:8px;" id="btnCancelWithdraw">Annuler</button>
-    </div>
-    <div class="glass-lg" style="margin-top:12px;"><h3>📋 Historique des transactions</h3><div id="transactionsList"></div><div id="emptyTransactions" class="empty-state" style="display:none;padding:20px 0;"><p>Aucune transaction</p></div></div>
-    <button class="btn btn-danger" style="margin-top:12px;" id="btnLogout">🚪 Déconnexion</button>
-  </div>
-</div>
-  </div>
-
-  <nav class="tabs" id="tabs">
-    <button class="tab-btn active" data-page="pageHome"><span class="tab-icon"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></span><span class="tab-label">Accueil</span></button>
-    <button class="tab-btn" data-page="pageOrders"><span class="tab-icon"><svg viewBox="0 0 24 24"><path d="M19 6h-2v2h2v10H5V8h2V6H5c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-7 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg></span><span class="tab-label">Commandes</span><span class="badge" id="ordersBadge" style="display:none;">0</span></button>
-    <button class="tab-btn" data-page="pageMessages"><span class="tab-icon"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg></span><span class="tab-label">Messages</span><span class="badge" id="messagesBadge" style="display:none;">0</span></button>
-    <button class="tab-btn" data-page="pageShop"><span class="tab-icon"><svg viewBox="0 0 24 24"><path d="M18 6h-2c0-2.2-1.8-4-4-4S8 3.8 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2z"/></svg></span><span class="tab-label">Mon Magasin</span></button>
-    <button class="tab-btn" data-page="pageProfile"><span class="tab-icon"><svg viewBox="0 0 24 24"><path d="M12 12c2.2 0 4-1.8 4-4s-1.8-4-4-4-4 1.8-4 4 1.8 4 4 4zm0 2c-2.7 0-8 1.3-8 4v2h16v-2c0-2.7-5.3-4-8-4z"/></svg></span><span class="tab-label">Profil</span></button>
-  </nav>
-
-  <script>
-    // 
+<script>
+    // ============================================================
     // CONFIGURATION
-    // 
-    const BACKEND_URL = 'https://blk-backend.onrender.com';
-    const STORAGE_KEY = 'blk_user_id';
-    const CONTACTS_KEY = 'blk_contacts';  // pour persister les contacts
-
-    let currentUser = null, currentUserId = null, allProducts = [], selectedCategory = 'all';
-    let activeConversationId = null, typingTimeoutId = null, mediaRecorder = null, audioChunks = [], isRecording = false;
-    let viewedUserId = null, hasOrderedFromCurrentSeller = false;
-
-    // 
-    // FONCTIONS UTILITAIRES
-    // 
-    function showAlert(m, t='success') {
-      const b = document.getElementById('alertBox');
-      b.textContent = m; b.className = 'alert active alert-'+t;
-      clearTimeout(b._timeout); b._timeout = setTimeout(() => b.classList.remove('active'), 4000);
-    }
-
-    function showConfirmation() {
-      const o = document.getElementById('confirmationOverlay');
-      o.classList.add('active'); setTimeout(() => o.classList.remove('active'), 2500);
-    }
+    // ============================================================
+    var BACKEND_URL = 'https://blk-marketplace2-0.onrender.com';
+    var STORAGE_KEY = 'blk_user_id';
+    var CONTACTS_KEY = 'blk_contacts';
+    var currentUser = null;
+    var currentUserId = null;
+    var allProducts = [];
+    var selectedCategory = 'all';
+    var activeConversationId = null;
+    var html5QrCode = null;
 
     // Gestion des contacts persistants
     function getContacts() {
-      try { return JSON.parse(localStorage.getItem(CONTACTS_KEY)) || {}; } catch(e) { return {}; }
+        try { return JSON.parse(localStorage.getItem(CONTACTS_KEY)) || {}; } catch(e) { return {}; }
     }
     function saveContacts(contacts) {
-      localStorage.setItem(CONTACTS_KEY, JSON.stringify(contacts));
+        localStorage.setItem(CONTACTS_KEY, JSON.stringify(contacts));
     }
     function addContact(userId, name, photo) {
-      const contacts = getContacts();
-      if (!contacts[userId]) {
-        contacts[userId] = { name, photo: photo || '' };
-        saveContacts(contacts);
-      }
-    }
-
-    // 
-    // AUTHENTIFICATION
-    // 
-    document.getElementById('btnAuthSubmit').addEventListener('click', function() {
-      const firstName = document.getElementById('authFirstName').value.trim();
-      const lastName = document.getElementById('authLastName').value.trim();
-      const email = document.getElementById('authEmail').value.trim();
-
-      if (!firstName || !lastName || !email) {
-        showAlert('❌ Veuillez remplir tous les champs (prénom, nom, email).', 'error');
-        return;
-      }
-
-      const fullName = firstName + ' ' + lastName;
-      let userId = localStorage.getItem(STORAGE_KEY);
-      if (!userId) {
-        userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-        localStorage.setItem(STORAGE_KEY, userId);
-      }
-      currentUserId = userId;
-      currentUser = {
-        name: fullName,
-        email: email,
-        phone: '+242 06 XXX XXXX',
-        photo: '',
-        flames: 0,
-        walletBalance: 0,
-        id: userId,
-        isSeller: false,
-        blockedUsers: [],
-        online: true
-      };
-
-      document.getElementById('authPage').style.display = 'none';
-      document.getElementById('welcomeScreen').classList.add('active');
-
-      document.getElementById('welcomeBtn').addEventListener('click', function() {
-        document.getElementById('welcomeScreen').classList.remove('active');
-        showMainApp();
-        showAlert('✅ Bienvenue ' + currentUser.name + ' !', 'success');
-        fetch(BACKEND_URL+'/api/users/online', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: currentUserId, online: true })
-        });
-        // Créer l'utilisateur dans Firestore
-        fetch(BACKEND_URL+'/api/users/online', { method: 'POST', ... }); // déjà fait
-        // On va simplement appeler loadUserData qui créera le doc si besoin
-        loadUserData(currentUserId);
-      });
-    });
-
-    // 
-    // AFFICHAGE PRINCIPAL
-    // 
-    function showMainApp() {
-      document.getElementById('appContainer').classList.add('active');
-      document.getElementById('header').style.display = 'flex';
-      document.getElementById('tabs').classList.add('active');
-      document.getElementById('headerName').textContent = currentUser?.name || 'Utilisateur';
-      const a = document.getElementById('headerAvatar');
-      a.textContent = (currentUser?.name || 'U')[0].toUpperCase();
-      document.getElementById('profileName').textContent = currentUser?.name || 'Utilisateur';
-      document.getElementById('profileEmail').textContent = currentUser?.email || 'email@example.com';
-      document.getElementById('profilePhone').textContent = currentUser?.phone || '+242 06 XXX XXXX';
-      document.getElementById('profileFlames').textContent = currentUser?.flames || 0;
-      document.getElementById('profileAvatar').textContent = (currentUser?.name || 'U')[0].toUpperCase();
-      document.getElementById('walletBalance').textContent = currentUser?.walletBalance || 0;
-      const badge = document.getElementById('profileSellerBadge');
-      if (currentUser?.isSeller) badge.style.display = 'inline-block'; else badge.style.display = 'none';
-      const now = new Date();
-      document.getElementById('statsDate').textContent = now.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) + ' · ' + now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-      setInterval(() => {
-        fetch(BACKEND_URL+'/api/users/online', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: currentUserId, online: true }) });
-      }, 30000);
-      loadProducts(); loadStats(); loadOrders(); loadMessages(); loadTransactions(); loadWallet(); loadUserData(currentUserId);
-    }
-
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.addEventListener('click', function() {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        this.classList.add('active');
-        document.getElementById(this.dataset.page).classList.add('active');
-        if (this.dataset.page = 'pageMessages') loadMessages();
-      });
-    });
-
-    // 
-    // CHARGEMENT DES DONNÉES
-    // 
-    async function loadUserData(userId) {
-      if (!userId) return;
-      try {
-        const res = await fetch(BACKEND_URL+'/api/users/'+userId);
-        const data = await res.json();
-        if (data.success) {
-          const user = data.data;
-          document.getElementById('profileName').textContent = user.name || 'Utilisateur';
-          document.getElementById('profileEmail').textContent = user.email || 'email@example.com';
-          document.getElementById('profilePhone').textContent = user.phone || '+242 06 XXX XXXX';
-          document.getElementById('profileFlames').textContent = user.flames || 0;
-          const pAvatar = document.getElementById('profileAvatar');
-          if (user.photo) pAvatar.innerHTML = '<img src="'+user.photo+'" /><div class="online-dot-big '+(user.online?'online':'offline')+'"></div>';
-          else pAvatar.innerHTML = (user.name || 'U')[0].toUpperCase() + '<div class="online-dot-big '+(user.online?'online':'offline')+'"></div>';
-          const badge = document.getElementById('profileSellerBadge');
-          if (user.isSeller) badge.style.display = 'inline-block'; else badge.style.display = 'none';
-          const orderBtn = document.getElementById('profileOrderBtn');
-          if (user.isSeller && userId ! currentUserId) {
-            orderBtn.style.display = 'block';
-            viewedUserId = userId;
-            window._sellerData = user;
-          } else { orderBtn.style.display = 'none'; viewedUserId = null; }
+        var contacts = getContacts();
+        if (!contacts[userId]) {
+            contacts[userId] = { name: name || 'Utilisateur', photo: photo || '' };
+            saveContacts(contacts);
         }
-      } catch(e) { console.error(e); }
     }
 
-    async function loadProducts() {
-      try {
-        const res = await fetch(BACKEND_URL+'/api/articles');
-        const data = await res.json();
-        allProducts = (data.success && data.data) ? data.data : [];
-        renderProducts(allProducts);
-      } catch(e) { allProducts = []; renderProducts(allProducts); }
+    function showAlert(message, type) {
+        var box = document.getElementById('alertBox');
+        box.textContent = message;
+        box.className = 'alert alert-' + (type || 'success');
+        box.style.display = 'block';
+        clearTimeout(box._timeout);
+        box._timeout = setTimeout(function() { box.style.display = 'none'; }, 5000);
+    }
+
+    function formatDate(date) {
+        if (!date) return '';
+        var d = new Date(date);
+        return d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+    }
+
+    // ============================================================
+    // AUTH
+    // ============================================================
+    function handleLogin(name, email) {
+        var userId = localStorage.getItem(STORAGE_KEY);
+        if (!userId) {
+            userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+            localStorage.setItem(STORAGE_KEY, userId);
+        }
+        currentUserId = userId;
+        currentUser = {
+            name: name || 'Utilisateur',
+            email: email || 'user@example.com',
+            phone: '+242 06 XXX XXXX',
+            walletBalance: 0,
+            id: userId,
+            isSeller: false
+        };
+        document.getElementById('authPage').style.display = 'none';
+        document.getElementById('welcomeScreen').classList.add('active');
+        document.getElementById('welcomeBtn').onclick = function() {
+            document.getElementById('welcomeScreen').classList.remove('active');
+            showMainApp();
+            showAlert('Bienvenue ' + currentUser.name, 'success');
+            fetch(BACKEND_URL + '/api/users/online', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: currentUserId, online: true })
+            }).catch(function(e) { console.log(e); });
+        };
+    }
+
+    document.getElementById('btnLogin').addEventListener('click', function() {
+        var name = document.getElementById('loginName').value.trim() || 'Utilisateur';
+        var email = document.getElementById('loginEmail').value.trim() || 'user@example.com';
+        handleLogin(name, email);
+    });
+
+    // ============================================================
+    // MAIN APP
+    // ============================================================
+    function showMainApp() {
+        document.getElementById('appContainer').classList.add('active');
+        document.getElementById('profileName').textContent = currentUser.name;
+        document.getElementById('profileEmail').textContent = currentUser.email;
+        document.getElementById('profilePhone').textContent = currentUser.phone;
+        document.getElementById('profileFlames').textContent = 0;
+        document.getElementById('profileAvatar').textContent = currentUser.name.charAt(0).toUpperCase();
+        loadProducts();
+        loadWallet();
+        loadOrders();
+        loadMessages();
+        loadTransactions();
+        loadShopArticles();
+    }
+
+    // ============================================================
+    // TABS
+    // ============================================================
+    document.querySelectorAll('.tab-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+            document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+            this.classList.add('active');
+            document.getElementById(this.dataset.page).classList.add('active');
+            if (this.dataset.page === 'pageOrders') loadOrders();
+            if (this.dataset.page === 'pageMessages') loadMessages();
+            if (this.dataset.page === 'pageShop') loadShopArticles();
+        });
+    });
+
+    // ============================================================
+    // PRODUCTS
+    // ============================================================
+    function loadProducts() {
+        fetch(BACKEND_URL + '/api/articles')
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                allProducts = (data.success && data.data) ? data.data : [];
+                renderProducts(allProducts);
+            })
+            .catch(function() { allProducts = []; renderProducts(allProducts); });
     }
 
     function renderProducts(products) {
-      const grid = document.getElementById('productsGrid'), empty = document.getElementById('emptyHome');
-      let filtered = products;
-      if (selectedCategory ! 'all') filtered = products.filter(p => p.category = selectedCategory);
-      const q = document.getElementById('searchInput').value.toLowerCase();
-      if (q) filtered = filtered.filter(p => p.title && p.title.toLowerCase().includes(q));
-      if (filtered.length = 0) { grid.innerHTML = ''; empty.style.display = 'block'; return; }
-      empty.style.display = 'none'; grid.innerHTML = '';
-      filtered.forEach(p => {
-        const card = document.createElement('div'); card.className = 'product-card';
-        card.innerHTML = `<img src="${p.image || 'https://via.placeholder.com/150x150/F5F0E8/CCCCCC?text=BLK'}" class="img" /><div class="info"><div class="title">${p.title || 'Sans titre'}</div><div class="price">${p.price || 0} FCFA</div><div class="seller">${p.sellerName || 'Anonyme'}</div></div>`;
-        card.addEventListener('click', () => showProductDetail(p));
-        grid.appendChild(card);
-      });
+        var grid = document.getElementById('productsGrid');
+        var empty = document.getElementById('emptyHome');
+        var filtered = products;
+        if (selectedCategory !== 'all') {
+            filtered = products.filter(function(p) { return p.category === selectedCategory; });
+        }
+        var q = document.getElementById('searchInput').value.toLowerCase();
+        if (q) {
+            filtered = filtered.filter(function(p) { return p.title && p.title.toLowerCase().includes(q); });
+        }
+        if (filtered.length === 0) {
+            grid.innerHTML = '';
+            empty.style.display = 'block';
+            return;
+        }
+        empty.style.display = 'none';
+        grid.innerHTML = '';
+        filtered.forEach(function(p) {
+            var card = document.createElement('div');
+            card.className = 'product-card';
+            card.innerHTML = '<img src="' + (p.image || 'https://via.placeholder.com/150x150/F5F0E8/CCCCCC?text=BLK') + '" class="img" /><div class="info"><div class="title">' + (p.title || 'Sans titre') + '</div><div class="price">' + (p.price || 0) + ' FCFA</div><div class="seller">' + (p.sellerName || 'Anonyme') + '</div></div>';
+            card.addEventListener('click', function() { showProductDetail(p); });
+            grid.appendChild(card);
+        });
     }
 
-    document.querySelectorAll('#categoryFilters .btn').forEach(btn => {
-      btn.addEventListener('click', function() {
-        document.querySelectorAll('#categoryFilters .btn').forEach(b => { b.className = 'btn btn-outline btn-sm'; });
-        this.className = 'btn btn-primary btn-sm'; selectedCategory = this.dataset.cat; renderProducts(allProducts);
-      });
+    document.getElementById('searchInput').addEventListener('input', function() { renderProducts(allProducts); });
+
+    document.querySelectorAll('#categoryFilters .btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('#categoryFilters .btn').forEach(function(b) { b.className = 'btn btn-sm btn-outline'; });
+            this.className = 'btn btn-sm btn-primary';
+            selectedCategory = this.dataset.cat;
+            renderProducts(allProducts);
+        });
     });
-    document.getElementById('searchInput').addEventListener('input', () => renderProducts(allProducts));
 
     function showProductDetail(product) {
-      const modal = document.createElement('div'); modal.className = 'modal';
-      modal.innerHTML = `
-        <div class="modal-content">
-          <button class="modal-close" id="modalCloseBtn">✕</button>
-          <img src="${product.image || 'https://via.placeholder.com/400x300/F5F0E8/CCCCCC?text=BLK'}" style="width:100%;height:200px;object-fit:cover;border-radius:var(--radius-sm);margin-bottom:12px;" />
-          <h3>${product.title || 'Sans titre'}</h3>
-          <p style="color:rgba(0,0,0,0.6);margin:8px 0;">${product.description || 'Aucune description'}</p>
-          <p style="font-size:24px;font-weight:800;color:var(--primary);">${product.price || 0} FCFA</p>
-          <p style="font-size:12px;color:rgba(0,0,0,0.4);margin-top:4px;">Vendeur: ${product.sellerName || 'Anonyme'}</p>
-          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
-            <button class="btn btn-primary" id="modalBuy" style="flex:1;">Acheter</button>
-            <button class="btn btn-outline" id="modalContact" style="flex:1;">💬 Contacter le vendeur</button>
-            <button class="btn btn-outline" id="modalClose" style="flex:1;">Fermer</button>
-          </div>
-        </div>
-      `;
-      document.body.appendChild(modal);
-      document.getElementById('modalClose').addEventListener('click', () => modal.remove());
-      document.getElementById('modalBuy').addEventListener('click', async () => { await buyProduct(product); modal.remove(); });
-      document.getElementById('modalContact').addEventListener('click', () => {
-        modal.remove();
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        const targetTab = document.querySelector('.tab-btn[data-page="pageMessages"]');
-        if (targetTab) { targetTab.classList.add('active'); document.getElementById('pageMessages').classList.add('active'); }
-        // Ajouter le contact dans la liste persistante
-        addContact(product.sellerId, product.sellerName, product.sellerPhoto);
-        openDiscussion(product.sellerId, product.sellerName);
-        showAlert('💬 Vous pouvez maintenant envoyer un message au vendeur.', 'info');
-      });
-      modal.addEventListener('click', (e) => { if(e.target = modal) modal.remove(); });
+        var modal = document.createElement('div');
+        modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:center; z-index:2000; padding:20px;';
+        modal.innerHTML = '<div style="background:white; border-radius:20px; max-width:400px; width:100%; padding:24px; max-height:90vh; overflow-y:auto;"><button onclick="this.parentElement.parentElement.remove()" style="float:right; background:none; border:none; font-size:24px; cursor:pointer;">✕</button><img src="' + (product.image || 'https://via.placeholder.com/400x300/F5F0E8/CCCCCC?text=BLK') + '" style="width:100%; height:200px; object-fit:cover; border-radius:12px; margin-bottom:12px;" /><h3>' + (product.title || 'Sans titre') + '</h3><p style="color:#666; margin:8px 0;">' + (product.description || 'Aucune description') + '</p><p style="font-size:24px; font-weight:800; color:#E74C3C;">' + (product.price || 0) + ' FCFA</p><p style="font-size:12px; color:#999;">Vendeur: ' + (product.sellerName || 'Anonyme') + '</p><div style="display:flex; gap:8px; margin-top:12px;"><button class="btn btn-primary" onclick="buyProduct(\'' + product.id + '\', ' + product.price + ', \'' + product.sellerId + '\', \'' + product.sellerName + '\')" style="flex:1;">Acheter</button><button class="btn btn-outline" onclick="this.parentElement.parentElement.remove()" style="flex:1;">Fermer</button></div></div>';
+        document.body.appendChild(modal);
     }
 
-    async function buyProduct(product) {
-      if (!currentUserId) { showAlert('Connecte-toi d\'abord', 'error'); return; }
-      try {
-        const buyerCommission = Math.round(product.price * 0.03);
-        const totalAmount = product.price + buyerCommission;
-        const walletRes = await fetch(BACKEND_URL+'/api/wallet/'+currentUserId);
-        const walletData = await walletRes.json();
-        if (walletData.balance < totalAmount) {
-          showAlert('❌ Solde insuffisant. Il te manque '+(totalAmount - walletData.balance)+' FCFA', 'error');
-          return;
-        }
-        const res = await fetch(BACKEND_URL+'/api/orders/create', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ articleId: product.id, buyerId: currentUserId, sellerId: product.sellerId, amount: product.price, buyerPhone: currentUser?.phone || '' })
+    window.buyProduct = function(articleId, price, sellerId, sellerName) {
+        if (!currentUserId) { showAlert('Connecte-toi d\'abord', 'error'); return; }
+        showAlert('⏳ Création de la commande...', 'info');
+        fetch(BACKEND_URL + '/api/orders/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                articleId: articleId,
+                buyerId: currentUserId,
+                sellerId: sellerId,
+                amount: price,
+                buyerPhone: currentUser.phone || '065918166'
+            })
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (data.success) {
+                showAlert('✅ Commande créée !', 'success');
+                loadWallet();
+                loadOrders();
+                addContact(sellerId, sellerName, '');
+                loadMessages();
+            } else {
+                showAlert('❌ ' + data.message, 'error');
+            }
+        })
+        .catch(function(e) { showAlert('❌ Erreur: ' + e.message, 'error'); });
+    };
+
+    // ============================================================
+    // WALLET
+    // ============================================================
+    function loadWallet() {
+        if (!currentUserId) return;
+        fetch(BACKEND_URL + '/api/wallet/' + currentUserId)
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                document.getElementById('walletBalance').textContent = data.balance || 0;
+            })
+            .catch(function(e) { console.error(e); });
+    }
+
+    document.getElementById('btnDeposit').addEventListener('click', function() {
+        var amount = prompt('Montant (FCFA) :', '500');
+        if (!amount) return;
+        var phone = prompt('Numéro MTN :', '065918166');
+        if (!phone) return;
+        showAlert('⏳ Envoi...', 'info');
+        fetch(BACKEND_URL + '/api/wallet/deposit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: currentUserId, amount: parseInt(amount), phone: phone })
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (data.success) {
+                showAlert('💰 ' + data.message, 'success');
+                loadWallet();
+                loadTransactions();
+            } else {
+                showAlert('❌ ' + data.message, 'error');
+            }
+        })
+        .catch(function(e) { showAlert('❌ Erreur: ' + e.message, 'error'); });
+    });
+
+    document.getElementById('btnWithdraw').addEventListener('click', function() {
+        showAlert('🔧 Retrait en développement', 'info');
+    });
+
+    // ============================================================
+    // ORDERS
+    // ============================================================
+    function loadOrders() {
+        if (!currentUserId) return;
+        fetch(BACKEND_URL + '/api/orders/' + currentUserId)
+            .then(function(res) { return res.json(); })
+            .then(function(orders) {
+                var container = document.getElementById('ordersList');
+                var empty = document.getElementById('emptyOrders');
+                if (!orders || orders.length === 0) {
+                    container.innerHTML = '';
+                    empty.style.display = 'block';
+                    return;
+                }
+                empty.style.display = 'none';
+                container.innerHTML = '';
+                orders.forEach(function(order) {
+                    var isBuyer = order.buyerId === currentUserId;
+                    var isSeller = order.sellerId === currentUserId;
+                    var other = isBuyer ? order.seller : order.buyer;
+                    var statusClass = order.status === 'livré' ? 'delivered' :
+                                     order.status === 'annulé' ? 'cancelled' :
+                                     order.status === 'remboursé' ? 'refunded' : 'pending';
+                    var statusLabel = order.status === 'en attente de confirmation' ? '⏳ En attente' :
+                                      order.status === 'livré' ? '✅ Livré' :
+                                      order.status === 'annulé' ? '❌ Annulé' :
+                                      order.status === 'remboursé' ? '💰 Remboursé' : order.status;
+                    var card = document.createElement('div');
+                    card.className = 'order-card';
+                    var actionsHtml = '';
+                    if (order.status === 'en attente de confirmation') {
+                        if (isBuyer) {
+                            actionsHtml += '<button class="btn btn-success btn-sm" onclick="scanQRForOrder(\'' + order.id + '\')" style="margin-top:8px;">📷 Scanner QR</button>';
+                        }
+                        if (isSeller) {
+                            actionsHtml += '<button class="btn btn-primary btn-sm" onclick="generateQR(\'' + order.id + '\')" style="margin-top:8px;">🔲 Générer QR</button>';
+                        }
+                    }
+                    if (order.status === 'livré' && isBuyer) {
+                        actionsHtml += '<button class="btn btn-primary btn-sm" onclick="giveFlame(\'' + order.sellerId + '\')" style="margin-top:8px;">🔥 Donner une flamme</button>';
+                    }
+                    card.innerHTML = '<div style="display:flex; justify-content:space-between; align-items:flex-start;"><div><strong>' + (order.article?.title || 'Article') + '</strong><br><span style="font-size:12px; color:#666;">' + (isBuyer ? 'Vendeur: ' + (other?.name || 'Inconnu') : 'Acheteur: ' + (other?.name || 'Inconnu')) + '</span></div><span class="status status-' + statusClass + '">' + statusLabel + '</span></div><div style="font-size:18px; font-weight:700; color:#E74C3C; margin:8px 0;">' + (order.totalAmount || order.amount) + ' FCFA</div>' + (order.sellerReceived ? '<div style="font-size:12px; color:#2ECC71;">Reçu: ' + order.sellerReceived + ' FCFA</div>' : '') + actionsHtml + '<div style="font-size:11px; color:#999; margin-top:4px;">' + formatDate(order.createdAt) + '</div>';
+                    container.appendChild(card);
+                });
+            })
+            .catch(function(e) { console.error(e); });
+    }
+
+    // ============================================================
+    // QR CODE
+    // ============================================================
+    window.generateQR = function(orderId) {
+        var modal = document.createElement('div');
+        modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:center; z-index:2000; padding:20px;';
+        modal.innerHTML = '<div style="background:white; border-radius:20px; max-width:400px; width:100%; padding:24px; text-align:center;"><h3>🔲 QR Code</h3><p>Montrez ce code à l\'acheteur.</p><div id="qrCode" style="margin:12px auto;"></div><p style="font-size:12px; color:#999;">Commande #' + orderId.slice(0,8) + '</p><button class="btn btn-primary" onclick="this.parentElement.parentElement.remove()">Fermer</button></div>';
+        document.body.appendChild(modal);
+        var qrDiv = document.getElementById('qrCode');
+        new QRCode(qrDiv, {
+            text: orderId,
+            width: 200,
+            height: 200,
+            colorDark: '#1a1a1a',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.H
         });
-        const data = await res.json();
-        if (data.success) {
-          showAlert('✅ Commande créée !', 'success');
-          loadWallet(); loadOrders(); loadProducts();
-          if (product.sellerId = activeConversationId) {
-            hasOrderedFromCurrentSeller = true;
-            updateOrderButtonInChat();
-          }
-        } else {
-          showAlert('❌ '+data.message, 'error');
+    };
+
+    window.scanQRForOrder = function(orderId) {
+        var container = document.getElementById('qrScannerContainer');
+        container.style.display = 'block';
+        document.getElementById('reader').innerHTML = '';
+        if (html5QrCode) {
+            html5QrCode.clear();
+            html5QrCode = null;
         }
-      } catch(error) { showAlert('Erreur: '+error.message, 'error'); }
-    }
+        html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            function(decodedText) {
+                html5QrCode.stop();
+                document.getElementById('qrScannerContainer').style.display = 'none';
+                confirmOrderByQR(decodedText, orderId);
+            },
+            function(errorMessage) { console.log(errorMessage); }
+        ).catch(function(err) { showAlert('Erreur caméra: ' + err, 'error'); });
+    };
 
-    async function loadWallet() {
-      if (!currentUserId) return;
-      try { const res = await fetch(BACKEND_URL+'/api/wallet/'+currentUserId); const data = await res.json(); document.getElementById('walletBalance').textContent = data.balance || 0; }
-      catch(e) { console.error(e); }
-    }
-
-    async function loadStats() {
-      if (!currentUserId) return;
-      try {
-        const res = await fetch(BACKEND_URL+'/api/stats/'+currentUserId);
-        const data = await res.json();
-        if (data.success) {
-          const stats = data.data;
-          document.getElementById('statSales').textContent = stats.totalSales || 0;
-          document.getElementById('statOrders').textContent = stats.totalPurchases || 0;
-          document.getElementById('statArticles').textContent = stats.totalArticles || 0;
-          const container = document.getElementById('chartContainer');
-          container.innerHTML = '';
-          if (stats.history && stats.history.length > 0) {
-            const max = Math.max(...stats.history.map(h => h.revenu), 1);
-            stats.history.slice(-6).forEach(h => {
-              const bar = document.createElement('div');
-              bar.className = 'chart-bar';
-              bar.style.height = Math.max((h.revenu/max)*100, 5) + 'px';
-              bar.title = h.month+': '+h.revenu+' FCFA ('+h.ventes+' ventes)';
-              container.appendChild(bar);
-            });
-          } else { container.innerHTML = '<p style="color:rgba(0,0,0,0.3);font-size:13px;">Aucune donnée</p>'; }
-          loadShopArticles();
+    document.getElementById('btnStopScanner').addEventListener('click', function() {
+        if (html5QrCode) {
+            html5QrCode.stop();
+            html5QrCode = null;
         }
-      } catch(e) { console.error(e); }
+        document.getElementById('qrScannerContainer').style.display = 'none';
+    });
+
+    function confirmOrderByQR(scannedOrderId, expectedOrderId) {
+        if (scannedOrderId !== expectedOrderId) {
+            showAlert('❌ QR invalide.', 'error');
+            return;
+        }
+        showAlert('⏳ Confirmation...', 'info');
+        fetch(BACKEND_URL + '/api/orders/confirm-by-qr', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderId: scannedOrderId, buyerId: currentUserId })
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (data.success) {
+                showAlert('✅ ' + data.message, 'success');
+                loadOrders();
+                loadWallet();
+                loadTransactions();
+            } else {
+                showAlert('❌ ' + data.message, 'error');
+            }
+        })
+        .catch(function(e) { showAlert('❌ Erreur: ' + e.message, 'error'); });
     }
 
-    async function loadShopArticles() {
-      if (!currentUserId) return;
-      try {
-        const res = await fetch(BACKEND_URL+'/api/articles/seller/'+currentUserId);
-        const data = await res.json();
-        const container = document.getElementById('shopArticles');
-        if (data.success && data.data && data.data.length > 0) {
-          container.innerHTML = data.data.map(a => `
-            <div class="glass-sm" style="margin-bottom:8px;display:flex;align-items:center;gap:12px;">
-              <img src="${a.image || 'https://via.placeholder.com/50x50/F5F0E8/CCCCCC?text=BLK'}" style="width:50px;height:50px;object-fit:cover;border-radius:8px;" />
-              <div style="flex:1;"><div style="font-weight:600;font-size:13px;">${a.title}</div><div style="font-size:12px;color:var(--primary);font-weight:700;">${a.price} FCFA</div><div style="font-size:10px;color:rgba(0,0,0,0.4);">${a.status = 'active' ? '✅ En vente' : a.status = 'sold' ? '✅ Vendu' : '⏸ Inactif'}</div></div>
-              ${a.status = 'active' ? `<button class="btn btn-danger btn-sm" onclick="deleteArticle('${a.id}')">Supprimer</button>` : ''}
-            </div>
-          `).join('');
-        } else { container.innerHTML = '<p style="color:rgba(0,0,0,0.3);font-size:13px;">Aucun article publié</p>'; }
-      } catch(e) { console.error(e); }
+    // ============================================================
+    // FLAMMES
+    // ============================================================
+    window.giveFlame = function(sellerId) {
+        fetch(BACKEND_URL + '/api/flames', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sellerId: sellerId, buyerId: currentUserId })
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (data.success) {
+                showAlert('🔥 Flamme donnée ! Total: ' + data.flames, 'success');
+                loadUserData(sellerId);
+            } else {
+                showAlert('❌ ' + data.message, 'error');
+            }
+        })
+        .catch(function(e) { showAlert('❌ Erreur: ' + e.message, 'error'); });
+    };
+
+    function loadUserData(userId) {
+        if (!userId) return;
+        fetch(BACKEND_URL + '/api/users/' + userId)
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    document.getElementById('profileFlames').textContent = data.data.flames || 0;
+                }
+            })
+            .catch(function(e) { console.error(e); });
     }
 
-    async function deleteArticle(articleId) {
-      if (!confirm('Supprimer cet article ?')) return;
-      try { const res = await fetch(BACKEND_URL+'/api/articles/'+articleId, { method: 'DELETE' }); if (res.ok) { showAlert('Article supprimé', 'success'); loadShopArticles(); loadStats(); loadProducts(); } }
-      catch(e) { showAlert('Erreur suppression', 'error'); }
+    // ============================================================
+    // SHOP
+    // ============================================================
+    function loadShopArticles() {
+        if (!currentUserId) return;
+        fetch(BACKEND_URL + '/api/articles/seller/' + currentUserId)
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                var container = document.getElementById('shopArticles');
+                if (!data.success || !data.data || data.data.length === 0) {
+                    container.innerHTML = '<p class="empty">Aucun article publié</p>';
+                    return;
+                }
+                container.innerHTML = '';
+                data.data.forEach(function(a) {
+                    var div = document.createElement('div');
+                    div.style.cssText = 'display:flex; align-items:center; gap:12px; background:rgba(255,255,255,0.5); border-radius:12px; padding:12px; margin-bottom:8px;';
+                    div.innerHTML = '<img src="' + (a.image || 'https://via.placeholder.com/50x50/F5F0E8/CCCCCC?text=BLK') + '" style="width:50px; height:50px; object-fit:cover; border-radius:8px;" /><div style="flex:1;"><strong>' + a.title + '</strong><br>' + a.price + ' FCFA</div><button class="btn btn-danger btn-sm" onclick="deleteArticle(\'' + a.id + '\')">Supprimer</button>';
+                    container.appendChild(div);
+                });
+            })
+            .catch(function(e) { console.error(e); });
     }
 
-    document.getElementById('btnPublish').addEventListener('click', () => {
-      const modal = document.createElement('div'); modal.className = 'modal';
-      modal.innerHTML = `
-        <div class="modal-content">
-          <button class="modal-close" id="pubClose">✕</button>
-          <h3 style="margin-bottom:16px;">📤 Publier un article</h3>
-          <div class="form-group"><label>Titre</label><input type="text" id="pubTitle" placeholder="Robe vintage..." /></div>
-          <div class="form-group"><label>Description</label><textarea id="pubDesc" rows="3" placeholder="Décris l'article..."></textarea></div>
+    window.deleteArticle = function(articleId) {
+        if (!confirm('Supprimer cet article ?')) return;
+        fetch(BACKEND_URL + '/api/articles/' + articleId, { method: 'DELETE' })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    showAlert('Article supprimé', 'success');
+                    loadShopArticles();
+                    loadProducts();
+                } else {
+                    showAlert('❌ Erreur', 'error');
+                }
+            })
+            .catch(function(e) { showAlert('❌ Erreur: ' + e.message, 'error'); });
+    };
 
-      <div class="form-group"><label>Prix (FCFA)</label><input type="number" id="pubPrice" placeholder="5000" /></div>
-      <div class="form-group"><label>Catégorie</label><select id="pubCategory"><option value="vêtements">Vêtements</option><option value="chaussures">Chaussures</option><option value="sacs">Sacs</option><option value="bijoux">Bijoux</option><option value="accessoires">Accessoires</option></select></div>
-      <div class="form-group">
-        <label>Photo</label>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <input type="file" id="pubImage" accept="image/*" style="flex:1;padding:8px;" />
-          <button class="camera-btn" id="cameraBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Prendre une photo</button>
-          <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;" />
-        </div>
-      </div>
-      <button class="btn btn-primary" id="pubSubmit">Publier</button>
-      <button class="btn btn-outline" style="margin-top:8px;" id="pubCancel">Annuler</button>
-    </div>
-  `;
-  document.body.appendChild(modal);
-  const cameraBtn = document.getElementById('cameraBtn'), cameraInput = document.getElementById('cameraInput'), fileInput = document.getElementById('pubImage');
-  cameraBtn.addEventListener('click', () => cameraInput.click());
-  cameraInput.addEventListener('change', (e) => { if (e.target.files.length > 0) { const dt = new DataTransfer(); dt.items.add(e.target.files[0]); fileInput.files = dt.files; showAlert('📸 Photo prise !', 'success'); } });
-  document.getElementById('pubClose').addEventListener('click', () => modal.remove());
-  document.getElementById('pubCancel').addEventListener('click', () => modal.remove());
-  document.getElementById('pubSubmit').addEventListener('click', async () => {
-    const title = document.getElementById('pubTitle').value.trim();
-    const description = document.getElementById('pubDesc').value.trim();
-    const price = document.getElementById('pubPrice').value;
-    const category = document.getElementById('pubCategory').value;
-    const imageFile = document.getElementById('pubImage').files[0];
-    if (!title || !description || !price) { showAlert('Remplis tous les champs', 'error'); return; }
-    let imageUrl = '';
-    if (imageFile) {
-      try {
-        const reader = new FileReader();
-        const base64 = await new Promise((resolve) => { reader.onload = () => resolve(reader.result); reader.readAsDataURL(imageFile); });
-        const uploadRes = await fetch(BACKEND_URL+'/api/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ base64 }) });
-        const uploadData = await uploadRes.json();
-        if (uploadData.success) imageUrl = uploadData.url;
-      } catch(e) { showAlert('Erreur upload image', 'error'); return; }
+    document.getElementById('btnPublish').addEventListener('click', function() {
+        var modal = document.createElement('div');
+        modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:center; z-index:2000; padding:20px;';
+        modal.innerHTML = '<div style="background:white; border-radius:20px; max-width:400px; width:100%; padding:24px; max-height:90vh; overflow-y:auto;"><h3 style="margin-bottom:16px;">📤 Publier un article</h3><input type="text" id="pubTitle" placeholder="Titre" style="width:100%; padding:12px; margin-bottom:8px; border:1px solid #ddd; border-radius:10px;"><textarea id="pubDesc" placeholder="Description" rows="3" style="width:100%; padding:12px; margin-bottom:8px; border:1px solid #ddd; border-radius:10px;"></textarea><input type="number" id="pubPrice" placeholder="Prix (FCFA)" style="width:100%; padding:12px; margin-bottom:8px; border:1px solid #ddd; border-radius:10px;"><select id="pubCategory" style="width:100%; padding:12px; margin-bottom:8px; border:1px solid #ddd; border-radius:10px;"><option value="vêtements">Vêtements</option><option value="chaussures">Chaussures</option><option value="sacs">Sacs</option><option value="bijoux">Bijoux</option><option value="accessoires">Accessoires</option></select><input type="file" id="pubImage" accept="image/*" style="width:100%; padding:8px; margin-bottom:8px;"><button class="btn btn-primary" id="pubSubmit">Publier</button><button class="btn btn-outline" onclick="this.parentElement.parentElement.remove()" style="margin-top:8px;">Annuler</button></div>';
+        document.body.appendChild(modal);
+
+        document.getElementById('pubSubmit').addEventListener('click', function() {
+            var title = document.getElementById('pubTitle').value.trim();
+            var description = document.getElementById('pubDesc').value.trim();
+            var price = document.getElementById('pubPrice').value;
+            var category = document.getElementById('pubCategory').value;
+            var imageFile = document.getElementById('pubImage').files[0];
+            if (!title || !description || !price) {
+                showAlert('Remplis tous les champs', 'error');
+                return;
+            }
+            var imageUrl = '';
+            if (imageFile) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    var base64 = e.target.result;
+                    fetch(BACKEND_URL + '/api/upload', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ base64: base64 })
+                    })
+                    .then(function(res) { return res.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            imageUrl = data.url;
+                            submitArticle(title, description, price, category, imageUrl);
+                        } else {
+                            showAlert('Erreur upload image', 'error');
+                        }
+                    })
+                    .catch(function(e) { showAlert('Erreur: ' + e.message, 'error'); });
+                };
+                reader.readAsDataURL(imageFile);
+            } else {
+                submitArticle(title, description, price, category, '');
+            }
+        });
+    });
+
+    function submitArticle(title, description, price, category, imageUrl) {
+        fetch(BACKEND_URL + '/api/articles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: title,
+                description: description,
+                price: parseInt(price),
+                category: category,
+                image: imageUrl,
+                sellerId: currentUserId,
+                sellerName: currentUser.name,
+                sellerPhoto: ''
+            })
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (data.success) {
+                showAlert('✅ Article publié !', 'success');
+                loadShopArticles();
+                loadProducts();
+                document.querySelector('.modal').remove();
+            } else {
+                showAlert('❌ ' + data.message, 'error');
+            }
+        })
+        .catch(function(e) { showAlert('❌ Erreur: ' + e.message, 'error'); });
     }
-    try {
-      const res = await fetch(BACKEND_URL+'/api/articles', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, description, price: parseInt(price), category, image: imageUrl, sellerId: currentUserId, sellerName: currentUser?.name || 'Anonyme', sellerPhoto: currentUser?.photo || '' })
-      });
-      const data = await res.json();
-      if (data.success) { showConfirmation(); modal.remove(); loadProducts(); loadStats(); loadShopArticles(); }
-      else { showAlert('Erreur: '+data.message, 'error'); }
-    } catch(e) { showAlert('Erreur publication', 'error'); }
-  });
-  modal.addEventListener('click', (e) => { if(e.target === modal) modal.remove(); });
-});
 
-// ============================================================
-// ORDRES
-// ============================================================
-async function loadOrders() {
-  if (!currentUserId) return;
-  try {
-    const res = await fetch(BACKEND_URL+'/api/orders/'+currentUserId);
-    const orders = await res.json();
-    const container = document.getElementById('ordersList'), empty = document.getElementById('emptyOrders');
-    if (!orders || orders.length === 0) { container.innerHTML = ''; empty.style.display = 'block'; return; }
-    empty.style.display = 'none'; container.innerHTML = '';
-    orders.forEach(order => {
-      const isBuyer = order.buyerId === currentUserId, isSeller = order.sellerId === currentUserId;
-      const other = isBuyer ? order.seller : order.buyer;
-      const expiresAt = order.expiresAt ? new Date(order.expiresAt) : null;
-      const now = new Date();
-      const timeLeft = expiresAt ? Math.max(0, Math.floor((expiresAt - now)/1000)) : 0;
-      const hours = Math.floor(timeLeft/3600), mins = Math.floor((timeLeft%3600)/60);
-      const isDanger = timeLeft < 3600 && order.status === 'en attente de confirmation';
-      const card = document.createElement('div'); card.className = 'order-card';
-      card.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-          <div><div style="font-weight:700;">${order.article?.title || 'Article'}</div><div style="font-size:12px;color:rgba(0,0,0,0.4);">${isBuyer ? 'Vendeur: '+(other?.name||'Inconnu') : 'Acheteur: '+(other?.name||'Inconnu')}</div></div>
-          <span class="status status-${order.status === 'livré' ? 'delivered' : order.status === 'annulé' ? 'cancelled' : order.status === 'remboursé' ? 'refunded' : 'pending'}">${order.status === 'en attente de confirmation' ? '⏳ En attente' : order.status === 'livré' ? '✅ Livré' : order.status === 'annulé' ? '❌ Annulé' : order.status === 'remboursé' ? '💰 Remboursé' : order.status}</span>
-        </div>
-        <div style="font-size:16px;font-weight:700;color:var(--primary);margin:8px 0;">${order.totalAmount || order.amount} FCFA</div>
-        ${order.status === 'en attente de confirmation' ? `
-          <div class="timer-display ${isDanger ? 'danger' : ''}">${String(hours).padStart(2,'0')}h ${String(mins).padStart(2,'0')}m</div>
-          ${isBuyer ? `
-            <div class="confirm-box">
-              <label><input type="checkbox" class="confirm-check" data-key="recu" /> J'ai bien reçu le colis</label>
-              <label><input type="checkbox" class="confirm-check" data-key="bon_etat" /> Le colis est en bon état</label>
-              <label><input type="checkbox" class="confirm-check" data-key="confirme" /> Je confirme la réception</label>
-              <button class="btn btn-success" style="margin-top:8px;" onclick="confirmOrder('${order.id}')">✅ Confirmer la réception</button>
-            </div>
-          ` : `<div style="font-size:12px;color:rgba(0,0,0,0.4);">En attente de confirmation par l'acheteur...</div>`}
-        ` : ''}
-        ${order.status === 'livré' ? `
-          <div style="font-size:12px;color:var(--success);">✅ Livré le ${order.buyerConfirmedAt ? new Date(order.buyerConfirmedAt).toLocaleDateString() : ''}${order.sellerReceived ? '- Reçu '+order.sellerReceived+' FCFA' : ''}</div>
-          <div style="margin-top:8px;"><button class="btn btn-primary btn-sm" onclick="giveFlame('${order.sellerId}')">🔥 Donner une flamme</button></div>
-        ` : ''}
-        ${order.status === 'en attente de confirmation' && new Date(order.createdAt) > new Date(Date.now() - 2*60*60*1000) ? `
-          <button class="btn btn-danger btn-sm" style="margin-top:8px;" onclick="cancelOrder('${order.id}')">❌ Annuler (2h max)</button>
-        ` : ''}
-      `;
-      container.appendChild(card);
-    });
-  } catch(e) { console.error(e); }
-}
+    // ============================================================
+    // MESSAGES (avec persistance des contacts)
+    // ============================================================
+    function loadMessages() {
+        if (!currentUserId) return;
+        var contacts = getContacts();
+        var container = document.getElementById('contactsList');
+        var empty = document.getElementById('emptyMessages');
+        var view = document.getElementById('discussionView');
 
-window.confirmOrder = async function(orderId) {
-  const checks = document.querySelectorAll('.confirm-check');
-  const confirmations = {}; let allChecked = true;
-  checks.forEach(cb => { confirmations[cb.dataset.key] = cb.checked; if (!cb.checked) allChecked = false; });
-  if (!allChecked) { showAlert('❌ Tu dois cocher les 3 cases', 'error'); return; }
-  try {
-    const res = await fetch(BACKEND_URL+'/api/orders/confirm', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ orderId, buyerId: currentUserId, confirmations })
-    });
-    const data = await res.json();
-    if (data.success) { showAlert('✅ Commande confirmée !', 'success'); loadOrders(); loadWallet(); loadStats(); loadProducts(); }
-    else { showAlert('❌ '+data.message, 'error'); }
-  } catch(e) { showAlert('Erreur confirmation', 'error'); }
-};
+        fetch(BACKEND_URL + '/api/messages/' + currentUserId)
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success && data.data) {
+                    data.data.forEach(function(msg) {
+                        var otherId = msg.senderId === currentUserId ? msg.receiverId : msg.senderId;
+                        var otherName = msg.senderId === currentUserId ? msg.receiverName : msg.senderName;
+                        if (otherId) {
+                            addContact(otherId, otherName || 'Utilisateur', '');
+                        }
+                    });
+                }
+                contacts = getContacts();
+                var contactKeys = Object.keys(contacts);
+                if (contactKeys.length === 0) {
+                    container.innerHTML = '';
+                    empty.style.display = 'block';
+                    view.style.display = 'none';
+                    return;
+                }
+                empty.style.display = 'none';
+                container.innerHTML = contactKeys.map(function(id) {
+                    var isActive = (activeConversationId === id) ? 'active' : '';
+                    return '<div class="contact-chip ' + isActive + '" data-id="' + id + '">' + (contacts[id].name || 'Utilisateur') + '</div>';
+                }).join('');
 
-window.cancelOrder = async function(orderId) {
-  if (!confirm('Annuler cette commande ?')) return;
-  try {
-    const res = await fetch(BACKEND_URL+'/api/orders/cancel/'+orderId, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: currentUserId })
-    });
-    const data = await res.json();
-    if (data.success) { showAlert('✅ Commande annulée et remboursée', 'success'); loadOrders(); loadWallet(); loadProducts(); }
-    else { showAlert('❌ '+data.message, 'error'); }
-  } catch(e) { showAlert('Erreur annulation', 'error'); }
-};
+                document.querySelectorAll('.contact-chip').forEach(function(el) {
+                    el.addEventListener('click', function() {
+                        var id = this.dataset.id;
+                        activeConversationId = id;
+                        document.querySelectorAll('.contact-chip').forEach(function(c) { c.classList.remove('active'); });
+                        this.classList.add('active');
+                        openDiscussion(id, contacts[id]?.name || 'Utilisateur');
+                    });
+                });
 
-window.giveFlame = async function(sellerId) {
-  try {
-    const res = await fetch(BACKEND_URL+'/api/flames', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sellerId, buyerId: currentUserId })
-    });
-    const data = await res.json();
-    if (data.success) { showAlert('🔥 Flamme donnée ! Total: '+data.flames, 'success'); loadUserData(sellerId); }
-    else { showAlert('❌ '+data.message, 'error'); }
-  } catch(e) { showAlert('Erreur flamme', 'error'); }
-};
+                if (activeConversationId && contacts[activeConversationId]) {
+                    openDiscussion(activeConversationId, contacts[activeConversationId].name);
+                } else if (contactKeys.length > 0) {
+                    var firstId = contactKeys[0];
+                    activeConversationId = firstId;
+                    openDiscussion(firstId, contacts[firstId].name);
+                }
+            })
+            .catch(function(e) { console.error(e); });
+    }
 
-// ============================================================
-// MESSAGERIE AVEC PERSISTANCE DES CONTACTS
-// ============================================================
-let discussionContact = null;
-
-async function loadMessages() {
-  if (!currentUserId) return;
-  try {
-    const res = await fetch(BACKEND_URL+'/api/messages/'+currentUserId);
-    const data = await res.json();
-    const contactsContainer = document.getElementById('contactsList');
-    const empty = document.getElementById('emptyMessages');
-    const discussionView = document.getElementById('discussionView');
-
-    if (!data.success || !data.data || data.data.length === 0) {
-      // On affiche quand même les contacts persistants s'il y en a
-      const contacts = getContacts();
-      if (Object.keys(contacts).length === 0) {
-        contactsContainer.innerHTML = '';
-        empty.style.display = 'block';
-        discussionView.style.display = 'none';
-        return;
-      } else {
-        // On construit les contacts à partir de localStorage
-        const contactsList = Object.keys(contacts).map(id => ({
-          id: id,
-          name: contacts[id].name,
-          photo: contacts[id].photo,
-          lastMessage: '',
-          time: null,
-          unread: 0,
-          online: false
-        }));
-        renderContacts(contactsList);
+    function openDiscussion(contactId, contactName) {
+        var view = document.getElementById('discussionView');
+        var empty = document.getElementById('emptyMessages');
+        view.style.display = 'block';
         empty.style.display = 'none';
-        discussionView.style.display = 'none';
-        return;
-      }
+        document.getElementById('discussionName').textContent = contactName || 'Utilisateur';
+        loadConversation(contactId);
     }
 
-    empty.style.display = 'none';
-    const contactsMap = {};
-    data.data.forEach(msg => {
-      const otherId = msg.senderId === currentUserId ? msg.receiverId : msg.senderId;
-      const otherName = msg.senderId === currentUserId ? msg.receiverName : msg.senderName;
-      if (!contactsMap[otherId]) {
-        contactsMap[otherId] = {
-          name: otherName || 'Inconnu',
-          lastMessage: msg.text || (msg.audioUrl ? '🎤 Audio' : ''),
-          time: msg.createdAt,
-          unread: msg.receiverId === currentUserId && !msg.read ? 1 : 0,
-          photo: msg.senderId === currentUserId ? msg.receiverPhoto : msg.senderPhoto,
-          online: false
-        };
-      } else if (msg.receiverId === currentUserId && !msg.read) {
-        contactsMap[otherId].unread = (contactsMap[otherId].unread || 0) + 1;
-      }
-      const msgTime = new Date(msg.createdAt);
-      const currentTime = new Date(contactsMap[otherId].time);
-      if (msgTime > currentTime) {
-        contactsMap[otherId].lastMessage = msg.text || (msg.audioUrl ? '🎤 Audio' : '');
-        contactsMap[otherId].time = msg.createdAt;
-      }
+    document.getElementById('btnCloseDiscussion').addEventListener('click', function() {
+        document.getElementById('discussionView').style.display = 'none';
+        activeConversationId = null;
     });
 
-    // Récupérer les infos de chaque contact (photo, online)
-    for (const contactId of Object.keys(contactsMap)) {
-      try {
-        const userRes = await fetch(BACKEND_URL+'/api/users/'+contactId);
-        const userData = await userRes.json();
-        if (userData.success) {
-          contactsMap[contactId].online = userData.data.online || false;
-          contactsMap[contactId].photo = userData.data.photo || contactsMap[contactId].photo;
-          // Ajouter dans localStorage
-          addContact(contactId, contactsMap[contactId].name, contactsMap[contactId].photo);
+    function loadConversation(contactId) {
+        if (!currentUserId || !contactId) return;
+        fetch(BACKEND_URL + '/api/messages/' + currentUserId)
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                var container = document.getElementById('messagesList');
+                if (!data.success) return;
+                var messages = data.data.filter(function(msg) {
+                    return (msg.senderId === currentUserId && msg.receiverId === contactId) ||
+                           (msg.senderId === contactId && msg.receiverId === currentUserId);
+                });
+                messages.sort(function(a, b) {
+                    return new Date(a.createdAt) - new Date(b.createdAt);
+                });
+                if (messages.length === 0) {
+                    container.innerHTML = '<p class="empty">Aucun message</p>';
+                    return;
+                }
+                container.innerHTML = messages.map(function(msg) {
+                    var isMine = msg.senderId === currentUserId;
+                    var name = isMine ? 'Moi' : (msg.senderName || 'Utilisateur');
+                    var senderHtml = isMine ? '' : '<div class="sender">' + name + '</div>';
+                    return '<div class="message-bubble ' + (isMine ? 'mine' : 'other') + '"><div class="bubble">' + senderHtml + msg.text + '<span class="time">' + formatDate(msg.createdAt) + '</span></div></div>';
+                }).join('');
+                container.scrollTop = container.scrollHeight;
+            })
+            .catch(function(e) { console.error(e); });
+    }
+
+    document.getElementById('btnSendMessage').addEventListener('click', function() {
+        var text = document.getElementById('messageInput').value.trim();
+        if (!text || !activeConversationId) {
+            showAlert('Message ou destinataire manquant', 'error');
+            return;
         }
-      } catch(e) {}
-    }
-
-    const contactsList = Object.keys(contactsMap).map(id => ({
-      id: id,
-      name: contactsMap[id].name,
-      photo: contactsMap[id].photo,
-      lastMessage: contactsMap[id].lastMessage,
-      time: contactsMap[id].time,
-      unread: contactsMap[id].unread,
-      online: contactsMap[id].online
-    }));
-
-    renderContacts(contactsList);
-
-    if (activeConversationId && contactsMap[activeConversationId]) {
-      openDiscussion(activeConversationId, contactsMap[activeConversationId].name);
-    } else {
-      const firstChip = document.querySelector('.contact-chip');
-      if (firstChip) { firstChip.click(); }
-    }
-
-  } catch(e) { console.error('Erreur chargement messages:', e); }
-}
-
-function renderContacts(contactsList) {
-  const container = document.getElementById('contactsList');
-  // Trier par date du dernier message (les plus récents en premier)
-  contactsList.sort((a, b) => {
-    const timeA = new Date(a.time || 0);
-    const timeB = new Date(b.time || 0);
-    return timeB - timeA;
-  });
-
-  container.innerHTML = contactsList.map(contact => `
-    <div class="contact-chip ${activeConversationId === contact.id ? 'active' : ''}" data-id="${contact.id}">
-      <div style="width:24px;height:24px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;overflow:hidden;position:relative;">
-        ${contact.photo ? `<img src="${contact.photo}" style="width:100%;height:100%;object-fit:cover;" />` : (contact.name || 'U')[0].toUpperCase()}
-        <span class="online-dot-small ${contact.online ? 'online' : 'offline'}" style="position:absolute;bottom:0;right:0;width:8px;height:8px;border-radius:50%;border:1px solid #fff;"></span>
-      </div>
-      <span>${contact.name}</span>
-      ${contact.unread > 0 ? `<span style="background:var(--danger);color:#fff;border-radius:50%;padding:1px 6px;font-size:10px;">${contact.unread}</span>` : ''}
-    </div>
-  `).join('');
-
-  document.querySelectorAll('.contact-chip').forEach(el => {
-    el.addEventListener('click', function() {
-      const contactId = this.dataset.id;
-      const name = this.querySelector('span')?.textContent || 'Utilisateur';
-      activeConversationId = contactId;
-      document.querySelectorAll('.contact-chip').forEach(c => c.classList.remove('active'));
-      this.classList.add('active');
-      openDiscussion(contactId, name);
-    });
-  });
-}
-
-async function openDiscussion(contactId, contactName) {
-  if (!currentUserId || !contactId) return;
-  activeConversationId = contactId;
-  discussionContact = contactId;
-
-  const discussionView = document.getElementById('discussionView');
-  const empty = document.getElementById('emptyMessages');
-  discussionView.style.display = 'block';
-  empty.style.display = 'none';
-
-  // Ajouter le contact dans localStorage
-  addContact(contactId, contactName, '');
-
-  try {
-    const res = await fetch(BACKEND_URL+'/api/users/'+contactId);
-    const data = await res.json();
-    if (data.success) {
-      const user = data.data;
-      document.getElementById('discussionName').textContent = user.name || contactName || 'Utilisateur';
-      const avatar = document.getElementById('discussionAvatar');
-      if (user.photo) avatar.innerHTML = '<img src="'+user.photo+'" /><div class="online-dot '+(user.online?'online':'offline')+'"></div>';
-      else avatar.innerHTML = (user.name || 'U')[0].toUpperCase() + '<div class="online-dot '+(user.online?'online':'offline')+'"></div>';
-      document.getElementById('discussionStatus').textContent = user.online ? '🟢 En ligne' : '⚪ Hors ligne';
-      document.getElementById('discussionOnlineDot').className = 'online-dot '+(user.online?'online':'offline');
-      hasOrderedFromCurrentSeller = false;
-      const ordersRes = await fetch(BACKEND_URL+'/api/orders/'+currentUserId);
-      const ordersData = await ordersRes.json();
-      if (ordersData && ordersData.length > 0) {
-        hasOrderedFromCurrentSeller = ordersData.some(o => o.sellerId === contactId && o.status !== 'annulé' && o.status !== 'remboursé');
-      }
-      updateOrderButtonInChat();
-      document.getElementById('chatReceiver').value = contactId;
-    }
-  } catch(e) { console.error(e); }
-
-  await loadConversation(contactId);
-}
-
-function updateOrderButtonInChat() {
-  const container = document.getElementById('discussionOrderBtn');
-  if (!hasOrderedFromCurrentSeller && discussionContact) {
-    container.innerHTML = `<button class="btn btn-success btn-sm order-btn-in-chat" id="btnOrderInChat">🛒 Commander à ce vendeur</button>`;
-    document.getElementById('btnOrderInChat').addEventListener('click', async () => {
-      try {
-        const res = await fetch(BACKEND_URL+'/api/articles/seller/'+discussionContact);
-        const data = await res.json();
-        if (data.success && data.data && data.data.length > 0) {
-          const modal = document.createElement('div'); modal.className = 'modal';
-          modal.innerHTML = `
-            <div class="modal-content">
-              <button class="modal-close" id="modalCloseOrder">✕</button>
-              <h3 style="margin-bottom:16px;">Articles du vendeur</h3>
-              ${data.data.map(a => `
-                <div style="display:flex; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid rgba(0,0,0,0.05);">
-                  <img src="${a.image || 'https://via.placeholder.com/50x50/F5F0E8/CCCCCC?text=BLK'}" style="width:50px;height:50px;object-fit:cover;border-radius:8px;" />
-                  <div style="flex:1;"><div style="font-weight:600;">${a.title}</div><div style="font-size:14px;color:var(--primary);font-weight:700;">${a.price} FCFA</div></div>
-                  <button class="btn btn-primary btn-sm" style="width:auto;" data-article='${JSON.stringify(a)}'>Acheter</button>
-                </div>
-              `).join('')}
-            </div>
-          `;
-          document.body.appendChild(modal);
-          document.getElementById('modalCloseOrder').addEventListener('click', () => modal.remove());
-          modal.querySelectorAll('[data-article]').forEach(btn => {
-            btn.addEventListener('click', function() {
-              const article = JSON.parse(this.dataset.article);
-              modal.remove();
-              buyProduct(article);
-            });
-          });
-          modal.addEventListener('click', (e) => { if(e.target === modal) modal.remove(); });
-        } else { showAlert('Ce vendeur n\'a pas d\'articles disponibles.', 'info'); }
-      } catch(e) { showAlert('Erreur chargement des articles du vendeur', 'error'); }
-    });
-  } else if (hasOrderedFromCurrentSeller) {
-    container.innerHTML = `<div style="font-size:12px;color:var(--success);">✅ Vous avez déjà commandé à ce vendeur</div>`;
-  } else {
-    container.innerHTML = '';
-  }
-}
-
-async function loadConversation(contactId) {
-  if (!currentUserId || !contactId) return;
-  try {
-    const res = await fetch(BACKEND_URL+'/api/messages/'+currentUserId);
-    const data = await res.json();
-    if (!data.success) return;
-
-    const allMessages = data.data.filter(msg =>
-      (msg.senderId === currentUserId && msg.receiverId === contactId) ||
-      (msg.senderId === contactId && msg.receiverId === currentUserId)
-    );
-
-    const container = document.getElementById('messagesList');
-    if (allMessages.length === 0) {
-      container.innerHTML = '<div class="empty-state" style="padding:20px 0;"><p>Aucun message avec cet utilisateur.</p></div>';
-      return;
-    }
-
-    allMessages.sort((a, b) => {
-      const da = new Date(a.createdAt), db = new Date(b.createdAt);
-      return da - db;
+        fetch(BACKEND_URL + '/api/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                senderId: currentUserId,
+                receiverId: activeConversationId,
+                text: text,
+                senderName: currentUser.name
+            })
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (data.success) {
+                document.getElementById('messageInput').value = '';
+                loadConversation(activeConversationId);
+                loadMessages();
+            } else {
+                showAlert('❌ ' + data.message, 'error');
+            }
+        })
+        .catch(function(e) { showAlert('❌ Erreur: ' + e.message, 'error'); });
     });
 
-    let contactName = 'Utilisateur', contactPhoto = '';
-    try {
-      const userRes = await fetch(BACKEND_URL+'/api/users/'+contactId);
-      const userData = await userRes.json();
-      if (userData.success) {
-        contactName = userData.data.name || 'Utilisateur';
-        contactPhoto = userData.data.photo || '';
-      }
-    } catch(e) {}
-
-    container.innerHTML = allMessages.map(msg => {
-      const isMine = msg.senderId === currentUserId;
-      const avatar = isMine ? (currentUser?.photo || '') : (msg.senderPhoto || contactPhoto);
-      const name = isMine ? (currentUser?.name || 'Moi') : (msg.senderName || contactName);
-      const time = msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
-
-      let content = '';
-      if (msg.text) content = `<div class="text">${msg.text}</div>`;
-      if (msg.audioUrl) content = `<div class="audio"><audio controls src="${msg.audioUrl}"></audio></div>`;
-
-      return `
-        <div class="message-item" style="${isMine ? 'flex-direction:row-reverse;' : ''}">
-          <div class="avatar">${avatar ? `<img src="${avatar}" />` : (name || 'U')[0].toUpperCase()}</div>
-          <div class="content">
-            <div class="sender">${name}</div>
-            ${content}
-            <div class="time">${time}</div>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    const unreadMessages = allMessages.filter(msg => msg.receiverId === currentUserId && !msg.read);
-    for (const msg of unreadMessages) {
-      await fetch(BACKEND_URL+'/api/messages/read/'+msg.id, { method: 'POST' });
-    }
-
-    container.scrollTop = container.scrollHeight;
-
-    const ordersRes = await fetch(BACKEND_URL+'/api/orders/'+currentUserId);
-    const ordersData = await ordersRes.json();
-    if (ordersData && ordersData.length > 0) {
-      hasOrderedFromCurrentSeller = ordersData.some(o => o.sellerId === contactId && o.status !== 'annulé' && o.status !== 'remboursé');
-    } else {
-      hasOrderedFromCurrentSeller = false;
-    }
-    updateOrderButtonInChat();
-
-  } catch(e) { console.error('Erreur chargement conversation:', e); }
-}
-
-async function sendMessage(text, audioBase64 = null) {
-  if (!currentUserId) {
-    showAlert('Connecte-toi d\'abord', 'error');
-    return;
-  }
-  const receiverId = activeConversationId || document.getElementById('chatReceiver')?.value.trim();
-  if (!receiverId) {
-    showAlert('Destinataire requis', 'error');
-    return;
-  }
-  if (!text && !audioBase64) {
-    showAlert('Message ou audio requis', 'error');
-    return;
-  }
-
-  try {
-    const payload = {
-      senderId: currentUserId,
-      receiverId: receiverId,
-      senderName: currentUser?.name || 'Anonyme',
-      senderPhoto: currentUser?.photo || ''
-    };
-    if (text) payload.text = text;
-    if (audioBase64) {
-      const uploadRes = await fetch(BACKEND_URL+'/api/upload-audio', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ base64: audioBase64 })
-      });
-      const uploadData = await uploadRes.json();
-      if (uploadData.success) {
-        payload.audioUrl = uploadData.url;
-        payload.audioDuration = 0;
-      } else { showAlert('Erreur upload audio', 'error'); return; }
-    }
-
-    const res = await fetch(BACKEND_URL+'/api/messages', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+    document.getElementById('messageInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            document.getElementById('btnSendMessage').click();
+        }
     });
-    const data = await res.json();
-    if (data.success) {
-      if (text) document.getElementById('messageInput').value = '';
-      showAlert('✅ Message envoyé', 'success');
-      // Ajouter le contact dans la liste persistante
-      const contactName = document.getElementById('discussionName').textContent || 'Utilisateur';
-      addContact(receiverId, contactName, '');
-      loadMessages();
-    } else {
-      showAlert('❌ '+data.message, 'error');
+
+    // ============================================================
+    // TRANSACTIONS
+    // ============================================================
+    function loadTransactions() {
+        if (!currentUserId) return;
+        fetch(BACKEND_URL + '/api/transactions/' + currentUserId)
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                var container = document.getElementById('transactionsList');
+                var empty = document.getElementById('emptyTransactions');
+                if (!data.success || !data.data || data.data.length === 0) {
+                    container.innerHTML = '';
+                    empty.style.display = 'block';
+                    return;
+                }
+                empty.style.display = 'none';
+                container.innerHTML = '';
+                data.data.slice(0, 20).forEach(function(t) {
+                    var div = document.createElement('div');
+                    div.style.cssText = 'display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eee;';
+                    div.innerHTML = '<span>' + (t.description || t.type) + '</span><span style="font-weight:700;">' + (t.amount >= 0 ? '+' : '') + (t.amount || 0) + ' FCFA</span>';
+                    container.appendChild(div);
+                });
+            })
+            .catch(function(e) { console.error(e); });
     }
-  } catch(e) { showAlert('Erreur envoi', 'error'); }
-}
 
-document.getElementById('btnSendMessage').addEventListener('click', () => {
-  const text = document.getElementById('messageInput').value.trim();
-  if (text) sendMessage(text);
-});
-
-document.getElementById('messageInput').addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') { e.preventDefault(); const text = document.getElementById('messageInput').value.trim(); if (text) sendMessage(text); }
-});
-
-document.getElementById('messageInput').addEventListener('input', function() {
-  const receiverId = activeConversationId;
-  if (!receiverId) return;
-  const conversationId = [currentUserId, receiverId].sort().join('_');
-  fetch(BACKEND_URL+'/api/messages/typing', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ conversationId, userId: currentUserId, isTyping: true })
-  });
-  clearTimeout(typingTimeoutId);
-  typingTimeoutId = setTimeout(() => {
-    fetch(BACKEND_URL+'/api/messages/typing', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ conversationId, userId: currentUserId, isTyping: false })
+    // ============================================================
+    // LOGOUT
+    // ============================================================
+    document.getElementById('btnLogout').addEventListener('click', function() {
+        localStorage.removeItem(STORAGE_KEY);
+        location.reload();
     });
-  }, 2000);
-});
 
-// VOICE RECORDING
-const voiceBtn = document.getElementById('btnRecordVoice');
-voiceBtn.addEventListener('mousedown', startRecording);
-voiceBtn.addEventListener('mouseup', stopRecording);
-voiceBtn.addEventListener('mouseleave', stopRecording);
-voiceBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startRecording(); });
-voiceBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopRecording(); });
+    // ============================================================
+    // ADMIN PAGE
+    // ============================================================
+    if (window.location.hash === '#admin') {
+        document.getElementById('authPage').style.display = 'none';
+        document.getElementById('appContainer').classList.add('active');
+        document.getElementById('tabs').style.display = 'none';
 
-async function startRecording() {
-  if (isRecording) return;
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorder = new MediaRecorder(stream);
-    audioChunks = [];
-    mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
-    mediaRecorder.onstop = async () => {
-      const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64Audio = reader.result.split(',')[1];
-        if (base64Audio) await sendMessage(null, base64Audio);
-      };
-      reader.readAsDataURL(audioBlob);
-      stream.getTracks().forEach(track => track.stop());
-    };
-    mediaRecorder.start();
-    isRecording = true;
-    voiceBtn.classList.add('recording');
-    voiceBtn.textContent = '⏹';
-    showAlert('🎙️ Enregistrement... relâchez pour envoyer', 'info');
-  } catch (error) {
-    console.error('Erreur microphone:', error);
-    showAlert('❌ Impossible d\'accéder au microphone', 'error');
-  }
-}
+        var adminHtml = '<div class="admin-card"><h2 style="color:#E74C3C;">🔐 Admin BLK</h2><p>Créditer un wallet après réception du virement.</p><div id="adminLogin"><input type="password" id="adminPassword" placeholder="Mot de passe"><button class="btn btn-primary" id="btnAdminLogin">Accéder</button></div><div id="adminPanel" style="display:none; margin-top:16px;"><input type="text" id="adminUserId" placeholder="ID utilisateur (ex: user_...)"><input type="number" id="adminAmount" placeholder="Montant (FCFA)"><button class="btn btn-success" id="btnAdminCredit">💰 Créditer</button><div id="adminResult"></div></div></div>';
+        document.getElementById('appContainer').innerHTML = adminHtml;
 
-function stopRecording() {
-  if (mediaRecorder && isRecording) { mediaRecorder.stop(); isRecording = false; voiceBtn.classList.remove('recording'); voiceBtn.textContent = '🎤'; }
-}
-
-document.getElementById('btnCall').addEventListener('click', () => {
-  if (!activeConversationId) { showAlert('Aucun contact sélectionné', 'error'); return; }
-  showAlert('📞 Appel audio vers ' + (document.getElementById('discussionName').textContent || 'le contact') + ' (simulé)', 'info');
-});
-
-document.getElementById('btnOrderFromProfile').addEventListener('click', async function() {
-  if (!viewedUserId) { showAlert('Vendeur non identifié', 'error'); return; }
-  try {
-    const res = await fetch(BACKEND_URL+'/api/articles/seller/'+viewedUserId);
-    const data = await res.json();
-    if (data.success && data.data && data.data.length > 0) {
-      const modal = document.createElement('div'); modal.className = 'modal';
-      modal.innerHTML = `
-        <div class="modal-content">
-          <button class="modal-close" id="modalCloseOrder">✕</button>
-          <h3 style="margin-bottom:16px;">Articles de ${window._sellerData?.name || 'vendeur'}</h3>
-          ${data.data.map(a => `
-            <div style="display:flex; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid rgba(0,0,0,0.05);">
-              <img src="${a.image || 'https://via.placeholder.com/50x50/F5F0E8/CCCCCC?text=BLK'}" style="width:50px;height:50px;object-fit:cover;border-radius:8px;" />
-              <div style="flex:1;"><div style="font-weight:600;">${a.title}</div><div style="font-size:14px;color:var(--primary);font-weight:700;">${a.price} FCFA</div></div>
-              <button class="btn btn-primary btn-sm" style="width:auto;" data-article='${JSON.stringify(a)}'>Acheter</button>
-            </div>
-          `).join('')}
-        </div>
-      `;
-      document.body.appendChild(modal);
-      document.getElementById('modalCloseOrder').addEventListener('click', () => modal.remove());
-      modal.querySelectorAll('[data-article]').forEach(btn => {
-        btn.addEventListener('click', function() {
-          const article = JSON.parse(this.dataset.article);
-          modal.remove();
-          buyProduct(article);
+        document.getElementById('btnAdminLogin').addEventListener('click', function() {
+            var pwd = document.getElementById('adminPassword').value;
+            if (pwd === 'BLK2026') {
+                document.getElementById('adminLogin').style.display = 'none';
+                document.getElementById('adminPanel').style.display = 'block';
+                showAlert('Accès accordé', 'success');
+            } else {
+                showAlert('Mot de passe incorrect', 'error');
+            }
         });
-      });
-      modal.addEventListener('click', (e) => { if(e.target === modal) modal.remove(); });
-    } else { showAlert('Ce vendeur n\'a pas d\'articles disponibles.', 'info'); }
-  } catch(e) { showAlert('Erreur chargement des articles du vendeur', 'error'); }
-});
 
-// ============================================================
-// TRANSACTIONS
-// ============================================================
-async function loadTransactions() {
-  if (!currentUserId) return;
-  try {
-    const res = await fetch(BACKEND_URL+'/api/transactions/'+currentUserId);
-    const data = await res.json();
-    const container = document.getElementById('transactionsList'), empty = document.getElementById('emptyTransactions');
-    if (!data.success || !data.data || data.data.length === 0) { container.innerHTML = ''; empty.style.display = 'block'; return; }
-    empty.style.display = 'none';
-    container.innerHTML = data.data.slice(0,20).map(t => `
-      <div class="transaction-item">
-        <div class="info"><div class="desc">${t.description || t.type}</div><div class="date">${t.date ? new Date(t.date).toLocaleDateString() : ''}</div></div>
-        <div class="amount ${t.amount >= 0 ? 'positive' : 'negative'}">${t.amount >= 0 ? '+' : ''}${t.amount} FCFA</div>
-      </div>
-    `).join('');
-  } catch(e) { console.error(e); }
-}
+        document.getElementById('btnAdminCredit').addEventListener('click', function() {
+            var userId = document.getElementById('adminUserId').value.trim();
+            var amount = parseInt(document.getElementById('adminAmount').value);
+            if (!userId || !amount) {
+                showAlert('User ID et montant requis', 'error');
+                return;
+            }
+            fetch(BACKEND_URL + '/api/wallet/admin-credit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: userId, amount: amount, phone: '065918166' })
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    showAlert('Wallet crédité de ' + amount + ' FCFA', 'success');
+                    document.getElementById('adminUserId').value = '';
+                    document.getElementById('adminAmount').value = '';
+                } else {
+                    showAlert('Erreur: ' + data.message, 'error');
+                }
+            })
+            .catch(function(e) {
+                showAlert('Erreur: ' + e.message, 'error');
+            });
+        });
+    }
 
-// ============================================================
-// DEPOSIT / WITHDRAW
-// ============================================================
-document.getElementById('btnDeposit').addEventListener('click', () => {
-  const form = document.getElementById('depositForm');
-  form.style.display = form.style.display === 'none' ? 'block' : 'none';
-  document.getElementById('withdrawForm').style.display = 'none';
-});
-document.getElementById('btnWithdraw').addEventListener('click', () => {
-  const form = document.getElementById('withdrawForm');
-  form.style.display = form.style.display === 'none' ? 'block' : 'none';
-  document.getElementById('depositForm').style.display = 'none';
-});
-document.getElementById('btnCancelDeposit').addEventListener('click', () => { document.getElementById('depositForm').style.display = 'none'; });
-document.getElementById('btnCancelWithdraw').addEventListener('click', () => { document.getElementById('withdrawForm').style.display = 'none'; });
-document.getElementById('btnConfirmDeposit').addEventListener('click', async () => {
-  const amount = document.getElementById('depositAmount').value;
-  const phone = document.getElementById('depositPhone').value;
-  if (!amount || !phone) { showAlert('Montant et téléphone requis', 'error'); return; }
-  try {
-    const res = await fetch(BACKEND_URL+'/api/wallet/deposit', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: currentUserId, amount: parseInt(amount), phone })
-    });
-    const data = await res.json();
-    if (data.success) { showAlert('💰 '+data.message, 'success'); document.getElementById('depositForm').style.display = 'none'; loadWallet(); loadTransactions(); }
-    else { showAlert('❌ '+data.message, 'error'); }
-  } catch(e) { showAlert('Erreur dépôt', 'error'); }
-});
-document.getElementById('btnConfirmWithdraw').addEventListener('click', async () => {
-  const amount = document.getElementById('withdrawAmount').value;
-  const phone = document.getElementById('withdrawPhone').value;
-  if (!amount || !phone) { showAlert('Montant et téléphone requis', 'error'); return; }
-  try {
-    const res = await fetch(BACKEND_URL+'/api/wallet/withdraw', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: currentUserId, amount: parseInt(amount), phone })
-    });
-    const data = await res.json();
-    if (data.success) { showAlert('💰 '+data.message, 'success'); document.getElementById('withdrawForm').style.display = 'none'; loadWallet(); loadTransactions(); }
-    else { showAlert('❌ '+data.message, 'error'); }
-  } catch(e) { showAlert('Erreur retrait', 'error'); }
-});
-
-document.getElementById('btnLogout').addEventListener('click', () => {
-  fetch(BACKEND_URL+'/api/users/online', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: currentUserId, online: false }) });
-  localStorage.removeItem(STORAGE_KEY);
-  location.reload();
-});
-
-// ============================================================
-// INIT
-// ============================================================
-const savedId = localStorage.getItem(STORAGE_KEY);
-if (savedId) {
-  // On peut pré-remplir le champ email si on veut
-  console.log('Utilisateur déjà connecté (mode démo)');
-}
-
-console.log('✅ BLK Marketplace - Design amélioré avec messagerie persistante');
-console.log('🔗 Backend URL: '+BACKEND_URL);
-  </script>
+    console.log('✅ BLK Marketplace - Version finale');
+    console.log('🔗 Backend URL:', BACKEND_URL);
+</script>
 </body>
 </html>
