@@ -10,64 +10,92 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f0e8; color: #1a1a1a; padding-bottom: 80px; }
         .kente { height: 6px; background: linear-gradient(90deg, #FFD700 20%, #2ECC71 40%, #E74C3C 60%, #FFD700 80%); position: fixed; top: 0; left: 0; right: 0; z-index: 1000; }
-        .btn { padding: 14px; border: none; border-radius: 14px; font-weight: 700; font-size: 16px; cursor: pointer; width: 100%; transition: 0.3s; }
-        .btn-primary { background: #E74C3C; color: white; }
-        .btn-primary:hover { background: #C0392B; }
-        .btn-success { background: #2ECC71; color: white; }
-        .btn-success:hover { background: #27AE60; }
-        .btn-danger { background: #E74C3C; color: white; }
-        .btn-danger:hover { background: #C0392B; }
-        .btn-outline { background: transparent; color: #E74C3C; border: 2px solid #E74C3C; }
-        .btn-sm { padding: 8px 14px; font-size: 12px; width: auto; }
-        .glass { background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); border-radius: 20px; padding: 20px; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
-        .auth-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; background: linear-gradient(135deg, #FFD700, #FF8C00); }
-        .auth-page .card { background: rgba(255,255,255,0.85); padding: 32px; border-radius: 24px; max-width: 400px; width: 100%; }
-        .auth-page h1 { text-align: center; font-size: 32px; font-weight: 800; }
-        .auth-page .sub { text-align: center; color: #666; margin-bottom: 24px; }
-        .auth-page input { width: 100%; padding: 14px 16px; border: 1px solid #ddd; border-radius: 14px; font-size: 16px; margin-bottom: 12px; background: white; }
-        .auth-page input:focus { outline: none; border-color: #E74C3C; }
-        .welcome-screen { display: none; align-items: center; justify-content: center; min-height: 100vh; padding: 40px; background: linear-gradient(135deg, #FFD700, #2ECC71, #E74C3C); text-align: center; color: white; }
-        .welcome-screen.active { display: flex; }
-        .welcome-screen h1 { font-size: 48px; font-weight: 900; text-shadow: 0 4px 20px rgba(0,0,0,0.2); }
-        .welcome-screen h1 span { color: #1a1a1a; }
-        .welcome-screen p { font-size: 18px; max-width: 300px; margin: 16px auto 32px; opacity: 0.9; }
-        .welcome-screen .btn { background: white; color: #1a1a1a; max-width: 280px; margin: 0 auto; }
-        .app { display: none; max-width: 600px; margin: 0 auto; padding: 80px 16px 100px; }
-        .app.active { display: block; }
-        .tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); padding: 8px; border-top: 1px solid rgba(255,255,255,0.4); z-index: 100; }
-        .tab-btn { flex: 1; padding: 8px 4px; border: none; background: transparent; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 12px; text-align: center; }
-        .tab-btn .icon { display: block; font-size: 20px; }
-        .tab-btn.active { background: #E74C3C; color: white; }
-        .page { display: none; padding-bottom: 80px; }
-        .page.active { display: block; }
-        .alert { padding: 12px 16px; border-radius: 12px; margin-bottom: 12px; display: none; }
-        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
-        .empty { text-align: center; color: #999; padding: 20px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
-        .product-card { background: rgba(255,255,255,0.8); border-radius: 14px; overflow: hidden; cursor: pointer; border: 1px solid rgba(255,255,255,0.4); }
-        .product-card .img { width: 100%; height: 150px; object-fit: cover; background: #e8e0d8; }
-        .product-card .info { padding: 12px; }
-        .product-card .title { font-weight: 700; font-size: 14px; }
-        .product-card .price { font-weight: 800; color: #E74C3C; }
-        .product-card .seller { font-size: 12px; color: #999; }
-        .profile-avatar { width: 80px; height: 80px; border-radius: 50%; background: #E74C3C; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 800; color: white; }
-        .wallet-balance { font-size: 32px; font-weight: 800; color: #2ECC71; }
-        .order-card { background: rgba(255,255,255,0.8); border-radius: 14px; padding: 16px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.4); }
-        .order-card .status { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
-        .status-pending { background: #fff3cd; color: #856404; }
-        .status-delivered { background: #d4edda; color: #155724; }
-        .status-cancelled { background: #f8d7da; color: #721c24; }
-        .qr-container { display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        #qrCode { margin: 12px auto; }
-        .scanner-container { max-width: 400px; margin: 0 auto; }
-        #reader { width: 100%; max-width: 400px; margin: 0 auto; }
-        .admin-card { max-width: 500px; margin: 40px auto; background: white; padding: 24px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-        .admin-card input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; }
-        .admin-card .btn { margin-top: 8px; }
-        @media (max-width: 480px) { .grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); } }
-    </style>
+
+    /* Boutons */
+    .btn { padding: 14px; border: none; border-radius: 14px; font-weight: 700; font-size: 16px; cursor: pointer; width: 100%; transition: 0.3s; }
+    .btn-primary { background: #E74C3C; color: white; }
+    .btn-primary:hover { background: #C0392B; }
+    .btn-success { background: #2ECC71; color: white; }
+    .btn-success:hover { background: #27AE60; }
+    .btn-danger { background: #E74C3C; color: white; }
+    .btn-danger:hover { background: #C0392B; }
+    .btn-outline { background: transparent; color: #E74C3C; border: 2px solid #E74C3C; }
+    .btn-sm { padding: 8px 14px; font-size: 12px; width: auto; }
+
+    /* Cartes */
+    .glass { background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); border-radius: 20px; padding: 20px; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+
+    /* Auth */
+    .auth-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; background: linear-gradient(135deg, #FFD700, #FF8C00); }
+    .auth-page .card { background: rgba(255,255,255,0.85); padding: 32px; border-radius: 24px; max-width: 400px; width: 100%; }
+    .auth-page h1 { text-align: center; font-size: 32px; font-weight: 800; }
+    .auth-page .sub { text-align: center; color: #666; margin-bottom: 24px; }
+    .auth-page input { width: 100%; padding: 14px 16px; border: 1px solid #ddd; border-radius: 14px; font-size: 16px; margin-bottom: 12px; background: white; }
+    .auth-page input:focus { outline: none; border-color: #E74C3C; }
+
+    /* Welcome */
+    .welcome-screen { display: none; align-items: center; justify-content: center; min-height: 100vh; padding: 40px; background: linear-gradient(135deg, #FFD700, #2ECC71, #E74C3C); text-align: center; color: white; }
+    .welcome-screen.active { display: flex; }
+    .welcome-screen h1 { font-size: 48px; font-weight: 900; text-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+    .welcome-screen h1 span { color: #1a1a1a; }
+    .welcome-screen p { font-size: 18px; max-width: 300px; margin: 16px auto 32px; opacity: 0.9; }
+    .welcome-screen .btn { background: white; color: #1a1a1a; max-width: 280px; margin: 0 auto; }
+
+    /* App */
+    .app { display: none; max-width: 600px; margin: 0 auto; padding: 80px 16px 100px; }
+    .app.active { display: block; }
+
+    /* Search bar */
+    .search-bar { display: flex; gap: 12px; background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); border-radius: 14px; padding: 6px 16px; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.4); }
+    .search-bar input { flex: 1; padding: 10px 0; border: none; background: transparent; font-size: 16px; outline: none; }
+
+    /* Tabs (bottom) */
+    .tabs { position: fixed; bottom: 0; left: 0; right: 0; display: flex; background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); border-top: 1px solid rgba(255,255,255,0.4); padding: 8px; z-index: 100; }
+    .tab-btn { flex: 1; display: flex; flex-direction: column; align-items: center; border: none; background: transparent; cursor: pointer; font-size: 11px; font-weight: 600; color: #999; padding: 4px; border-radius: 10px; transition: 0.3s; }
+    .tab-btn .icon { font-size: 22px; display: block; }
+    .tab-btn.active { color: #E74C3C; background: rgba(231,76,60,0.1); }
+
+    /* Pages */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* Alerts */
+    .alert { padding: 12px 16px; border-radius: 12px; margin-bottom: 12px; display: none; }
+    .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    .empty { text-align: center; color: #999; padding: 20px; }
+
+    /* Products grid */
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+    .product-card { background: rgba(255,255,255,0.8); border-radius: 14px; overflow: hidden; cursor: pointer; border: 1px solid rgba(255,255,255,0.4); }
+    .product-card .img { width: 100%; height: 150px; object-fit: cover; background: #e8e0d8; }
+    .product-card .info { padding: 12px; }
+    .product-card .title { font-weight: 700; font-size: 14px; }
+    .product-card .price { font-weight: 800; color: #E74C3C; }
+    .product-card .seller { font-size: 12px; color: #999; }
+
+    /* Profile */
+    .profile-avatar { width: 80px; height: 80px; border-radius: 50%; background: #E74C3C; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 800; color: white; }
+    .wallet-balance { font-size: 32px; font-weight: 800; color: #2ECC71; }
+
+    /* Orders */
+    .order-card { background: rgba(255,255,255,0.8); border-radius: 14px; padding: 16px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.4); }
+    .order-card .status { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .status-pending { background: #fff3cd; color: #856404; }
+    .status-delivered { background: #d4edda; color: #155724; }
+    .status-cancelled { background: #f8d7da; color: #721c24; }
+
+    /* QR */
+    .qr-container { display: flex; flex-direction: column; align-items: center; padding: 20px; }
+
+    /* Admin */
+    .admin-card { max-width: 500px; margin: 40px auto; background: white; padding: 24px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+    .admin-card input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; }
+    .admin-card .btn { margin-top: 8px; }
+
+    @media (max-width: 480px) { .grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); } }
+</style>
 </head>
 <body>
     <div class="kente"></div>
@@ -97,50 +125,31 @@
 <div class="app" id="appContainer">
     <div id="alertBox" class="alert"></div>
 
-    <div class="tabs" id="tabs">
-        <button class="tab-btn active" data-page="pageHome"><span class="icon">🏠</span> Accueil</button>
-        <button class="tab-btn" data-page="pageOrders"><span class="icon">📦</span> Commandes</button>
-        <button class="tab-btn" data-page="pageMessages"><span class="icon">💬</span> Messages</button>
-        <button class="tab-btn" data-page="pageShop"><span class="icon">🏪</span> Magasin</button>
-        <button class="tab-btn" data-page="pageProfile"><span class="icon">👤</span> Profil</button>
-    </div>
-
-    <!-- HOME -->
+    <!-- ACCUEIL -->
     <div class="page active" id="pageHome">
-        <div class="glass">
-            <div style="display:flex; gap:12px; margin-bottom:12px;">
-                <input type="text" id="searchInput" placeholder="Rechercher..." style="flex:1; padding:12px; border:1px solid #ddd; border-radius:14px; font-size:16px;">
-            </div>
-            <div id="categoryFilters" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
-                <button class="btn btn-sm btn-primary" data-cat="all">Tous</button>
-                <button class="btn btn-sm btn-outline" data-cat="vêtements">Vêtements</button>
-                <button class="btn btn-sm btn-outline" data-cat="chaussures">Chaussures</button>
-                <button class="btn btn-sm btn-outline" data-cat="sacs">Sacs</button>
-                <button class="btn btn-sm btn-outline" data-cat="bijoux">Bijoux</button>
-                <button class="btn btn-sm btn-outline" data-cat="accessoires">Accessoires</button>
-            </div>
-            <div id="productsGrid" class="grid"></div>
-            <div id="emptyHome" class="empty" style="display:none;">Aucun article</div>
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="Rechercher...">
         </div>
+        <div id="categoryFilters" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+            <button class="btn btn-sm btn-primary" data-cat="all">Tous</button>
+            <button class="btn btn-sm btn-outline" data-cat="vêtements">Vêtements</button>
+            <button class="btn btn-sm btn-outline" data-cat="chaussures">Chaussures</button>
+            <button class="btn btn-sm btn-outline" data-cat="sacs">Sacs</button>
+            <button class="btn btn-sm btn-outline" data-cat="bijoux">Bijoux</button>
+            <button class="btn btn-sm btn-outline" data-cat="accessoires">Accessoires</button>
+        </div>
+        <div id="productsGrid" class="grid"></div>
+        <div id="emptyHome" class="empty" style="display:none;">Aucun article</div>
     </div>
 
-    <!-- ORDERS -->
-    <div class="page" id="pageOrders">
-        <h2 style="color:#E74C3C; margin-bottom:16px;">📦 Mes Commandes</h2>
-        <div id="ordersList"></div>
-        <div id="emptyOrders" class="empty" style="display:none;">Aucune commande</div>
-        <!-- QR Scanner (caché par défaut) -->
-        <div id="qrScannerContainer" style="display:none; margin-top:16px;">
-            <div class="glass">
-                <h3>📷 Scanner le QR Code</h3>
-                <p>Placez le QR code du vendeur devant la caméra.</p>
-                <div id="reader"></div>
-                <button class="btn btn-danger" id="btnStopScanner" style="margin-top:12px;">Arrêter le scan</button>
-            </div>
-        </div>
+    <!-- MON MAGASIN -->
+    <div class="page" id="pageShop">
+        <h2 style="color:#E74C3C; margin-bottom:16px;">🏪 Mon Magasin</h2>
+        <button class="btn btn-primary" id="btnPublish">📤 Publier un article</button>
+        <div id="shopArticles" style="margin-top:12px;"></div>
     </div>
 
-    <!-- MESSAGES -->
+    <!-- MESSAGERIE -->
     <div class="page" id="pageMessages">
         <h2 style="color:#E74C3C; margin-bottom:16px;">💬 Messagerie</h2>
         <div id="contactsList" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;"></div>
@@ -157,16 +166,22 @@
         <div id="emptyMessages" class="empty" style="display:block;">Aucune discussion</div>
     </div>
 
-    <!-- SHOP -->
-    <div class="page" id="pageShop">
-        <h2 style="color:#E74C3C; margin-bottom:16px;">🏪 Mon Magasin</h2>
-        <div class="glass">
-            <button class="btn btn-primary" id="btnPublish">📤 Publier un article</button>
-            <div id="shopArticles" style="margin-top:12px;"></div>
+    <!-- MES COMMANDES -->
+    <div class="page" id="pageOrders">
+        <h2 style="color:#E74C3C; margin-bottom:16px;">📦 Mes Commandes</h2>
+        <div id="ordersList"></div>
+        <div id="emptyOrders" class="empty" style="display:none;">Aucune commande</div>
+        <div id="qrScannerContainer" style="display:none; margin-top:16px;">
+            <div class="glass">
+                <h3>📷 Scanner le QR Code</h3>
+                <p>Placez le QR code du vendeur devant la caméra.</p>
+                <div id="reader"></div>
+                <button class="btn btn-danger" id="btnStopScanner" style="margin-top:12px;">Arrêter</button>
+            </div>
         </div>
     </div>
 
-    <!-- PROFILE -->
+    <!-- MON PROFIL -->
     <div class="page" id="pageProfile">
         <h2 style="color:#E74C3C; margin-bottom:16px;">👤 Mon Profil</h2>
         <div class="glass" style="text-align:center;">
@@ -183,12 +198,21 @@
             <button class="btn btn-primary" id="btnWithdraw" style="margin-top:8px;">Retirer</button>
         </div>
         <div class="glass">
-            <h3>📋 Historique des transactions</h3>
+            <h3>📋 Historique</h3>
             <div id="transactionsList"></div>
             <div id="emptyTransactions" class="empty" style="display:none;">Aucune transaction</div>
         </div>
         <button class="btn btn-danger" id="btnLogout">🚪 Déconnexion</button>
     </div>
+</div>
+
+<!-- TABS (en bas) -->
+<div class="tabs" id="tabs">
+    <button class="tab-btn active" data-page="pageHome"><span class="icon">🏠</span> Accueil</button>
+    <button class="tab-btn" data-page="pageShop"><span class="icon">🏪</span> Mon Magasin</button>
+    <button class="tab-btn" data-page="pageMessages"><span class="icon">💬</span> Messagerie</button>
+    <button class="tab-btn" data-page="pageOrders"><span class="icon">📦</span> Mes Commandes</button>
+    <button class="tab-btn" data-page="pageProfile"><span class="icon">👤</span> Mon Profil</button>
 </div>
 
 <script>
@@ -270,8 +294,6 @@
         document.getElementById('profilePhone').textContent = currentUser.phone;
         document.getElementById('profileFlames').textContent = 0;
         document.getElementById('profileAvatar').textContent = currentUser.name.charAt(0).toUpperCase();
-        document.getElementById('headerName').textContent = currentUser.name;
-        document.getElementById('headerAvatar').textContent = currentUser.name.charAt(0).toUpperCase();
         loadProducts();
         loadWallet();
         loadOrders();
@@ -474,12 +496,12 @@
     }
 
     // ============================================================
-    // QR CODE GENERATION & SCAN
+    // QR CODE
     // ============================================================
     window.generateQR = function(orderId) {
         var modal = document.createElement('div');
         modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:center; z-index:2000; padding:20px;';
-        modal.innerHTML = '<div style="background:white; border-radius:20px; max-width:400px; width:100%; padding:24px; text-align:center;"><h3>🔲 QR Code de la commande</h3><p>Montrez ce code à l\'acheteur pour qu\'il le scanne.</p><div id="qrCode" style="margin:12px auto;"></div><p style="font-size:12px; color:#999;">Commande #' + orderId.slice(0,8) + '</p><button class="btn btn-primary" onclick="this.parentElement.parentElement.remove()">Fermer</button></div>';
+        modal.innerHTML = '<div style="background:white; border-radius:20px; max-width:400px; width:100%; padding:24px; text-align:center;"><h3>🔲 QR Code</h3><p>Montrez ce code à l\'acheteur.</p><div id="qrCode" style="margin:12px auto;"></div><p style="font-size:12px; color:#999;">Commande #' + orderId.slice(0,8) + '</p><button class="btn btn-primary" onclick="this.parentElement.parentElement.remove()">Fermer</button></div>';
         document.body.appendChild(modal);
         var qrDiv = document.getElementById('qrCode');
         new QRCode(qrDiv, {
@@ -505,7 +527,6 @@
             { facingMode: "environment" },
             { fps: 10, qrbox: { width: 250, height: 250 } },
             function(decodedText) {
-                // decodedText est l'ID de la commande
                 html5QrCode.stop();
                 document.getElementById('qrScannerContainer').style.display = 'none';
                 confirmOrderByQR(decodedText, orderId);
@@ -524,10 +545,10 @@
 
     function confirmOrderByQR(scannedOrderId, expectedOrderId) {
         if (scannedOrderId !== expectedOrderId) {
-            showAlert('❌ QR code invalide pour cette commande.', 'error');
+            showAlert('❌ QR invalide.', 'error');
             return;
         }
-        showAlert('⏳ Confirmation par QR...', 'info');
+        showAlert('⏳ Confirmation...', 'info');
         fetch(BACKEND_URL + '/api/orders/confirm-by-qr', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -840,7 +861,7 @@
     });
 
     // ============================================================
-    // ADMIN PAGE
+    // ADMIN PAGE (via #admin)
     // ============================================================
     if (window.location.hash === '#admin') {
         document.getElementById('authPage').style.display = 'none';
@@ -892,7 +913,7 @@
     // ============================================================
     // INIT
     // ============================================================
-    console.log('✅ BLK Marketplace - Version complète avec QR Code');
+    console.log('✅ BLK Marketplace - Version complète');
     console.log('🔗 Backend URL:', BACKEND_URL);
 </script>
 </body>
