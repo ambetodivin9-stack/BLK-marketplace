@@ -2,15 +2,15 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BLK Marketplace</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f0e8; color: #1a1a1a; }
+        body { font-family: -apple-system, sans-serif; background: #f5f0e8; color: #1a1a1a; }
         .kente { height: 6px; background: linear-gradient(90deg, #FFD700 20%, #2ECC71 40%, #E74C3C 60%, #FFD700 80%); }
         .auth-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; background: linear-gradient(135deg, #FFD700, #FF8C00); }
-        .auth-page .card { background: rgba(255,255,255,0.85); padding: 32px 24px; border-radius: 24px; max-width: 400px; width: 100%; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
-        .auth-page h1 { text-align: center; font-size: 32px; font-weight: 800; color: #1a1a1a; }
+        .auth-page .card { background: rgba(255,255,255,0.85); padding: 32px; border-radius: 24px; max-width: 400px; width: 100%; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
+        .auth-page h1 { text-align: center; font-size: 32px; font-weight: 800; }
         .auth-page .sub { text-align: center; color: #666; margin-bottom: 24px; }
         .auth-page input { width: 100%; padding: 14px 16px; border: 1px solid #ddd; border-radius: 14px; font-size: 16px; margin-bottom: 12px; background: white; }
         .auth-page input:focus { outline: none; border-color: #E74C3C; }
@@ -21,7 +21,6 @@
         .btn-success:hover { background: #27AE60; }
         .btn-danger { background: #E74C3C; color: white; }
         .btn-danger:hover { background: #C0392B; }
-        .btn-outline { background: transparent; color: #E74C3C; border: 2px solid #E74C3C; }
         .welcome-screen { display: none; align-items: center; justify-content: center; min-height: 100vh; padding: 40px; background: linear-gradient(135deg, #FFD700, #2ECC71, #E74C3C); text-align: center; color: white; }
         .welcome-screen.active { display: flex; }
         .welcome-screen h1 { font-size: 48px; font-weight: 900; text-shadow: 0 4px 20px rgba(0,0,0,0.2); }
@@ -160,7 +159,6 @@
             document.getElementById('welcomeScreen').classList.remove('active');
             showMainApp();
             showAlert('Bienvenue ' + currentUser.name, 'success');
-            // Envoyer online status au backend
             fetch(BACKEND_URL + '/api/users/online', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -235,7 +233,7 @@
     }
 
     // ============================================================
-    // DEPOSIT
+    // DEPOSIT (SIMULATION DIRECTE)
     // ============================================================
     document.getElementById('btnDeposit').addEventListener('click', function() {
         var amount = prompt('Montant (FCFA) :', '500');
@@ -243,34 +241,37 @@
         var phone = prompt('Numéro MTN :', '065918166');
         if (!phone) return;
 
-        showAlert('Envoi de la demande...', 'success');
+        showAlert('⏳ Envoi de la demande...', 'success');
+
+        var payload = {
+            userId: currentUserId,
+            amount: parseInt(amount),
+            phone: phone
+        };
+        console.log('📤 Envoi au backend:', payload);
 
         fetch(BACKEND_URL + '/api/wallet/deposit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                userId: currentUserId,
-                amount: parseInt(amount),
-                phone: phone
-            })
+            body: JSON.stringify(payload)
         })
         .then(function(res) { return res.json(); })
         .then(function(data) {
             if (data.success) {
-                showAlert(data.message, 'success');
+                showAlert('💰 ' + data.message, 'success');
                 loadWallet();
                 loadTransactions();
             } else {
-                showAlert('Erreur: ' + data.message, 'error');
+                showAlert('❌ ' + data.message, 'error');
             }
         })
         .catch(function(e) {
-            showAlert('Erreur: ' + e.message, 'error');
+            showAlert('❌ Erreur: ' + e.message, 'error');
         });
     });
 
     document.getElementById('btnWithdraw').addEventListener('click', function() {
-        showAlert('Fonction en développement', 'error');
+        showAlert('🔧 Fonction en développement', 'error');
     });
 
     // ============================================================
@@ -309,7 +310,7 @@
     });
 
     // ============================================================
-    // ADMIN PAGE (via #admin)
+    // ADMIN PAGE
     // ============================================================
     if (window.location.hash === '#admin') {
         document.getElementById('authPage').style.display = 'none';
