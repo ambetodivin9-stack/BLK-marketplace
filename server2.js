@@ -10,6 +10,9 @@ const PORT = process.env.PORT || 10000;
 app.use(cors()); 
 app.use(express.json({ limit: '10mb' }));
 
+//  
+// FIREBASE 
+//  
 if (!process.env.FIREBASE_SERVICE_ACCOUNT) { 
 console.error('FIREBASE_SERVICE_ACCOUNT manquant'); 
 process.exit(1); 
@@ -20,11 +23,20 @@ const db = admin.firestore();
 
 console.log('BLK API demarree');
 
+//  
+// CONFIG MONEYUNIFY 
+//  
 const MONEYUNIFY_AUTH_ID = process.env.MONEYUNIFY_AUTH_ID || '01KXKPX5Y8J7ARK619BT1A07GP';
 
+//  
+// ROUTES DE BASE 
+//  
 app.get('/', (req, res) => res.json({ status: 'OK', message: 'BLK API' })); 
 app.get('/api', (req, res) => res.json({ success: true, message: 'API OK' }));
 
+//  
+// UTILISATEURS 
+//  
 app.post('/api/users/online', async (req, res) => { 
 try { 
 const { userId, online } = req.body; 
@@ -79,6 +91,9 @@ res.status(500).json({ success: false, message: error.message });
 } 
 });
 
+//  
+// ARTICLES (filtrage en mémoire) 
+//  
 app.get('/api/articles', async (req, res) => { 
 try { 
 const snapshot = await db.collection('products').get(); 
@@ -166,6 +181,9 @@ res.status(500).json({ success: false, message: error.message });
 } 
 });
 
+//  
+// UPLOAD IMAGE 
+//  
 app.post('/api/upload', async (req, res) => { 
 try { 
 const { base64 } = req.body; 
@@ -199,6 +217,9 @@ if (!base64) return res.status(400).json({ success: false, message: 'Aucune imag
 }
 });
 
+//  
+// STATISTIQUES 
+//  
 app.get('/api/stats/:userId', async (req, res) => { 
 try { 
 const { userId } = req.params;
@@ -270,6 +291,9 @@ const { userId } = req.params;
 }
 });
 
+//  
+// WALLET 
+//  
 app.get('/api/wallet/:userId', async (req, res) => { 
 try { 
 const doc = await db.collection('users').doc(req.params.userId).get(); 
@@ -280,7 +304,7 @@ res.status(500).json({ success: false, message: error.message });
 });
 
 //  
-// ✅ MONEYUNIFY - PAIEMENT REEL 
+// MONEYUNIFY - PAIEMENT REEL 
 //  
 app.post('/api/payment/initiate', async (req, res) => { 
 try { 
@@ -346,7 +370,7 @@ return res.status(400).json({ success: false, message: 'userId, amount et phone 
 });
 
 //  
-// ✅ MONEYUNIFY - WEBHOOK REEL 
+// MONEYUNIFY - WEBHOOK REEL 
 //  
 app.post('/api/payment/webhook', async (req, res) => { 
 try { 
@@ -522,6 +546,9 @@ res.status(500).json([]);
 } 
 });
 
+//  
+// MESSAGES 
+//  
 app.get('/api/messages/:userId', async (req, res) => { 
 try { 
 const { userId } = req.params; 
@@ -589,6 +616,9 @@ res.status(500).json({ success: false, message: error.message });
 } 
 });
 
+//  
+// FOLLOW 
+//  
 app.post('/api/follow', async (req, res) => { 
 try { 
 const { followerId, followingId } = req.body; 
@@ -666,7 +696,7 @@ const snapshot = await db.collection('products')
 .get(); 
 snapshot.forEach(doc => { 
 const data = doc.data(); 
-if (data.status === 'active') { 
+if (data.status = 'active') { 
 articles.push({ id: doc.id, ...data }); 
 } 
 }); 
@@ -686,6 +716,9 @@ app.post('/api/flames', (req, res) => res.json({ success: true }));
 app.get('/api/flames/:userId', (req, res) => res.json({ flames: 0 })); 
 app.get('/api/transactions/:userId', (req, res) => res.json({ success: true, data: [] }));
 
+//  
+// WALLET - DEPOT MANUEL (pour admin) 
+//  
 app.post('/api/wallet/deposit', async (req, res) => { 
 try { 
 const userId = req.body.userId || req.body.userid; 
@@ -722,6 +755,9 @@ res.status(500).json({ success: false, message: error.message });
 } 
 });
 
+//  
+// DEMARRAGE 
+// == 
 app.listen(PORT, '0.0.0.0', () => { 
 console.log('BLK API running on port ' + PORT); 
 });
