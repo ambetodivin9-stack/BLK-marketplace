@@ -26,7 +26,7 @@ console.log('BLK API demarree');
 //  
 // CONFIG MONEYUNIFY 
 //  
-const MONEYUNIFY_AUTH_ID = '01KXKPX5V8J7ARK619BT1A07GP'; // TA CLÉ ICI
+const MONEYUNIFY_AUTH_ID = process.env.MONEYUNIFY_AUTH_ID || '01KXKPX5V8J7ARK619BT1A07GP';
 
 //  
 // ROUTES DE BASE 
@@ -72,9 +72,6 @@ res.status(500).json({ success: false, message: error.message });
 } 
 });
 
-//  
-// ✅ ROUTE PUT CORRIGEE (sans aucun '!') 
-//  
 app.put('/api/users/:userId', async (req, res) => { 
 try { 
 const { userId } = req.params; 
@@ -84,7 +81,6 @@ if (name) updateData.name = name;
 if (email) updateData.email = email; 
 if (phone) updateData.phone = phone; 
 if (photo) updateData.photo = photo; 
-// ✅ UTILISATION DE 'in' A LA PLACE DE '!=' OU '!' 
 if ('isSeller' in req.body) { 
 updateData.isSeller = req.body.isSeller; 
 } 
@@ -96,32 +92,27 @@ res.status(500).json({ success: false, message: error.message });
 });
 
 //  
-// ARTICLES (collection "products") - CORRIGÉ 
+// ARTICLES (CORRIGÉ - tri en mémoire) 
 //  
 app.get('/api/articles', async (req, res) => { 
 try { 
-// 🔥 CORRECTION : on enlève orderBy pour éviter l'erreur d'index 
 const snapshot = await db.collection('products') 
 .where('status', '', 'active') 
-.get(); // ⚠️ plus de orderBy('createdAt', 'desc')
-
-    const articles = [];
-    snapshot.forEach(doc => {
-        articles.push({ id: doc.id, ...doc.data() });
-    });
-    
-    // On trie manuellement en mémoire (car on a enlevé orderBy)
-    articles.sort((a, b) => {
-        const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt);
-        const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt);
-        return dateB - dateA;
-    });
-
-    res.json({ success: true, data: articles });
-} catch (error) {
-    console.error('Erreur /api/articles:', error.message);
-    res.status(500).json({ success: false, message: error.message });
-}
+.get(); 
+const articles = []; 
+snapshot.forEach(doc => { 
+articles.push({ id: doc.id, ...doc.data() }); 
+}); 
+articles.sort((a, b) => { 
+const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt); 
+const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt); 
+return dateB - dateA; 
+}); 
+res.json({ success: true, data: articles }); 
+} catch (error) { 
+console.error('Erreur /api/articles:', error.message); 
+res.status(500).json({ success: false, message: error.message }); 
+} 
 });
 
 app.get('/api/articles/seller/:sellerId', async (req, res) => { 
@@ -129,7 +120,7 @@ try {
 const { sellerId } = req.params; 
 const snapshot = await db.collection('products') 
 .where('sellerId', '', sellerId) 
-.get(); // on enlève orderBy aussi 
+.get(); 
 const articles = []; 
 snapshot.forEach(doc => articles.push({ id: doc.id, ...doc.data() })); 
 articles.sort((a, b) => { 
@@ -185,32 +176,45 @@ res.status(500).json({ success: false, message: error.message });
 });
 
 //  
-// UPLOAD IMAGE (ImgBB) 
+// UPLOAD IMAGE (ImgBB) - CORRIGÉ 
 //  
 app.post('/api/upload', async (req, res) => { 
 try { 
 const { base64 } = req.body; 
-if (!base64) return res.status(400).json({ success: false, message: 'Aucune image' }); 
-const API_KEY = process.env.IMG_BB_KEY || '2b3e869d8b6f382027e70cd216f65580'; 
-const base64Data = base64.includes('base64,') ? base64.split('base64,')[1] : base64; 
-const formData = new FormData(); 
-formData.append('key', API_KEY); 
-formData.append('image', base64Data); 
-const response = await axios.post('https://api.imgbb.com/1/upload', formData, { 
-headers: formData.getHeaders() 
-}); 
-if (response.data.success) { 
-res.json({ success: true, url: response.data.data.url }); 
-} else { 
-res.status(400).json({ success: false, message: 'Erreur ImgBB' }); 
-} 
-} catch (error) { 
-res.status(500).json({ success: false, message: 'Erreur upload' }); 
-} 
+if (!base64) return res.status(400).json({ success: false, message: 'Aucune image' });
+
+    const API_KEY = process.env.IMG_BB_KEY || '2b3e869d8b6f382027e70cd216f65580';
+    // Nettoyer le base64
+    const base64Data = base64.includes('base64,') ? base64.split('base64,')[1] : base64;
+    
+    // Limiter la taille de l'image (1 Mo)
+    if (base64Data.length > 1.5 * 1024 * 1024) {
+        return res.status(400).json({ success: false, message: 'Image trop volumineuse (max 1.5 Mo)' });
+    }
+    
+    const formData = new FormData();
+    formData.append('key', API_KEY);
+    formData.append('image', base64Data);
+    
+    const response = await axios.post('https://api.imgbb.com/1/upload', formData, {
+        headers: formData.getHeaders(),
+        timeout: 10000
+    });
+    
+    if (response.data.success) {
+        res.json({ success: true, url: response.data.data.url });
+    } else {
+        console.error('Erreur ImgBB:', response.data);
+        res.status(400).json({ success: false, message: 'Erreur ImgBB: ' + (response.data.error?.message || 'inconnue') });
+    }
+} catch (error) {
+    console.error('Erreur upload:', error.message);
+    res.status(500).json({ success: false, message: 'Erreur upload: ' + error.message });
+}
 });
 
 //  
-// STATISTIQUES (corrigé aussi) 
+// STATISTIQUES 
 //  
 app.get('/api/stats/:userId', async (req, res) => { 
 try { 
@@ -291,7 +295,7 @@ res.status(500).json({ success: false, message: error.message });
 });
 
 //  
-// MONEYUNIFY - INITIER UN PAIEMENT 
+// ✅ MONEYUNIFY - INITIER UN PAIEMENT (AJOUTÉ) 
 //  
 app.post('/api/payment/initiate', async (req, res) => { 
 try { 
@@ -306,6 +310,8 @@ return res.status(400).json({ success: false, message: 'userId, amount et phone 
     if (!userDoc.exists) {
         return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
     }
+
+    console.log('📤 Envoi à MoneyUnify:', { phone, amount, auth_id: MONEYUNIFY_AUTH_ID });
 
     // Appeler l'API MoneyUnify
     const response = await axios.post('https://api.moneyunify.one/payments/request', 
@@ -322,7 +328,7 @@ return res.status(400).json({ success: false, message: 'userId, amount et phone 
         }
     );
 
-    console.log('Réponse MoneyUnify:', response.data);
+    console.log('✅ Réponse MoneyUnify:', response.data);
 
     if (response.data.status === 'success') {
         // Créer une transaction en attente
@@ -348,7 +354,7 @@ return res.status(400).json({ success: false, message: 'userId, amount et phone 
         });
     }
 } catch (error) {
-    console.error('Erreur MoneyUnify:', error.response?.data || error.message);
+    console.error('❌ Erreur MoneyUnify:', error.response?.data || error.message);
     res.status(500).json({ 
         success: false, 
         message: 'Erreur lors de l\'initiation du paiement: ' + (error.response?.data?.message || error.message)
@@ -357,12 +363,12 @@ return res.status(400).json({ success: false, message: 'userId, amount et phone 
 });
 
 //  
-// MONEYUNIFY - WEBHOOK (pour confirmer les paiements) 
+// ✅ MONEYUNIFY - WEBHOOK (AJOUTÉ) 
 //  
 app.post('/api/payment/webhook', async (req, res) => { 
 try { 
 const { transaction_id, status, amount, phone, reference } = req.body; 
-console.log('Webhook reçu:', req.body);
+console.log('📥 Webhook reçu:', req.body);
 
     // Trouver la transaction dans Firestore
     const snapshot = await db.collection('transactions')
@@ -370,7 +376,7 @@ console.log('Webhook reçu:', req.body);
         .get();
 
     if (snapshot.empty) {
-        console.warn('Transaction non trouvée:', transaction_id);
+        console.warn('⚠️ Transaction non trouvée:', transaction_id);
         return res.status(404).json({ success: false });
     }
 
@@ -401,14 +407,15 @@ console.log('Webhook reçu:', req.body);
 
     res.json({ success: true });
 } catch (error) {
-    console.error('Erreur webhook:', error);
+    console.error('❌ Erreur webhook:', error);
     res.status(500).json({ success: false });
 }
 });
 
 //  
-// ORDRES, MESSAGES, FOLLOW, ETC. (inchangés) 
+// ORDRES, MESSAGES, FOLLOW (inchangés mais conservés) 
 //  
+// ... (je garde tout le reste identique) 
 app.post('/api/wallet/deposit', async (req, res) => { 
 try { 
 const userId = req.body.userId || req.body.userid; 
@@ -699,7 +706,7 @@ for (const id of followingIds) {
 const snapshot = await db.collection('products') 
 .where('sellerId', '', id) 
 .where('status', '', 'active') 
-.get(); // on enlève orderBy 
+.get(); 
 snapshot.forEach(doc => articles.push({ id: doc.id, ...doc.data() })); 
 } 
 articles.sort((a, b) => { 
@@ -719,7 +726,7 @@ app.get('/api/transactions/:userId', (req, res) => res.json({ success: true, dat
 
 //  
 // DEMARRAGE 
-// == 
+//  
 app.listen(PORT, '0.0.0.0', () => { 
 console.log('BLK API running on port ' + PORT); 
 });
