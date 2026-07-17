@@ -24,6 +24,11 @@ const db = admin.firestore();
 console.log('BLK API demarree');
 
 //  
+// CONFIG MONEYUNIFY 
+//  
+const MONEYUNIFY_AUTH_ID = '01KXKPX5V8J7ARK619BT1A07GP'; // TA CLÉ ICI
+
+//  
 // ROUTES DE BASE 
 //  
 app.get('/', (req, res) => res.json({ status: 'OK', message: 'BLK API' })); 
@@ -68,7 +73,7 @@ res.status(500).json({ success: false, message: error.message });
 });
 
 //  
-// ✅ ROUTE PUT CORRIGEE (SANS AUCUN '!') 
+// ✅ ROUTE PUT CORRIGEE (sans aucun '!') 
 //  
 app.put('/api/users/:userId', async (req, res) => { 
 try { 
@@ -91,22 +96,32 @@ res.status(500).json({ success: false, message: error.message });
 });
 
 //  
-// ARTICLES (collection "products") 
+// ARTICLES (collection "products") - CORRIGÉ 
 //  
 app.get('/api/articles', async (req, res) => { 
 try { 
+// 🔥 CORRECTION : on enlève orderBy pour éviter l'erreur d'index 
 const snapshot = await db.collection('products') 
 .where('status', '', 'active') 
-.orderBy('createdAt', 'desc') 
-.get(); 
-const articles = []; 
-snapshot.forEach(doc => { 
-articles.push({ id: doc.id, ...doc.data() }); 
-}); 
-res.json({ success: true, data: articles }); 
-} catch (error) { 
-res.status(500).json({ success: false, message: error.message }); 
-} 
+.get(); // ⚠️ plus de orderBy('createdAt', 'desc')
+
+    const articles = [];
+    snapshot.forEach(doc => {
+        articles.push({ id: doc.id, ...doc.data() });
+    });
+    
+    // On trie manuellement en mémoire (car on a enlevé orderBy)
+    articles.sort((a, b) => {
+        const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt);
+        const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt);
+        return dateB - dateA;
+    });
+
+    res.json({ success: true, data: articles });
+} catch (error) {
+    console.error('Erreur /api/articles:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+}
 });
 
 app.get('/api/articles/seller/:sellerId', async (req, res) => { 
@@ -114,10 +129,14 @@ try {
 const { sellerId } = req.params; 
 const snapshot = await db.collection('products') 
 .where('sellerId', '', sellerId) 
-.orderBy('createdAt', 'desc') 
-.get(); 
+.get(); // on enlève orderBy aussi 
 const articles = []; 
 snapshot.forEach(doc => articles.push({ id: doc.id, ...doc.data() })); 
+articles.sort((a, b) => { 
+const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt); 
+const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt); 
+return dateB - dateA; 
+}); 
 res.json({ success: true, data: articles }); 
 } catch (error) { 
 res.status(500).json({ success: false, message: error.message }); 
@@ -191,7 +210,7 @@ res.status(500).json({ success: false, message: 'Erreur upload' });
 });
 
 //  
-// STATISTIQUES 
+// STATISTIQUES (corrigé aussi) 
 //  
 app.get('/api/stats/:userId', async (req, res) => { 
 try { 
@@ -271,6 +290,125 @@ res.status(500).json({ success: false, message: error.message });
 } 
 });
 
+//  
+// MONEYUNIFY - INITIER UN PAIEMENT 
+//  
+app.post('/api/payment/initiate', async (req, res) => { 
+try { 
+const { userId, amount, phone } = req.body; 
+if (!userId || !amount || !phone) { 
+return res.status(400).json({ success: false, message: 'userId, amount et phone requis' }); 
+}
+
+    // Vérifier que l'utilisateur existe
+    const userRef = db.collection('users').doc(userId);
+    const userDoc = await userRef.get();
+    if (!userDoc.exists) {
+        return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
+    }
+
+    // Appeler l'API MoneyUnify
+    const response = await axios.post('https://api.moneyunify.one/payments/request', 
+        new URLSearchParams({
+            from_payer: phone,
+            amount: parseInt(amount),
+            auth_id: MONEYUNIFY_AUTH_ID
+        }),
+        {
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json'
+            }
+        }
+    );
+
+    console.log('Réponse MoneyUnify:', response.data);
+
+    if (response.data.status === 'success') {
+        // Créer une transaction en attente
+        await db.collection('transactions').add({
+            userId: userId,
+            amount: parseInt(amount),
+            phone: phone,
+            transactionId: response.data.transaction_id || 'N/A',
+            status: 'pending',
+            type: 'deposit',
+            createdAt: new Date()
+        });
+
+        res.json({ 
+            success: true, 
+            transactionId: response.data.transaction_id,
+            message: 'Demande de paiement envoyée. Confirmez sur votre téléphone.'
+        });
+    } else {
+        res.status(400).json({ 
+            success: false, 
+            message: response.data.message || 'Erreur MoneyUnify' 
+        });
+    }
+} catch (error) {
+    console.error('Erreur MoneyUnify:', error.response?.data || error.message);
+    res.status(500).json({ 
+        success: false, 
+        message: 'Erreur lors de l\'initiation du paiement: ' + (error.response?.data?.message || error.message)
+    });
+}
+});
+
+//  
+// MONEYUNIFY - WEBHOOK (pour confirmer les paiements) 
+//  
+app.post('/api/payment/webhook', async (req, res) => { 
+try { 
+const { transaction_id, status, amount, phone, reference } = req.body; 
+console.log('Webhook reçu:', req.body);
+
+    // Trouver la transaction dans Firestore
+    const snapshot = await db.collection('transactions')
+        .where('transactionId', '==', transaction_id)
+        .get();
+
+    if (snapshot.empty) {
+        console.warn('Transaction non trouvée:', transaction_id);
+        return res.status(404).json({ success: false });
+    }
+
+    const transactionDoc = snapshot.docs[0];
+    const transactionData = transactionDoc.data();
+
+    // Si le paiement est réussi, créditer le wallet
+    if (status === 'success') {
+        const userRef = db.collection('users').doc(transactionData.userId);
+        const userDoc = await userRef.get();
+        const currentBalance = userDoc.data()?.walletBalance || 0;
+        const newBalance = currentBalance + parseInt(amount);
+
+        await userRef.update({ walletBalance: newBalance });
+
+        await transactionDoc.ref.update({
+            status: 'completed',
+            completedAt: new Date()
+        });
+
+        console.log('✅ Wallet crédité de', amount, 'pour', transactionData.userId);
+    } else {
+        await transactionDoc.ref.update({
+            status: 'failed',
+            failedAt: new Date()
+        });
+    }
+
+    res.json({ success: true });
+} catch (error) {
+    console.error('Erreur webhook:', error);
+    res.status(500).json({ success: false });
+}
+});
+
+//  
+// ORDRES, MESSAGES, FOLLOW, ETC. (inchangés) 
+//  
 app.post('/api/wallet/deposit', async (req, res) => { 
 try { 
 const userId = req.body.userId || req.body.userid; 
@@ -307,9 +445,6 @@ res.status(500).json({ success: false, message: error.message });
 } 
 });
 
-//  
-// ORDRES 
-//  
 app.post('/api/orders/create', async (req, res) => { 
 try { 
 const { articleId, buyerId, sellerId, amount, buyerPhone } = req.body; 
@@ -422,9 +557,6 @@ res.status(500).json([]);
 } 
 });
 
-//  
-// MESSAGES (REEL) 
-//  
 app.get('/api/messages/:userId', async (req, res) => { 
 try { 
 const { userId } = req.params; 
@@ -492,9 +624,6 @@ res.status(500).json({ success: false, message: error.message });
 } 
 });
 
-//  
-// ABONNEMENTS (FOLLOW) 
-//  
 app.post('/api/follow', async (req, res) => { 
 try { 
 const { followerId, followingId } = req.body; 
@@ -570,21 +699,20 @@ for (const id of followingIds) {
 const snapshot = await db.collection('products') 
 .where('sellerId', '', id) 
 .where('status', '', 'active') 
-.orderBy('createdAt', 'desc') 
-.limit(10) 
-.get(); 
+.get(); // on enlève orderBy 
 snapshot.forEach(doc => articles.push({ id: doc.id, ...doc.data() })); 
 } 
-articles.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); 
+articles.sort((a, b) => { 
+const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt); 
+const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt); 
+return dateB - dateA; 
+}); 
 res.json({ success: true, data: articles }); 
 } catch (error) { 
 res.status(500).json({ success: false, message: error.message }); 
 } 
 });
 
-//  
-// FLAMMES, TRANSACTIONS (simplifies) 
-//  
 app.post('/api/flames', (req, res) => res.json({ success: true })); 
 app.get('/api/flames/:userId', (req, res) => res.json({ flames: 0 })); 
 app.get('/api/transactions/:userId', (req, res) => res.json({ success: true, data: [] }));
