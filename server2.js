@@ -2,9 +2,7 @@ const express = require('express');
 const cors = require('cors'); 
 const admin = require('firebase-admin'); 
 const axios = require('axios'); 
-const FormData = require('form-data'); 
-const { Storage } = require('@google-cloud/storage'); 
-const { v4: uuidv4 } = require('uuid');
+const FormData = require('form-data');
 
 const app = express(); 
 const PORT = process.env.PORT || 10000;
@@ -24,18 +22,6 @@ admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 const db = admin.firestore();
 
 console.log('BLK API demarree');
-
-//  
-// FIREBASE STORAGE (pour les images) 
-//  
-const storage = new Storage({ 
-projectId: serviceAccount.project_id, 
-credentials: { 
-client_email: serviceAccount.client_email, 
-private_key: serviceAccount.private_key 
-} 
-}); 
-const bucket = storage.bucket(serviceAccount.project_id + '.appspot.com');
 
 //  
 // CONFIG MONEYUNIFY 
@@ -106,7 +92,7 @@ res.status(500).json({ success: false, message: error.message });
 });
 
 //  
-// ARTICLES (routes restaurées avec orderBy) 
+// ARTICLES (routes restaurées comme avant) 
 //  
 app.get('/api/articles', async (req, res) => { 
 try { 
@@ -182,7 +168,7 @@ res.status(500).json({ success: false, message: error.message });
 });
 
 //  
-// UPLOAD IMAGE - FIREBASE STORAGE (gratuit) 
+// UPLOAD IMAGE - IMGBB (corrigé) 
 //  
 app.post('/api/upload', async (req, res) => { 
 try { 
@@ -191,39 +177,48 @@ if (!base64) {
 return res.status(400).json({ success: false, message: 'Aucune image fournie' }); 
 }
 
-    // Nettoyer le Base64
-    let cleanBase64 = base64.includes('base64,') ? base64.split('base64,')[1] : base64;
+    // 1. Nettoyer le Base64 (enlever le préfixe et les espaces)
+    let cleanBase64 = base64;
+    if (cleanBase64.includes('base64,')) {
+        cleanBase64 = cleanBase64.split('base64,')[1];
+    }
+    // 2. Supprimer tous les espaces et sauts de ligne
     cleanBase64 = cleanBase64.replace(/\s/g, '');
+    // 3. Supprimer les guillemets s'il y en a
+    cleanBase64 = cleanBase64.replace(/["']/g, '');
 
-    // Valider le format
+    // 4. Valider que c'est bien du Base64
     const base64Regex = /^[A-Za-z0-9+/]+={0,2}$/;
     if (!base64Regex.test(cleanBase64)) {
         return res.status(400).json({ success: false, message: 'Format d\'image invalide' });
     }
 
-    // Vérifier la taille (max 1.5 Mo)
+    // 5. Vérifier la taille (max 1.5 Mo)
     const imageSize = Buffer.from(cleanBase64, 'base64').length;
     if (imageSize > 1.5 * 1024 * 1024) {
         return res.status(400).json({ success: false, message: 'Image trop volumineuse (max 1.5 Mo)' });
     }
 
-    // Générer un nom unique pour le fichier
-    const filename = `products/${uuidv4()}.jpg`;
-    const file = bucket.file(filename);
+    // 6. Envoyer à ImgBB
+    const API_KEY = process.env.IMG_BB_KEY || '2b3e869d8b6f382027e70cd216f65580';
+    const formData = new FormData();
+    formData.append('key', API_KEY);
+    formData.append('image', cleanBase64);
 
-    // Upload dans Firebase Storage
-    const buffer = Buffer.from(cleanBase64, 'base64');
-    await file.save(buffer, {
-        metadata: {
-            contentType: 'image/jpeg',
-        },
-        public: true
+    const response = await axios.post('https://api.imgbb.com/1/upload', formData, {
+        headers: formData.getHeaders(),
+        timeout: 15000
     });
 
-    // Récupérer l'URL publique
-    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filename}`;
-
-    res.json({ success: true, url: publicUrl });
+    if (response.data.success) {
+        res.json({ success: true, url: response.data.data.url });
+    } else {
+        console.error('Erreur ImgBB:', response.data);
+        res.status(400).json({
+            success: false,
+            message: 'Erreur ImgBB: ' + (response.data.error?.message || 'inconnue')
+        });
+    }
 } catch (error) {
     console.error('Erreur upload:', error.message);
     res.status(500).json({ success: false, message: 'Erreur interne du serveur' });
