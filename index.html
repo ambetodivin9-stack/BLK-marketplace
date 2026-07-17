@@ -32,6 +32,7 @@
         .alert { padding: 12px; border-radius: 12px; margin-bottom: 12px; display: none; }
         .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
         .product-card { background: rgba(255,255,255,0.8); border-radius: 14px; overflow: hidden; cursor: pointer; border: 1px solid rgba(255,255,255,0.4); }
         .product-card img { width: 100%; height: 150px; object-fit: cover; }
@@ -188,7 +189,7 @@
         <div class="glass">
             <h3 style="color:#2ECC71;">💰 Wallet BLK</h3>
             <p class="wallet-balance"><span id="walletBalance">0</span> FCFA</p>
-            <button class="btn btn-success" id="btnDeposit">Déposer</button>
+            <button class="btn btn-success" id="btnDeposit">Déposer avec MoneyUnify</button>
             <button class="btn btn-primary" id="btnWithdraw" style="margin-top:8px;">Retirer</button>
         </div>
         <button class="btn btn-danger" id="btnLogout">🚪 Déconnexion</button>
@@ -208,7 +209,6 @@
     // ============================================================
     // CONFIGURATION
     // ============================================================
-    // 🔥 METS ICI LA BONNE URL RENDER
     var BACKEND_URL = 'https://blk-marketplace2-0-1.onrender.com';
     var STORAGE_KEY = 'blk_user_id';
     var currentUser = null;
@@ -240,7 +240,7 @@
     }
 
     // ============================================================
-    // AUTH (CORRIGÉE)
+    // AUTH
     // ============================================================
     function handleLogin(name, email) {
         console.log('🔑 handleLogin appelé avec :', name, email);
@@ -429,7 +429,7 @@
     }
 
     // ============================================================
-    // PRODUCTS
+    // PRODUCTS - CORRIGÉ (tri en mémoire)
     // ============================================================
     var feedMode = 'all';
 
@@ -591,7 +591,7 @@
                     if (userId !== currentUserId) {
                         followBtn.style.display = 'inline-block';
                         checkFollowStatus(userId).then(function(isFollowing) {
-                            // ✅ CORRECTION ICI : guillemets doubles autour de "S'abonner"
+                            // ✅ CORRECTION : guillemets doubles
                             followBtn.textContent = isFollowing ? 'Se désabonner' : "S'abonner";
                             followBtn.className = 'btn btn-sm ' + (isFollowing ? 'btn-danger' : 'btn-primary') + ' follow-btn';
                             followBtn.onclick = function() {
@@ -611,7 +611,7 @@
     }
 
     // ============================================================
-    // WALLET
+    // WALLET - AVEC MONEYUNIFY
     // ============================================================
     function loadWallet() {
         if (!currentUserId) return;
@@ -624,26 +624,41 @@
             .catch(function(e) { console.error(e); });
     }
 
+    // ✅ BOUTON DEPOSIT - MONEYUNIFY
     document.getElementById('btnDeposit').addEventListener('click', function() {
         var amount = prompt('Montant (FCFA) :', '500');
         if (!amount) return;
-        var phone = prompt('Numéro MTN :', '065918166');
+        var phone = prompt('Numéro MTN ou Airtel :', '065918166');
         if (!phone) return;
-        fetch(BACKEND_URL + '/api/wallet/deposit', {
+
+        showAlert('⏳ Envoi de la demande à MoneyUnify...', 'info');
+
+        fetch(BACKEND_URL + '/api/payment/initiate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: currentUserId, amount: parseInt(amount), phone: phone })
+            body: JSON.stringify({
+                userId: currentUserId,
+                amount: parseInt(amount),
+                phone: phone
+            })
         })
         .then(function(res) { return res.json(); })
         .then(function(data) {
             if (data.success) {
-                showAlert('💰 ' + data.message, 'success');
-                loadWallet();
+                showAlert('💰 Demande de paiement envoyée ! Confirmez sur votre téléphone.', 'success');
+                // Vérifier le wallet après 30 secondes
+                setTimeout(function() {
+                    loadWallet();
+                    showAlert('✅ Vérification du solde effectuée.', 'success');
+                }, 30000);
             } else {
                 showAlert('❌ ' + data.message, 'error');
             }
         })
-        .catch(function(e) { showAlert('❌ Erreur: ' + e.message, 'error'); });
+        .catch(function(e) {
+            showAlert('❌ Erreur: ' + e.message, 'error');
+            console.error('Erreur deposit:', e);
+        });
     });
 
     document.getElementById('btnWithdraw').addEventListener('click', function() {
@@ -819,7 +834,7 @@
     });
 
     // ============================================================
-    // MESSAGES (RÉEL)
+    // MESSAGES
     // ============================================================
     function loadMessages() {
         if (!currentUserId) return;
