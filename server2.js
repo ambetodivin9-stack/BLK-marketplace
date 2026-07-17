@@ -182,26 +182,42 @@ res.status(500).json({ success: false, message: error.message });
 });
 
 //  
-// UPLOAD IMAGE 
+// UPLOAD IMAGE - CORRIGÉ (nettoyage Base64) 
 //  
 app.post('/api/upload', async (req, res) => { 
 try { 
 const { base64 } = req.body; 
-if (!base64) return res.status(400).json({ success: false, message: 'Aucune image' });
+if (!base64) { 
+return res.status(400).json({ success: false, message: 'Aucune image fournie' }); 
+}
 
-    const API_KEY = process.env.IMG_BB_KEY || '2b3e869d8b6f382027e70cd216f65580';
-    const base64Data = base64.includes('base64,') ? base64.split('base64,')[1] : base64;
+    // Nettoyer la chaîne Base64
+    let cleanBase64 = base64.includes('base64,') ? base64.split('base64,')[1] : base64;
+    cleanBase64 = cleanBase64.replace(/\s/g, '');
 
-    if (base64Data.length > 1.5 * 1024 * 1024) {
+    // Valider le format Base64
+    const base64Regex = /^[A-Za-z0-9+/]+={0,2}$/;
+    if (!base64Regex.test(cleanBase64)) {
+        return res.status(400).json({ success: false, message: 'Format d\'image invalide' });
+    }
+
+    // Vérifier la taille de l'image (max 1.5 Mo)
+    const imageSize = Buffer.from(cleanBase64, 'base64').length;
+    if (imageSize > 1.5 * 1024 * 1024) {
         return res.status(400).json({ success: false, message: 'Image trop volumineuse (max 1.5 Mo)' });
     }
 
+    // Envoyer à ImgBB
+    const API_KEY = process.env.IMG_BB_KEY || '2b3e869d8b6f382027e70cd216f65580';
     const formData = new FormData();
     formData.append('key', API_KEY);
-    formData.append('image', base64Data);
+    formData.append('image', cleanBase64);
 
     const response = await axios.post('https://api.imgbb.com/1/upload', formData, {
-        headers: formData.getHeaders(),
+        headers: {
+            ...formData.getHeaders(),
+            'Content-Type': 'multipart/form-data',
+        },
         timeout: 10000
     });
 
@@ -209,11 +225,14 @@ if (!base64) return res.status(400).json({ success: false, message: 'Aucune imag
         res.json({ success: true, url: response.data.data.url });
     } else {
         console.error('Erreur ImgBB:', response.data);
-        res.status(400).json({ success: false, message: 'Erreur ImgBB: ' + (response.data.error?.message || 'inconnue') });
+        res.status(400).json({
+            success: false,
+            message: 'Erreur ImgBB: ' + (response.data.error?.message || 'inconnue')
+        });
     }
 } catch (error) {
     console.error('Erreur upload:', error.message);
-    res.status(500).json({ success: false, message: 'Erreur upload: ' + error.message });
+    res.status(500).json({ success: false, message: 'Erreur interne du serveur' });
 }
 });
 
