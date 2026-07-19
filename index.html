@@ -184,8 +184,8 @@
         <div class="glass">
             <h3 style="color:#2ECC71;">💰 Wallet BLK</h3>
             <p class="wallet-balance"><span id="walletBalance">0</span> FCFA</p>
-            <button class="btn btn-success" id="btnDeposit">Déposer (simulé)</button>
-            <button class="btn btn-primary" id="btnWithdraw" style="margin-top:8px;">Retirer (simulé)</button>
+            <button class="btn btn-success" id="btnDeposit">Déposer avec MoneyUnify</button>
+            <button class="btn btn-primary" id="btnWithdraw" style="margin-top:8px;">Retirer</button>
         </div>
         <button class="btn btn-danger" id="btnLogout">🚪 Déconnexion</button>
     </div>
@@ -424,7 +424,7 @@
     }
 
     // ============================================================
-    // PRODUCTS (affichage des articles)
+    // PRODUCTS
     // ============================================================
     var feedMode = 'all';
 
@@ -605,7 +605,7 @@
     }
 
     // ============================================================
-    // WALLET (simulé)
+    // WALLET - MONEYUNIFY REEL
     // ============================================================
     function loadWallet() {
         if (!currentUserId) return;
@@ -624,9 +624,9 @@
         var phone = prompt('Numéro MTN ou Airtel :', '065918166');
         if (!phone) return;
 
-        showAlert('⏳ Traitement du dépôt simulé...', 'info');
+        showAlert('⏳ Envoi de la demande à MoneyUnify...', 'info');
 
-        fetch(BACKEND_URL + '/api/wallet/deposit', {
+        fetch(BACKEND_URL + '/api/payment/initiate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -638,8 +638,11 @@
         .then(function(res) { return res.json(); })
         .then(function(data) {
             if (data.success) {
-                showAlert('💰 ' + data.message, 'success');
-                loadWallet();
+                showAlert('💰 Demande de paiement envoyée ! Confirmez sur votre téléphone.', 'success');
+                setTimeout(function() {
+                    loadWallet();
+                    showAlert('✅ Vérification du solde effectuée.', 'success');
+                }, 30000);
             } else {
                 showAlert('❌ ' + data.message, 'error');
             }
@@ -656,7 +659,7 @@
         var phone = prompt('Numéro MTN ou Airtel :', '065918166');
         if (!phone) return;
 
-        showAlert('⏳ Traitement du retrait simulé...', 'info');
+        showAlert('⏳ Traitement du retrait...', 'info');
 
         fetch(BACKEND_URL + '/api/wallet/withdraw', {
             method: 'POST',
@@ -670,7 +673,7 @@
         .then(function(res) { return res.json(); })
         .then(function(data) {
             if (data.success) {
-                showAlert('💰 ' + data.message, 'success');
+                showAlert('💰 Retrait effectué !', 'success');
                 loadWallet();
             } else {
                 showAlert('❌ ' + data.message, 'error');
