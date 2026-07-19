@@ -50,6 +50,7 @@ try {
 const IMG_BB_KEY = process.env.IMG_BB_KEY || '08d90ac3321b7689d9e1c35e34a88b6c';
 const YABETOO_SECRET = process.env.YABETOO_SECRET_KEY || '';
 const ADMIN_PHONE = process.env.ADMIN_PHONE || '065918166';
+const MONEYUNIFY_AUTH_ID = process.env.MONEYUNIFY_AUTH_ID || '01KXKPX5Y8J7ARK619BT1A07GP';
 
 const COMMISSION_BUYER = 0.03;
 const COMMISSION_SELLER = 0.04;
@@ -61,6 +62,7 @@ const ALLOWED_CATEGORIES = [
 console.log(`📱 Admin Phone: ${ADMIN_PHONE}`);
 console.log(`🖼️  ImgBB: ${IMG_BB_KEY ? 'OK' : 'MANQUANT'}`);
 console.log(`💳 Yabetoo: ${YABETOO_SECRET ? 'OK' : 'MANQUANT'}`);
+console.log(`💳 MoneyUnify: ${MONEYUNIFY_AUTH_ID ? 'OK' : 'MANQUANT'}`);
 console.log(`🔥 Firebase: ${firebaseReady ? 'OK' : 'DÉGRADÉ (SIMULATION)'}`);
 
 // ============================================================
@@ -120,7 +122,8 @@ app.get('/', (req, res) => {
     services: {
       firebase: firebaseReady ? '✅' : '❌',
       imgbb: IMG_BB_KEY ? '✅' : '❌',
-      yabetoo: YABETOO_SECRET ? '✅' : '❌'
+      yabetoo: YABETOO_SECRET ? '✅' : '❌',
+      moneyunify: MONEYUNIFY_AUTH_ID ? '✅' : '❌'
     }
   });
 });
@@ -139,10 +142,7 @@ app.get('/api/categories', (req, res) => {
 // ============================================================
 app.get('/api/articles', async (req, res) => {
   if (!firebaseReady) {
-    return res.json({
-      success: true,
-      data: []
-    });
+    return res.json({ success: true, data: [] });
   }
   try {
     const snapshot = await db.collection('products')
@@ -240,7 +240,6 @@ app.post('/api/upload', async (req, res) => {
     try {
         const { base64 } = req.body;
 
-        // Vérifier si une image est fournie
         if (!base64) {
             return res.status(400).json({
                 success: false,
@@ -248,7 +247,6 @@ app.post('/api/upload', async (req, res) => {
             });
         }
 
-        // Vérifier la clé ImgBB
         if (!IMG_BB_KEY) {
             console.error('❌ Clé ImgBB manquante');
             return res.status(500).json({
@@ -257,14 +255,12 @@ app.post('/api/upload', async (req, res) => {
             });
         }
 
-        // Nettoyer le Base64
         let cleanBase64 = base64;
         if (cleanBase64.includes('base64,')) {
             cleanBase64 = cleanBase64.split('base64,')[1];
         }
         cleanBase64 = cleanBase64.replace(/\s/g, '');
 
-        // Vérifier que c'est bien du Base64 valide
         const base64Regex = /^[A-Za-z0-9+/]+={0,2}$/;
         if (!base64Regex.test(cleanBase64)) {
             return res.status(400).json({
@@ -273,7 +269,6 @@ app.post('/api/upload', async (req, res) => {
             });
         }
 
-        // Vérifier la taille (max 1.5 Mo)
         const imageSize = Buffer.from(cleanBase64, 'base64').length;
         if (imageSize > 1.5 * 1024 * 1024) {
             return res.status(400).json({
@@ -284,7 +279,6 @@ app.post('/api/upload', async (req, res) => {
 
         console.log('📤 Upload vers ImgBB...');
 
-        // Envoyer à ImgBB
         const formData = new FormData();
         formData.append('key', IMG_BB_KEY);
         formData.append('image', cleanBase64);
@@ -318,7 +312,7 @@ app.post('/api/upload', async (req, res) => {
 });
 
 // ============================================================
-// UPLOAD AUDIO (note vocale)
+// UPLOAD AUDIO
 // ============================================================
 app.post('/api/upload-audio', async (req, res) => {
   try {
@@ -453,7 +447,125 @@ app.get('/api/wallet/:userId', async (req, res) => {
 });
 
 // ============================================================
-// WALLET - DÉPÔT (SIMULATION)
+// MONEYUNIFY - PAIEMENT REEL
+// ============================================================
+app.post('/api/payment/initiate', async (req, res) => {
+  try {
+    const { userId, amount, phone } = req.body;
+    if (!userId || !amount || !phone) {
+      return res.status(400).json({ success: false, message: 'userId, amount et phone requis' });
+    }
+
+    const userRef = db.collection('users').doc(userId);
+    const userDoc = await userRef.get();
+    if (!userDoc.exists) {
+      return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
+    }
+
+    let formattedPhone = phone.trim();
+    if (!formattedPhone.startsWith('+')) {
+      formattedPhone = '+242' + formattedPhone.replace(/^0+/, '');
+    }
+
+    console.log('📤 Envoi à MoneyUnify:', { phone: formattedPhone, amount, auth_id: MONEYUNIFY_AUTH_ID });
+
+    const response = await axios.post(
+      'https://api.moneyunify.one/payments/request',
+      new URLSearchParams({
+        from_payer: formattedPhone,
+        amount: parseInt(amount),
+        auth_id: MONEYUNIFY_AUTH_ID
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json'
+        }
+      }
+    );
+
+    console.log('✅ Réponse MoneyUnify:', response.data);
+
+    if (response.data.status === 'success') {
+      await db.collection('transactions').add({
+        userId,
+        amount: parseInt(amount),
+        phone: formattedPhone,
+        transactionId: response.data.transaction_id || 'N/A',
+        status: 'pending',
+        type: 'deposit',
+        createdAt: new Date()
+      });
+
+      res.json({
+        success: true,
+        transactionId: response.data.transaction_id,
+        message: 'Demande de paiement envoyée. Confirmez sur votre téléphone.'
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: response.data.message || 'Erreur MoneyUnify'
+      });
+    }
+  } catch (error) {
+    console.error('❌ Erreur MoneyUnify:', error.response?.data || error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de l\'initiation du paiement: ' + (error.response?.data?.message || error.message)
+    });
+  }
+});
+
+// ============================================================
+// MONEYUNIFY - WEBHOOK
+// ============================================================
+app.post('/api/payment/webhook', async (req, res) => {
+  try {
+    const { transaction_id, status, amount, phone, reference } = req.body;
+    console.log('📥 Webhook reçu:', req.body);
+
+    const snapshot = await db.collection('transactions')
+      .where('transactionId', '==', transaction_id)
+      .get();
+
+    if (snapshot.empty) {
+      console.warn('⚠️ Transaction non trouvée:', transaction_id);
+      return res.status(404).json({ success: false });
+    }
+
+    const transactionDoc = snapshot.docs[0];
+    const transactionData = transactionDoc.data();
+
+    if (status === 'success') {
+      const userRef = db.collection('users').doc(transactionData.userId);
+      const userDoc = await userRef.get();
+      const currentBalance = userDoc.data()?.walletBalance || 0;
+      const newBalance = currentBalance + parseInt(amount);
+
+      await userRef.update({ walletBalance: newBalance });
+      await transactionDoc.ref.update({
+        status: 'completed',
+        completedAt: new Date()
+      });
+
+      console.log('✅ Wallet crédité de', amount, 'pour', transactionData.userId);
+    } else {
+      await transactionDoc.ref.update({
+        status: 'failed',
+        failedAt: new Date()
+      });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Erreur webhook:', error);
+    res.status(500).json({ success: false });
+  }
+});
+
+// ============================================================
+// WALLET - DÉPÔT (SIMULATION - FALLBACK)
 // ============================================================
 app.post('/api/wallet/deposit', async (req, res) => {
   if (!firebaseReady) {
@@ -546,7 +658,7 @@ app.post('/api/wallet/withdraw', async (req, res) => {
 });
 
 // ============================================================
-// PAYMENT CALLBACK (Yabetoo)
+// PAYMENT CALLBACK (Yabetoo - gardé pour compatibilité)
 // ============================================================
 app.post('/api/payment/callback', async (req, res) => {
   if (!firebaseReady) {
@@ -1209,7 +1321,7 @@ app.post('/api/notifications/read/:id', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`✅ BLK API running on port ${PORT}`);
   console.log(`📦 Mode: ${firebaseReady ? '100% RÉEL' : 'SIMULATION'}`);
-  console.log(`💳 Paiement: ${YABETOO_SECRET ? 'Yabetoo (MTN)' : 'Simulé'}`);
+  console.log(`💳 Paiement: ${MONEYUNIFY_AUTH_ID ? 'MoneyUnify' : (YABETOO_SECRET ? 'Yabetoo' : 'Simulé')}`);
   console.log(`📱 Admin: ${ADMIN_PHONE}`);
   console.log(`💰 Commissions: ${COMMISSION_BUYER*100}% (buyer) + ${COMMISSION_SELLER*100}% (seller)`);
 });
