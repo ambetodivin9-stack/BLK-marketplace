@@ -3,7 +3,6 @@ const cors = require('cors');
 const admin = require('firebase-admin');
 const axios = require('axios');
 const FormData = require('form-data');
-const cron = require('node-cron');
 const fs = require('fs');
 
 const app = express();
@@ -64,52 +63,6 @@ console.log(`🖼️  ImgBB: ${IMG_BB_KEY ? 'OK' : 'MANQUANT'}`);
 console.log(`💳 Yabetoo: ${YABETOO_SECRET ? 'OK' : 'MANQUANT'}`);
 console.log(`💳 MoneyUnify: ${MONEYUNIFY_AUTH_ID ? 'OK' : 'MANQUANT'}`);
 console.log(`🔥 Firebase: ${firebaseReady ? 'OK' : 'DÉGRADÉ (SIMULATION)'}`);
-
-// ============================================================
-// CRON – REMBOURSEMENT AUTO
-// ============================================================
-if (firebaseReady) {
-  cron.schedule('0 * * * *', async () => {
-    console.log('⏰ Vérification des commandes expirées...');
-    try {
-      const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
-      const snapshot = await db.collection('orders')
-        .where('status', '==', 'en attente de confirmation')
-        .where('createdAt', '<=', twelveHoursAgo)
-        .get();
-
-      for (const doc of snapshot.docs) {
-        const order = doc.data();
-        console.log(`🔄 Remboursement commande ${doc.id}`);
-        await refundOrder(doc.id, order);
-      }
-    } catch (error) {
-      console.error('❌ Cron Error:', error.message);
-    }
-  });
-}
-
-async function refundOrder(orderId, order) {
-  if (!firebaseReady) return;
-  try {
-    const buyerRef = db.collection('users').doc(order.buyerId);
-    const buyerDoc = await buyerRef.get();
-    const buyerBalance = buyerDoc.data()?.walletBalance || 0;
-    await buyerRef.update({
-      walletBalance: buyerBalance + order.totalAmount
-    });
-    await db.collection('products').doc(order.articleId).update({
-      status: 'active'
-    });
-    await db.collection('orders').doc(orderId).update({
-      status: 'remboursé',
-      refundedAt: new Date()
-    });
-    console.log(`✅ Remboursement effectué pour ${orderId}`);
-  } catch (error) {
-    console.error(`❌ Erreur remboursement ${orderId}:`, error.message);
-  }
-}
 
 // ============================================================
 // ROUTES PRINCIPALES
@@ -452,13 +405,17 @@ app.get('/api/wallet/:userId', async (req, res) => {
 app.post('/api/payment/initiate', async (req, res) => {
   try {
     const { userId, amount, phone } = req.body;
+    console.log('📥 Requête reçue:', { userId, amount, phone });
+
     if (!userId || !amount || !phone) {
+      console.log('❌ Champs manquants');
       return res.status(400).json({ success: false, message: 'userId, amount et phone requis' });
     }
 
     const userRef = db.collection('users').doc(userId);
     const userDoc = await userRef.get();
     if (!userDoc.exists) {
+      console.log('❌ Utilisateur non trouvé:', userId);
       return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
     }
 
@@ -484,7 +441,7 @@ app.post('/api/payment/initiate', async (req, res) => {
       }
     );
 
-    console.log('✅ Réponse MoneyUnify:', response.data);
+    console.log('✅ Réponse MoneyUnify:', JSON.stringify(response.data, null, 2));
 
     if (response.data.status === 'success') {
       await db.collection('transactions').add({
@@ -503,13 +460,19 @@ app.post('/api/payment/initiate', async (req, res) => {
         message: 'Demande de paiement envoyée. Confirmez sur votre téléphone.'
       });
     } else {
+      console.log('❌ MoneyUnify status != success:', response.data);
       res.status(400).json({
         success: false,
         message: response.data.message || 'Erreur MoneyUnify'
       });
     }
   } catch (error) {
-    console.error('❌ Erreur MoneyUnify:', error.response?.data || error.message);
+    console.error('❌ Erreur MoneyUnify - DÉTAILS:');
+    console.error('Message:', error.message);
+    console.error('Réponse:', error.response?.data);
+    console.error('Status:', error.response?.status);
+    console.error('Headers:', error.response?.headers);
+    
     res.status(500).json({
       success: false,
       message: 'Erreur lors de l\'initiation du paiement: ' + (error.response?.data?.message || error.message)
