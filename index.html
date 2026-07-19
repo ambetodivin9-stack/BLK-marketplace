@@ -686,7 +686,7 @@
     });
 
     // ============================================================
-    // ORDERS
+    // ORDERS (corrigé avec Array.isArray)
     // ============================================================
     function loadOrders() {
         if (!currentUserId) return;
@@ -695,7 +695,7 @@
             .then(function(orders) {
                 var container = document.getElementById('ordersList');
                 var empty = document.getElementById('emptyOrders');
-                if (!orders || orders.length === 0) {
+                if (!orders || !Array.isArray(orders) || orders.length === 0) {
                     container.innerHTML = '';
                     empty.style.display = 'block';
                     return;
@@ -707,11 +707,16 @@
                     card.className = 'glass';
                     card.style.marginBottom = '12px';
                     var statusText = order.status === 'livré' ? '✅ Livré' : (order.status === 'en attente de confirmation' ? '⏳ En attente' : order.status);
-                    card.innerHTML = '<div><strong>' + (order.article?.title || 'Article') + '</strong><br>' + (order.totalAmount || order.amount) + ' FCFA<br><span style="font-size:12px;color:#999;">' + statusText + '</span></div>';
+                    var articleTitle = order.article?.title || 'Article';
+                    var amount = order.totalAmount || order.amount || 0;
+                    card.innerHTML = '<div><strong>' + articleTitle + '</strong><br>' + amount + ' FCFA<br><span style="font-size:12px;color:#999;">' + statusText + '</span></div>';
                     container.appendChild(card);
                 });
             })
-            .catch(function(e) { console.error(e); });
+            .catch(function(e) { 
+                console.error('Orders error:', e);
+                document.getElementById('ordersList').innerHTML = '<p class="empty">Erreur chargement</p>';
+            });
     }
 
     // ============================================================
