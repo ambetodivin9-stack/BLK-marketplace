@@ -60,7 +60,6 @@ const ALLOWED_CATEGORIES = [
 
 console.log(`📱 Admin Phone: ${ADMIN_PHONE}`);
 console.log(`🖼️  ImgBB: ${IMG_BB_KEY ? 'OK' : 'MANQUANT'}`);
-console.log(`💳 Yabetoo Public: ${YABETOO_PUBLIC ? 'OK' : 'MANQUANT'}`);
 console.log(`💳 Yabetoo Secret: ${YABETOO_SECRET ? 'OK' : 'MANQUANT'}`);
 console.log(`🔥 Firebase: ${firebaseReady ? 'OK' : 'DÉGRADÉ (SIMULATION)'}`);
 
@@ -186,7 +185,7 @@ app.post('/api/articles/view/:id', async (req, res) => {
 });
 
 // ============================================================
-// UPLOAD IMAGE (ImgBB) - CORRIGÉE
+// UPLOAD IMAGE (ImgBB)
 // ============================================================
 app.post('/api/upload', async (req, res) => {
     try {
@@ -399,7 +398,7 @@ app.get('/api/wallet/:userId', async (req, res) => {
 });
 
 // ============================================================
-// YABETOO - PAIEMENT REEL
+// YABETOO - PAIEMENT REEL (URL CORRIGÉE)
 // ============================================================
 app.post('/api/payment/initiate', async (req, res) => {
   try {
@@ -435,8 +434,9 @@ app.post('/api/payment/initiate', async (req, res) => {
 
     console.log('📤 Envoi à Yabetoo API...');
 
+    // ✅ URL CORRIGÉE
     const response = await axios.post(
-      'https://api.yabetoo.com/v1/payment-intents',
+      'https://pay.api.yabetoopay.com/v1/payment-intents',
       {
         amount: parseInt(amount),
         currency: 'XAF',
@@ -797,7 +797,7 @@ app.post('/api/orders/confirm', async (req, res) => {
     if (ADMIN_PHONE && adminTotal > 0) {
       try {
         const adminRef = `ADMIN-${Date.now().toString().slice(-6)}`;
-        await axios.post('https://api.yabetoo.com/v1/withdraw', {
+        await axios.post('https://pay.api.yabetoopay.com/v1/withdraw', {
           amount: adminTotal,
           phone: ADMIN_PHONE,
           reference: `COM-${orderId.slice(0,8)}-${adminRef}`,
