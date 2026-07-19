@@ -4,6 +4,7 @@ const admin = require('firebase-admin');
 const axios = require('axios');
 const FormData = require('form-data');
 const fs = require('fs');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -46,10 +47,21 @@ try {
 // ============================================================
 // CONFIGURATION
 // ============================================================
-const IMG_BB_KEY = process.env.IMG_BB_KEY || '08d90ac3321b7689d9e1c35e34a88b6c';
+// ⚠️ IMPORTANT : cette URL doit être IDENTIQUE partout :
+//  1. Ici (callback_url envoyé à Yabetoo)
+//  2. Dans le dashboard Yabetoo > Webhooks
+//  3. Dans BACKEND_URL du frontend (index.html)
+// Mets-la en variable d'environnement Render pour n'avoir qu'un seul endroit à changer.
+const BACKEND_URL = process.env.BACKEND_URL || 'https://blk-backend.onrender.com';
+
+const IMG_BB_KEY = process.env.IMG_BB_KEY || process.env.IMGBB_API_KEY || '08d90ac3321b7689d9e1c35e34a88b6c';
 const YABETOO_SECRET = process.env.YABETOO_SECRET_KEY || '';
 const YABETOO_PUBLIC = process.env.YABETOO_PUBLIC_KEY || '';
+const YABETOO_WEBHOOK_SECRET = process.env.YABETOO_WEBHOOK_SECRET || '';
 const ADMIN_PHONE = process.env.ADMIN_PHONE || '065918166';
+
+// Base URL de l'API Yabetoo (production, puisque tes clés sont en sk_live_)
+const YABETOO_API_BASE = 'https://pay.api.yabetoopay.com/v1';
 
 const COMMISSION_BUYER = 0.03;
 const COMMISSION_SELLER = 0.04;
@@ -58,10 +70,60 @@ const ALLOWED_CATEGORIES = [
   'vêtements', 'chaussures', 'sacs', 'bijoux', 'accessoires'
 ];
 
+console.log(`🌐 Backend URL: ${BACKEND_URL}`);
 console.log(`📱 Admin Phone: ${ADMIN_PHONE}`);
 console.log(`🖼️  ImgBB: ${IMG_BB_KEY ? 'OK' : 'MANQUANT'}`);
 console.log(`💳 Yabetoo Secret: ${YABETOO_SECRET ? 'OK' : 'MANQUANT'}`);
+console.log(`🔐 Yabetoo Webhook Secret: ${YABETOO_WEBHOOK_SECRET ? 'OK' : 'MANQUANT'}`);
 console.log(`🔥 Firebase: ${firebaseReady ? 'OK' : 'DÉGRADÉ (SIMULATION)'}`);
+
+// ============================================================
+// HELPER - Formater un numéro congolais pour Yabetoo
+// ============================================================
+function formatPhoneForYabetoo(phone) {
+  let formatted = String(phone).trim().replace(/\s/g, '').replace(/\+/g, '');
+  if (formatted.startsWith('0')) {
+    formatted = formatted.substring(1);
+  }
+  if (!formatted.startsWith('242')) {
+    formatted = '242' + formatted;
+  }
+  return formatted;
+}
+
+// ============================================================
+// HELPER - Vérifier la signature d'un webhook Yabetoo
+// Format documenté : HMAC-SHA256( timestamp + "." + JSON.stringify(body), secret )
+// Header signature : X-Yabetoo-Webhook-Signature
+// Header timestamp  : X-Yabetoo-Webhook-Timestamp
+// ⚠️ Si les noms d'en-têtes réels diffèrent chez toi, ajuste-les ici
+// (vérifiable en loggant req.headers lors d'un test webhook depuis le dashboard).
+// ============================================================
+function verifyYabetooSignature(req) {
+  if (!YABETOO_WEBHOOK_SECRET) {
+    console.warn('⚠️ YABETOO_WEBHOOK_SECRET non configuré, vérification ignorée');
+    return true; // on n'écarte pas le webhook si le secret n'est pas encore posé, pour ne rien casser
+  }
+  const signature = req.headers['x-yabetoo-webhook-signature'] || req.headers['x-yabetoo-signature'];
+  const timestamp = req.headers['x-yabetoo-webhook-timestamp'] || req.headers['x-yabetoo-timestamp'];
+
+  if (!signature || !timestamp) {
+    console.warn('⚠️ En-têtes de signature webhook absents — payload accepté sans vérification. Vérifie les noms d\'en-têtes dans les docs Yabetoo si ce message persiste.');
+    return true;
+  }
+
+  try {
+    const signedPayload = `${timestamp}.${JSON.stringify(req.body)}`;
+    const expectedSignature = crypto
+      .createHmac('sha256', YABETOO_WEBHOOK_SECRET)
+      .update(signedPayload)
+      .digest('hex');
+    return crypto.timingSafeEqual(Buffer.from(expectedSignature), Buffer.from(signature));
+  } catch (e) {
+    console.error('❌ Erreur vérification signature webhook:', e.message);
+    return false;
+  }
+}
 
 // ============================================================
 // ROUTES PRINCIPALES
@@ -74,7 +136,8 @@ app.get('/', (req, res) => {
     services: {
       firebase: firebaseReady ? '✅' : '❌',
       imgbb: IMG_BB_KEY ? '✅' : '❌',
-      yabetoo: YABETOO_SECRET ? '✅' : '❌'
+      yabetoo: YABETOO_SECRET ? '✅' : '❌',
+      yabetooWebhook: YABETOO_WEBHOOK_SECRET ? '✅' : '❌'
     }
   });
 });
@@ -192,18 +255,11 @@ app.post('/api/upload', async (req, res) => {
         const { base64 } = req.body;
 
         if (!base64) {
-            return res.status(400).json({
-                success: false,
-                message: 'Aucune image fournie'
-            });
+            return res.status(400).json({ success: false, message: 'Aucune image fournie' });
         }
-
         if (!IMG_BB_KEY) {
             console.error('❌ Clé ImgBB manquante');
-            return res.status(500).json({
-                success: false,
-                message: 'Clé ImgBB non configurée'
-            });
+            return res.status(500).json({ success: false, message: 'Clé ImgBB non configurée' });
         }
 
         let cleanBase64 = base64;
@@ -214,22 +270,15 @@ app.post('/api/upload', async (req, res) => {
 
         const base64Regex = /^[A-Za-z0-9+/]+={0,2}$/;
         if (!base64Regex.test(cleanBase64)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Format d\'image invalide'
-            });
+            return res.status(400).json({ success: false, message: 'Format d\'image invalide' });
         }
 
         const imageSize = Buffer.from(cleanBase64, 'base64').length;
         if (imageSize > 1.5 * 1024 * 1024) {
-            return res.status(400).json({
-                success: false,
-                message: 'Image trop volumineuse (max 1.5 Mo)'
-            });
+            return res.status(400).json({ success: false, message: 'Image trop volumineuse (max 1.5 Mo)' });
         }
 
         console.log('📤 Upload vers ImgBB...');
-
         const formData = new FormData();
         formData.append('key', IMG_BB_KEY);
         formData.append('image', cleanBase64);
@@ -239,13 +288,8 @@ app.post('/api/upload', async (req, res) => {
             timeout: 15000
         });
 
-        console.log('✅ Réponse ImgBB reçue');
-
         if (response.data.success) {
-            res.json({
-                success: true,
-                url: response.data.data.url
-            });
+            res.json({ success: true, url: response.data.data.url });
         } else {
             console.error('❌ Erreur ImgBB:', response.data);
             res.status(400).json({
@@ -255,10 +299,7 @@ app.post('/api/upload', async (req, res) => {
         }
     } catch (error) {
         console.error('❌ Erreur upload:', error.message);
-        res.status(500).json({
-            success: false,
-            message: 'Erreur serveur: ' + error.message
-        });
+        res.status(500).json({ success: false, message: 'Erreur serveur: ' + error.message });
     }
 });
 
@@ -285,15 +326,9 @@ app.get('/api/users/:userId', async (req, res) => {
     return res.json({
       success: true,
       data: {
-        name: 'Utilisateur Test',
-        photo: '',
-        flames: 0,
-        walletBalance: 5000,
-        phone: '+242 06 123 4567',
-        email: 'test@example.com',
-        isSeller: false,
-        blockedUsers: [],
-        online: false
+        name: 'Utilisateur Test', photo: '', flames: 0, walletBalance: 5000,
+        phone: '+242 06 123 4567', email: 'test@example.com', isSeller: false,
+        blockedUsers: [], online: false
       }
     });
   }
@@ -305,15 +340,9 @@ app.get('/api/users/:userId', async (req, res) => {
     res.json({
       success: true,
       data: {
-        name: data.name,
-        photo: data.photo || '',
-        flames: data.flames || 0,
-        walletBalance: data.walletBalance || 0,
-        phone: data.phone || '',
-        email: data.email || '',
-        isSeller: data.isSeller || false,
-        blockedUsers: data.blockedUsers || [],
-        online: data.online || false
+        name: data.name, photo: data.photo || '', flames: data.flames || 0,
+        walletBalance: data.walletBalance || 0, phone: data.phone || '', email: data.email || '',
+        isSeller: data.isSeller || false, blockedUsers: data.blockedUsers || [], online: data.online || false
       }
     });
   } catch (error) {
@@ -333,9 +362,7 @@ app.post('/api/users/online', async (req, res) => {
 });
 
 app.put('/api/users/:userId', async (req, res) => {
-  if (!firebaseReady) {
-    return res.json({ success: true });
-  }
+  if (!firebaseReady) return res.json({ success: true });
   try {
     const { userId } = req.params;
     const { name, email, phone, photo, isSeller } = req.body;
@@ -366,14 +393,10 @@ app.post('/api/users/block', async (req, res) => {
     const blockerDoc = await blockerRef.get();
     const blocked = blockerDoc.data()?.blockedUsers || [];
     if (blocked.includes(blockedId)) {
-      await blockerRef.update({
-        blockedUsers: blocked.filter(id => id !== blockedId)
-      });
+      await blockerRef.update({ blockedUsers: blocked.filter(id => id !== blockedId) });
       return res.json({ success: true, message: 'Débloqué', blocked: false });
     } else {
-      await blockerRef.update({
-        blockedUsers: [...blocked, blockedId]
-      });
+      await blockerRef.update({ blockedUsers: [...blocked, blockedId] });
       return res.json({ success: true, message: 'Bloqué', blocked: true });
     }
   } catch (error) {
@@ -398,57 +421,43 @@ app.get('/api/wallet/:userId', async (req, res) => {
 });
 
 // ============================================================
-// YABETOO - PAIEMENT REEL (URL CORRIGÉE)
+// YABETOO - DÉPÔT (create + confirm en une seule requête)
 // ============================================================
 app.post('/api/payment/initiate', async (req, res) => {
   try {
-    const { userId, amount, phone } = req.body;
-    console.log('📥 Requête reçue:', { userId, amount, phone });
+    const { userId, amount, phone, operator } = req.body;
+    console.log('📥 Requête reçue:', { userId, amount, phone, operator });
 
     if (!userId || !amount || !phone) {
-      console.log('❌ Champs manquants');
       return res.status(400).json({ success: false, message: 'userId, amount et phone requis' });
     }
-
     if (!YABETOO_SECRET) {
       console.error('❌ Clé Yabetoo manquante');
       return res.status(500).json({ success: false, message: 'Clé Yabetoo non configurée' });
+    }
+    if (!firebaseReady) {
+      return res.json({ success: true, message: 'Dépôt simulé (Firebase désactivé)', status: 'succeeded' });
     }
 
     const userRef = db.collection('users').doc(userId);
     const userDoc = await userRef.get();
     if (!userDoc.exists) {
-      console.log('❌ Utilisateur non trouvé:', userId);
       return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
     }
 
-    // Formater le numéro pour Yabetoo (sans +, sans espaces)
-    let formattedPhone = phone.trim().replace(/\s/g, '').replace(/\+/g, '');
-    if (formattedPhone.startsWith('0')) {
-      formattedPhone = formattedPhone.substring(1);
-    }
-    if (!formattedPhone.startsWith('242')) {
-      formattedPhone = '242' + formattedPhone;
-    }
-    console.log('📱 Numéro formaté pour Yabetoo:', formattedPhone);
+    const formattedPhone = formatPhoneForYabetoo(phone);
+    const operatorName = (operator || 'mtn').toLowerCase(); // 'mtn' ou 'airtel'
+    const [firstName, ...rest] = (userDoc.data()?.name || 'Client BLK').split(' ');
+    const lastName = rest.join(' ') || 'BLK';
 
-    console.log('📤 Envoi à Yabetoo API...');
-
-    // ✅ URL CORRIGÉE
-    const response = await axios.post(
-      'https://pay.api.yabetoopay.com/v1/payment-intents',
+    // --- Étape 1 : créer l'intention de paiement ---
+    console.log('📤 Création de l\'intention de paiement...');
+    const createResponse = await axios.post(
+      `${YABETOO_API_BASE}/payment-intents`,
       {
         amount: parseInt(amount),
-        currency: 'XAF',
-        customer: {
-          phone: formattedPhone,
-          email: userDoc.data()?.email || 'client@blk.com'
-        },
-        metadata: {
-          userId: userId,
-          type: 'deposit'
-        },
-        callback_url: 'https://blk-marketplace2-0-1.onrender.com/api/payment/callback'
+        currency: 'xaf',
+        description: `Dépôt wallet BLK - ${userId}`
       },
       {
         headers: {
@@ -458,43 +467,83 @@ app.post('/api/payment/initiate', async (req, res) => {
       }
     );
 
-    console.log('✅ Réponse Yabetoo:', JSON.stringify(response.data, null, 2));
+    const intent = createResponse.data;
+    console.log('✅ Intention créée:', intent.id);
 
-    if (response.data && (response.data.status === 'pending' || response.data.status === 'success')) {
-      await db.collection('transactions').add({
-        userId,
-        amount: parseInt(amount),
-        phone: formattedPhone,
-        transactionId: response.data.id || 'N/A',
-        status: 'pending',
-        type: 'deposit',
-        reference: response.data.reference || '',
-        yabetooId: response.data.id,
-        createdAt: new Date()
-      });
+    // Enregistrer la transaction en "pending" tout de suite (avant confirmation)
+    const transactionRef = await db.collection('transactions').add({
+      userId,
+      amount: parseInt(amount),
+      phone: formattedPhone,
+      operator: operatorName,
+      yabetooId: intent.id,
+      status: 'pending',
+      type: 'deposit',
+      createdAt: new Date()
+    });
 
-      res.json({
+    // --- Étape 2 : confirmer l'intention (déclenche le push Mobile Money) ---
+    console.log('📤 Confirmation de l\'intention...');
+    const confirmResponse = await axios.post(
+      `${YABETOO_API_BASE}/payment-intents/${intent.id}/confirm`,
+      {
+        client_secret: intent.client_secret,
+        first_name: firstName || 'Client',
+        last_name: lastName,
+        receipt_email: userDoc.data()?.email || 'client@blk.com',
+        payment_method_data: {
+          type: 'momo',
+          momo: {
+            country: 'cg',
+            msisdn: formattedPhone,
+            operator_name: operatorName
+          }
+        }
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${YABETOO_SECRET}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    const confirmData = confirmResponse.data;
+    console.log('✅ Réponse confirmation Yabetoo:', JSON.stringify(confirmData, null, 2));
+
+    await transactionRef.update({
+      transactionId: confirmData.transactionId || confirmData.intentId || intent.id,
+      status: confirmData.status || 'pending'
+    });
+
+    // Si Yabetoo confirme immédiatement le succès (rare pour momo, mais possible), on crédite tout de suite.
+    // Sinon, c'est le webhook /api/payment/callback qui créditera le wallet plus tard.
+    if (confirmData.status === 'succeeded' && confirmData.captured) {
+      const currentBalance = userDoc.data()?.walletBalance || 0;
+      await userRef.update({ walletBalance: currentBalance + parseInt(amount) });
+      await transactionRef.update({ status: 'completed', completedAt: new Date() });
+      return res.json({
         success: true,
-        transactionId: response.data.id,
-        message: 'Demande de paiement envoyée. Confirmez sur votre téléphone.',
-        status: response.data.status
-      });
-    } else {
-      console.log('❌ Yabetoo status != pending/success:', response.data);
-      res.status(400).json({
-        success: false,
-        message: response.data?.message || 'Erreur Yabetoo'
+        message: '✅ Dépôt confirmé et wallet crédité !',
+        status: 'succeeded'
       });
     }
+
+    res.json({
+      success: true,
+      message: 'Demande envoyée. Confirmez le paiement sur votre téléphone.',
+      status: confirmData.status || 'pending'
+    });
+
   } catch (error) {
     console.error('❌ Erreur Yabetoo - DÉTAILS:');
     console.error('Message:', error.message);
     console.error('Réponse:', error.response?.data);
     console.error('Status:', error.response?.status);
-    
+
     res.status(500).json({
       success: false,
-      message: 'Erreur lors de l\'initiation du paiement: ' + (error.response?.data?.message || error.message)
+      message: 'Erreur lors de l\'initiation du paiement: ' + (error.response?.data?.message || error.response?.data?.error?.message || error.message)
     });
   }
 });
@@ -504,50 +553,64 @@ app.post('/api/payment/initiate', async (req, res) => {
 // ============================================================
 app.post('/api/payment/callback', async (req, res) => {
   try {
-    const { id, status, amount, reference, metadata } = req.body;
-    console.log('📥 Webhook Yabetoo reçu:', req.body);
+    console.log('📥 Webhook Yabetoo reçu:', JSON.stringify(req.body));
 
-    // Chercher la transaction avec le yabetooId
-    let snapshot = await db.collection('transactions')
-      .where('yabetooId', '==', id)
-      .get();
+    if (!verifyYabetooSignature(req)) {
+      console.warn('❌ Signature webhook invalide, requête rejetée');
+      return res.status(401).json({ success: false, message: 'Signature invalide' });
+    }
 
-    if (snapshot.empty) {
-      // Chercher par référence si pas trouvé
-      const refSnapshot = await db.collection('transactions')
-        .where('reference', '==', reference)
-        .get();
-      
-      if (refSnapshot.empty) {
-        console.warn('⚠️ Transaction non trouvée:', id);
-        return res.status(404).json({ success: false });
+    // Le payload peut être imbriqué ({ type, data: {...} }) ou plat selon l'événement.
+    const eventId = req.body.id || req.body.eventId || null;
+    const payload = req.body.data || req.body;
+    const { id, status, amount, reference } = payload;
+
+    if (!firebaseReady) {
+      return res.json({ success: true });
+    }
+
+    // Idempotence : ignorer un événement déjà traité
+    if (eventId) {
+      const eventRef = db.collection('processedWebhookEvents').doc(eventId);
+      const eventDoc = await eventRef.get();
+      if (eventDoc.exists) {
+        console.log('↩️ Événement déjà traité, ignoré:', eventId);
+        return res.json({ success: true, duplicate: true });
       }
-      
-      snapshot = refSnapshot;
+      await eventRef.set({ processedAt: new Date() });
+    }
+
+    let snapshot = await db.collection('transactions').where('yabetooId', '==', id).get();
+    if (snapshot.empty && reference) {
+      snapshot = await db.collection('transactions').where('reference', '==', reference).get();
+    }
+    if (snapshot.empty) {
+      console.warn('⚠️ Transaction non trouvée pour id:', id);
+      return res.status(404).json({ success: false });
     }
 
     const transactionDoc = snapshot.docs[0];
     const transactionData = transactionDoc.data();
 
-    if (status === 'success' || status === 'completed') {
-      // Créditer le wallet
+    // Ne pas créditer deux fois une transaction déjà complétée
+    if (transactionData.status === 'completed') {
+      console.log('↩️ Transaction déjà complétée, ignorée:', id);
+      return res.json({ success: true, duplicate: true });
+    }
+
+    if (status === 'success' || status === 'completed' || status === 'succeeded') {
       const userRef = db.collection('users').doc(transactionData.userId);
       const userDoc = await userRef.get();
       const currentBalance = userDoc.data()?.walletBalance || 0;
-      const newBalance = currentBalance + parseInt(amount || transactionData.amount);
+      const creditAmount = parseInt(amount || transactionData.amount);
+      const newBalance = currentBalance + creditAmount;
 
       await userRef.update({ walletBalance: newBalance });
-      await transactionDoc.ref.update({
-        status: 'completed',
-        completedAt: new Date()
-      });
+      await transactionDoc.ref.update({ status: 'completed', completedAt: new Date() });
 
-      console.log('✅ Wallet crédité de', amount || transactionData.amount, 'pour', transactionData.userId);
+      console.log('✅ Wallet crédité de', creditAmount, 'pour', transactionData.userId);
     } else {
-      await transactionDoc.ref.update({
-        status: 'failed',
-        failedAt: new Date()
-      });
+      await transactionDoc.ref.update({ status: 'failed', failedAt: new Date() });
     }
 
     res.json({ success: true });
@@ -558,92 +621,89 @@ app.post('/api/payment/callback', async (req, res) => {
 });
 
 // ============================================================
-// WALLET - DÉPÔT (SIMULATION - FALLBACK)
-// ============================================================
-app.post('/api/wallet/deposit', async (req, res) => {
-  if (!firebaseReady) {
-    return res.json({ 
-      success: true, 
-      message: '💰 Dépôt simulé avec succès !', 
-      newBalance: 10000 
-    });
-  }
-  try {
-    const { userId, amount, phone } = req.body;
-    if (!userId || !amount || !phone) {
-      return res.status(400).json({ success: false, message: 'userId, amount et phone requis' });
-    }
-
-    const userRef = db.collection('users').doc(userId);
-    const doc = await userRef.get();
-    const currentBalance = doc.data()?.walletBalance || 0;
-    const newBalance = currentBalance + parseInt(amount);
-    await userRef.update({ walletBalance: newBalance });
-
-    await db.collection('transactions').add({
-      userId,
-      amount: parseInt(amount),
-      phone,
-      type: 'deposit',
-      status: 'completed',
-      description: 'Dépôt (simulé)',
-      createdAt: new Date()
-    });
-
-    res.json({
-      success: true,
-      message: '💰 Dépôt effectué avec succès !',
-      newBalance: newBalance
-    });
-  } catch (error) {
-    console.error('Deposit Error:', error.message);
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// ============================================================
-// WALLET - RETRAIT (SIMULATION)
+// WALLET - RETRAIT (envoie réellement l'argent via Yabetoo Disbursement)
 // ============================================================
 app.post('/api/wallet/withdraw', async (req, res) => {
   if (!firebaseReady) {
-    return res.json({ 
-      success: true, 
-      message: '💰 Retrait simulé avec succès !', 
-      newBalance: 5000 
-    });
+    return res.json({ success: true, message: '💰 Retrait simulé avec succès !', newBalance: 5000 });
   }
   try {
-    const { userId, amount, phone } = req.body;
+    const { userId, amount, phone, operator } = req.body;
     if (!userId || !amount || !phone) {
       return res.status(400).json({ success: false, message: 'userId, amount et phone requis' });
     }
+    if (!YABETOO_SECRET) {
+      return res.status(500).json({ success: false, message: 'Clé Yabetoo non configurée' });
+    }
 
     const userRef = db.collection('users').doc(userId);
-    const doc = await userRef.get();
-    const currentBalance = doc.data()?.walletBalance || 0;
+    const userDoc = await userRef.get();
+    const currentBalance = userDoc.data()?.walletBalance || 0;
 
     if (currentBalance < amount) {
       return res.status(400).json({ success: false, message: 'Solde insuffisant' });
     }
 
+    const formattedPhone = formatPhoneForYabetoo(phone);
+    const operatorName = (operator || 'mtn').toLowerCase();
+    const [firstName, ...rest] = (userDoc.data()?.name || 'Client BLK').split(' ');
+    const lastName = rest.join(' ') || 'BLK';
+
+    // Débit immédiat du wallet interne pour éviter un double retrait,
+    // avec remboursement automatique si le disbursement échoue.
     const newBalance = currentBalance - parseInt(amount);
     await userRef.update({ walletBalance: newBalance });
 
-    await db.collection('transactions').add({
+    const transactionRef = await db.collection('transactions').add({
       userId,
       amount: parseInt(amount),
-      phone,
+      phone: formattedPhone,
       type: 'withdraw',
-      status: 'completed',
-      description: 'Retrait (simulé)',
+      status: 'pending',
       createdAt: new Date()
     });
 
-    res.json({
-      success: true,
-      message: '💰 Retrait effectué avec succès !',
-      newBalance: newBalance
-    });
+    try {
+      const disbursementResponse = await axios.post(
+        `${YABETOO_API_BASE}/disbursement`,
+        {
+          amount: parseInt(amount),
+          currency: 'XAF',
+          first_name: firstName || 'Client',
+          last_name: lastName,
+          payment_method_data: {
+            type: 'momo',
+            momo: { msisdn: formattedPhone, country: 'CG', operator_name: operatorName }
+          }
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${YABETOO_SECRET}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      await transactionRef.update({
+        status: 'processing', // le disbursement est exécuté en J+1 côté Yabetoo
+        yabetooId: disbursementResponse.data.id || null
+      });
+
+      res.json({
+        success: true,
+        message: '💰 Retrait initié ! Il sera traité sous 24h.',
+        newBalance
+      });
+    } catch (disbursementError) {
+      // Échec de l'envoi : on rembourse le wallet interne
+      console.error('❌ Erreur disbursement Yabetoo:', disbursementError.response?.data || disbursementError.message);
+      await userRef.update({ walletBalance: currentBalance });
+      await transactionRef.update({ status: 'failed', failedAt: new Date() });
+      return res.status(500).json({
+        success: false,
+        message: 'Échec du retrait: ' + (disbursementError.response?.data?.message || disbursementError.message)
+      });
+    }
   } catch (error) {
     console.error('Withdraw Error:', error.message);
     res.status(500).json({ success: false, message: error.message });
@@ -656,12 +716,8 @@ app.post('/api/wallet/withdraw', async (req, res) => {
 app.post('/api/orders/create', async (req, res) => {
   if (!firebaseReady) {
     return res.json({
-      success: true,
-      orderId: 'mock-' + Date.now(),
-      message: 'Commande créée (simulée)',
-      totalAmount: 15450,
-      buyerCommission: 450,
-      sellerCommission: 600,
+      success: true, orderId: 'mock-' + Date.now(), message: 'Commande créée (simulée)',
+      totalAmount: 15450, buyerCommission: 450, sellerCommission: 600,
       expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000)
     });
   }
@@ -683,51 +739,32 @@ app.post('/api/orders/create', async (req, res) => {
 
     if (buyerBalance < totalAmount) {
       return res.status(400).json({
-        success: false,
-        message: '❌ Solde insuffisant',
-        balance: buyerBalance,
-        required: totalAmount,
-        difference: totalAmount - buyerBalance
+        success: false, message: '❌ Solde insuffisant',
+        balance: buyerBalance, required: totalAmount, difference: totalAmount - buyerBalance
       });
     }
     await buyerDoc.ref.update({ walletBalance: buyerBalance - totalAmount });
 
     const order = {
-      articleId,
-      buyerId,
-      sellerId,
+      articleId, buyerId, sellerId,
       buyerPhone: buyerPhone || buyerDoc.data()?.phone || '',
-      amount: parseInt(amount),
-      buyerCommission,
-      totalAmount,
+      amount: parseInt(amount), buyerCommission, totalAmount,
       sellerCommission: Math.round(amount * COMMISSION_SELLER),
-      status: 'en attente de confirmation',
-      buyerConfirmed: false,
-      buyerConfirmedAt: null,
-      flamesGiven: false,
-      expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000),
-      createdAt: new Date()
+      status: 'en attente de confirmation', buyerConfirmed: false, buyerConfirmedAt: null,
+      flamesGiven: false, expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000), createdAt: new Date()
     };
 
     const orderRef = await db.collection('orders').add(order);
     const orderId = orderRef.id;
 
     await db.collection('notifications').add({
-      userId: sellerId,
-      message: `🛒 Nouvelle commande #${orderId.slice(0,8)} - ${amount} FCFA`,
-      type: 'new_order',
-      read: false,
-      orderId: orderId,
-      createdAt: new Date()
+      userId: sellerId, message: `🛒 Nouvelle commande #${orderId.slice(0,8)} - ${amount} FCFA`,
+      type: 'new_order', read: false, orderId, createdAt: new Date()
     });
 
     res.json({
-      success: true,
-      orderId,
-      message: '✅ Commande créée avec succès ! Livre dans les 12h.',
-      totalAmount,
-      buyerCommission,
-      sellerCommission: Math.round(amount * COMMISSION_SELLER),
+      success: true, orderId, message: '✅ Commande créée avec succès ! Livre dans les 12h.',
+      totalAmount, buyerCommission, sellerCommission: Math.round(amount * COMMISSION_SELLER),
       expiresAt: order.expiresAt
     });
   } catch (error) {
@@ -749,10 +786,7 @@ app.post('/api/orders/confirm', async (req, res) => {
     const required = ['recu', 'bon_etat', 'confirme'];
     for (const key of required) {
       if (!confirmations[key]) {
-        return res.status(400).json({
-          success: false,
-          message: '❌ Tu dois cocher les 3 cases pour confirmer'
-        });
+        return res.status(400).json({ success: false, message: '❌ Tu dois cocher les 3 cases pour confirmer' });
       }
     }
 
@@ -787,21 +821,19 @@ app.post('/api/orders/confirm', async (req, res) => {
     await sellerRef.update({ walletBalance: sellerBalance + amountToSeller });
 
     const articleRef = db.collection('products').doc(order.articleId);
-    await articleRef.update({
-      status: 'sold',
-      soldAt: new Date(),
-      soldTo: buyerId,
-      orderId: orderId
-    });
+    await articleRef.update({ status: 'sold', soldAt: new Date(), soldTo: buyerId, orderId });
 
     if (ADMIN_PHONE && adminTotal > 0) {
       try {
-        const adminRef = `ADMIN-${Date.now().toString().slice(-6)}`;
-        await axios.post('https://pay.api.yabetoopay.com/v1/withdraw', {
+        await axios.post(`${YABETOO_API_BASE}/disbursement`, {
           amount: adminTotal,
-          phone: ADMIN_PHONE,
-          reference: `COM-${orderId.slice(0,8)}-${adminRef}`,
-          callback_url: `https://blk-marketplace2-0-1.onrender.com/api/payment/callback`
+          currency: 'XAF',
+          first_name: 'Admin',
+          last_name: 'BLK',
+          payment_method_data: {
+            type: 'momo',
+            momo: { msisdn: formatPhoneForYabetoo(ADMIN_PHONE), country: 'CG', operator_name: 'mtn' }
+          }
         }, {
           headers: {
             'Authorization': `Bearer ${YABETOO_SECRET}`,
@@ -810,43 +842,28 @@ app.post('/api/orders/confirm', async (req, res) => {
         });
         console.log(`✅ Commission ${adminTotal} FCFA envoyée à ${ADMIN_PHONE}`);
       } catch (error) {
-        console.error('❌ Erreur envoi commission:', error.message);
+        console.error('❌ Erreur envoi commission:', error.response?.data || error.message);
       }
     }
 
     await orderRef.update({
-      status: 'livré',
-      buyerConfirmed: true,
-      buyerConfirmedAt: new Date(),
-      confirmations,
-      sellerReceived: amountToSeller,
-      adminCommission: adminTotal
+      status: 'livré', buyerConfirmed: true, buyerConfirmedAt: new Date(), confirmations,
+      sellerReceived: amountToSeller, adminCommission: adminTotal
     });
 
     await db.collection('notifications').add({
-      userId: order.sellerId,
-      message: `💰 Vente confirmée ! ${amountToSeller} FCFA crédités sur ton wallet.`,
-      type: 'sale_confirmed',
-      read: false,
-      orderId: orderId,
-      createdAt: new Date()
+      userId: order.sellerId, message: `💰 Vente confirmée ! ${amountToSeller} FCFA crédités sur ton wallet.`,
+      type: 'sale_confirmed', read: false, orderId, createdAt: new Date()
     });
 
     await db.collection('notifications').add({
-      userId: order.buyerId,
-      message: `✅ Commande #${orderId.slice(0,8)} confirmée avec succès.`,
-      type: 'order_confirmed',
-      read: false,
-      orderId: orderId,
-      createdAt: new Date()
+      userId: order.buyerId, message: `✅ Commande #${orderId.slice(0,8)} confirmée avec succès.`,
+      type: 'order_confirmed', read: false, orderId, createdAt: new Date()
     });
 
     res.json({
-      success: true,
-      message: '✅ Commande confirmée !',
-      sellerReceived: amountToSeller,
-      adminCommission: adminTotal,
-      sellerBalance: sellerBalance + amountToSeller
+      success: true, message: '✅ Commande confirmée !',
+      sellerReceived: amountToSeller, adminCommission: adminTotal, sellerBalance: sellerBalance + amountToSeller
     });
   } catch (error) {
     console.error('Confirm Error:', error.message);
@@ -862,9 +879,7 @@ app.get('/api/orders/:userId', async (req, res) => {
     const { userId } = req.params;
     const orders = [];
     const buyerSnapshot = await db.collection('orders')
-      .where('buyerId', '==', userId)
-      .orderBy('createdAt', 'desc')
-      .get();
+      .where('buyerId', '==', userId).orderBy('createdAt', 'desc').get();
     for (const doc of buyerSnapshot.docs) {
       const order = doc.data();
       const articleDoc = await db.collection('products').doc(order.articleId).get();
@@ -872,16 +887,13 @@ app.get('/api/orders/:userId', async (req, res) => {
       const sellerDoc = await db.collection('users').doc(order.sellerId).get();
       const seller = sellerDoc.data();
       orders.push({
-        id: doc.id,
-        ...order,
+        id: doc.id, ...order,
         article: article ? { title: article.title, image: article.image, price: article.price } : null,
         seller: seller ? { name: seller.name, photo: seller.photo || '' } : null
       });
     }
     const sellerSnapshot = await db.collection('orders')
-      .where('sellerId', '==', userId)
-      .orderBy('createdAt', 'desc')
-      .get();
+      .where('sellerId', '==', userId).orderBy('createdAt', 'desc').get();
     for (const doc of sellerSnapshot.docs) {
       const order = doc.data();
       if (!orders.find(o => o.id === doc.id)) {
@@ -890,8 +902,7 @@ app.get('/api/orders/:userId', async (req, res) => {
         const buyerDoc = await db.collection('users').doc(order.buyerId).get();
         const buyer = buyerDoc.data();
         orders.push({
-          id: doc.id,
-          ...order,
+          id: doc.id, ...order,
           article: article ? { title: article.title, image: article.image, price: article.price } : null,
           buyer: buyer ? { name: buyer.name, photo: buyer.photo || '' } : null
         });
@@ -929,10 +940,7 @@ app.post('/api/orders/cancel/:orderId', async (req, res) => {
     const createdAt = order.createdAt.toDate ? order.createdAt.toDate() : new Date(order.createdAt);
     const hoursSinceCreation = (now - createdAt) / (1000 * 60 * 60);
     if (hoursSinceCreation > 2) {
-      return res.status(400).json({
-        success: false,
-        message: '⏰ Délai de 2h dépassé. Annulation impossible.'
-      });
+      return res.status(400).json({ success: false, message: '⏰ Délai de 2h dépassé. Annulation impossible.' });
     }
     const buyerRef = db.collection('users').doc(order.buyerId);
     const buyerDoc = await buyerRef.get();
@@ -940,16 +948,8 @@ app.post('/api/orders/cancel/:orderId', async (req, res) => {
     await buyerRef.update({ walletBalance: buyerBalance + order.totalAmount });
     const articleRef = db.collection('products').doc(order.articleId);
     await articleRef.update({ status: 'active' });
-    await orderRef.update({
-      status: 'annulé',
-      cancelledAt: new Date(),
-      cancelledBy: userId
-    });
-    res.json({
-      success: true,
-      message: '✅ Commande annulée et remboursée',
-      refunded: order.totalAmount
-    });
+    await orderRef.update({ status: 'annulé', cancelledAt: new Date(), cancelledBy: userId });
+    res.json({ success: true, message: '✅ Commande annulée et remboursée', refunded: order.totalAmount });
   } catch (error) {
     console.error('Cancel Error:', error.message);
     res.status(500).json({ success: false, message: error.message });
@@ -969,17 +969,11 @@ app.post('/api/flames', async (req, res) => {
       return res.status(400).json({ success: false, message: 'sellerId et buyerId requis' });
     }
     const existing = await db.collection('flames')
-      .where('sellerId', '==', sellerId)
-      .where('buyerId', '==', buyerId)
-      .get();
+      .where('sellerId', '==', sellerId).where('buyerId', '==', buyerId).get();
     if (!existing.empty) {
       return res.status(400).json({ success: false, message: 'Flamme déjà donnée' });
     }
-    await db.collection('flames').add({
-      sellerId,
-      buyerId,
-      createdAt: new Date()
-    });
+    await db.collection('flames').add({ sellerId, buyerId, createdAt: new Date() });
     const userRef = db.collection('users').doc(sellerId);
     const userDoc = await userRef.get();
     const currentFlames = userDoc.data()?.flames || 0;
@@ -1010,26 +1004,15 @@ app.get('/api/stats/:userId', async (req, res) => {
   if (!firebaseReady) {
     return res.json({
       success: true,
-      data: {
-        totalArticles: 0,
-        totalSales: 0,
-        totalRevenue: 0,
-        totalPurchases: 0,
-        totalSpent: 0,
-        history: []
-      }
+      data: { totalArticles: 0, totalSales: 0, totalRevenue: 0, totalPurchases: 0, totalSpent: 0, history: [] }
     });
   }
   try {
     const { userId } = req.params;
     const articlesSnapshot = await db.collection('products')
-      .where('sellerId', '==', userId)
-      .where('status', '==', 'active')
-      .get();
+      .where('sellerId', '==', userId).where('status', '==', 'active').get();
     const ordersSnapshot = await db.collection('orders')
-      .where('sellerId', '==', userId)
-      .where('status', '==', 'livré')
-      .get();
+      .where('sellerId', '==', userId).where('status', '==', 'livré').get();
     let totalSales = 0, totalRevenue = 0;
     ordersSnapshot.forEach(doc => {
       const order = doc.data();
@@ -1037,9 +1020,7 @@ app.get('/api/stats/:userId', async (req, res) => {
       totalRevenue += order.sellerReceived || (order.amount - (order.amount * COMMISSION_SELLER));
     });
     const purchasesSnapshot = await db.collection('orders')
-      .where('buyerId', '==', userId)
-      .where('status', '==', 'livré')
-      .get();
+      .where('buyerId', '==', userId).where('status', '==', 'livré').get();
     let totalPurchases = 0, totalSpent = 0;
     purchasesSnapshot.forEach(doc => {
       const order = doc.data();
@@ -1056,19 +1037,13 @@ app.get('/api/stats/:userId', async (req, res) => {
       history[month].revenu += order.sellerReceived || (order.amount - (order.amount * COMMISSION_SELLER));
     });
     const historyArray = Object.keys(history).sort().map(month => ({
-      month,
-      ventes: history[month].ventes,
-      revenu: Math.round(history[month].revenu)
+      month, ventes: history[month].ventes, revenu: Math.round(history[month].revenu)
     }));
     res.json({
       success: true,
       data: {
-        totalArticles: articlesSnapshot.size,
-        totalSales,
-        totalRevenue: Math.round(totalRevenue),
-        totalPurchases,
-        totalSpent,
-        history: historyArray
+        totalArticles: articlesSnapshot.size, totalSales, totalRevenue: Math.round(totalRevenue),
+        totalPurchases, totalSpent, history: historyArray
       }
     });
   } catch (error) {
@@ -1086,43 +1061,30 @@ app.get('/api/transactions/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     const snapshot = await db.collection('transactions')
-      .where('userId', '==', userId)
-      .orderBy('createdAt', 'desc')
-      .limit(100)
-      .get();
+      .where('userId', '==', userId).orderBy('createdAt', 'desc').limit(100).get();
     const transactions = [];
     snapshot.forEach(doc => transactions.push({ id: doc.id, ...doc.data() }));
     const ordersSnapshot = await db.collection('orders')
-      .where('buyerId', '==', userId)
-      .where('status', '==', 'livré')
-      .orderBy('createdAt', 'desc')
-      .limit(50)
-      .get();
+      .where('buyerId', '==', userId).where('status', '==', 'livré')
+      .orderBy('createdAt', 'desc').limit(50).get();
     ordersSnapshot.forEach(doc => {
       const order = doc.data();
       transactions.push({
-        type: 'achat',
-        amount: -order.totalAmount,
+        type: 'achat', amount: -order.totalAmount,
         description: `Achat #${doc.id.slice(0,8)} - ${order.amount} FCFA + commission`,
-        date: order.createdAt,
-        orderId: doc.id
+        date: order.createdAt, orderId: doc.id
       });
     });
     const salesSnapshot = await db.collection('orders')
-      .where('sellerId', '==', userId)
-      .where('status', '==', 'livré')
-      .orderBy('createdAt', 'desc')
-      .limit(50)
-      .get();
+      .where('sellerId', '==', userId).where('status', '==', 'livré')
+      .orderBy('createdAt', 'desc').limit(50).get();
     salesSnapshot.forEach(doc => {
       const order = doc.data();
       const sellerReceived = order.sellerReceived || (order.amount - (order.amount * COMMISSION_SELLER));
       transactions.push({
-        type: 'vente',
-        amount: sellerReceived,
+        type: 'vente', amount: sellerReceived,
         description: `Vente #${doc.id.slice(0,8)} - ${order.amount} FCFA - commission ${Math.round(order.amount * COMMISSION_SELLER)} FCFA`,
-        date: order.createdAt,
-        orderId: doc.id
+        date: order.createdAt, orderId: doc.id
       });
     });
     transactions.sort((a, b) => {
@@ -1146,10 +1108,7 @@ app.get('/api/messages/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     const snapshot = await db.collection('messages')
-      .where('participants', 'array-contains', userId)
-      .orderBy('createdAt', 'desc')
-      .limit(100)
-      .get();
+      .where('participants', 'array-contains', userId).orderBy('createdAt', 'desc').limit(100).get();
     const messages = [];
     snapshot.forEach(doc => messages.push({ id: doc.id, ...doc.data() }));
     for (const msg of messages) {
@@ -1180,27 +1139,16 @@ app.post('/api/messages', async (req, res) => {
     }
 
     const message = {
-      senderId,
-      receiverId,
-      text: text || '',
-      audioUrl: audioUrl || '',
-      audioDuration: audioDuration || 0,
-      senderName: senderName || 'Anonyme',
-      senderPhoto: senderPhoto || '',
-      participants: [senderId, receiverId],
-      read: false,
-      createdAt: new Date()
+      senderId, receiverId, text: text || '', audioUrl: audioUrl || '', audioDuration: audioDuration || 0,
+      senderName: senderName || 'Anonyme', senderPhoto: senderPhoto || '',
+      participants: [senderId, receiverId], read: false, createdAt: new Date()
     };
 
     const docRef = await db.collection('messages').add(message);
 
     await db.collection('notifications').add({
-      userId: receiverId,
-      message: `💬 Nouveau message de ${senderName || 'Anonyme'}`,
-      type: 'new_message',
-      read: false,
-      messageId: docRef.id,
-      createdAt: new Date()
+      userId: receiverId, message: `💬 Nouveau message de ${senderName || 'Anonyme'}`,
+      type: 'new_message', read: false, messageId: docRef.id, createdAt: new Date()
     });
 
     res.json({ success: true, id: docRef.id });
@@ -1219,8 +1167,7 @@ app.post('/api/messages/typing', async (req, res) => {
   try {
     const { conversationId, userId, isTyping } = req.body;
     await db.collection('typing').doc(conversationId).set({
-      [userId]: isTyping,
-      updatedAt: new Date()
+      [userId]: isTyping, updatedAt: new Date()
     }, { merge: true });
     res.json({ success: true });
   } catch (error) {
@@ -1238,10 +1185,7 @@ app.get('/api/notifications/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     const snapshot = await db.collection('notifications')
-      .where('userId', '==', userId)
-      .orderBy('createdAt', 'desc')
-      .limit(50)
-      .get();
+      .where('userId', '==', userId).orderBy('createdAt', 'desc').limit(50).get();
     const notifications = [];
     snapshot.forEach(doc => notifications.push({ id: doc.id, ...doc.data() }));
     res.json({ success: true, data: notifications });
@@ -1258,6 +1202,33 @@ app.post('/api/notifications/read/:id', async (req, res) => {
     const { id } = req.params;
     await db.collection('notifications').doc(id).update({ read: true });
     res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================================
+// WALLET - ADMIN CREDIT (manuel, via page #admin)
+// ============================================================
+app.post('/api/wallet/admin-credit', async (req, res) => {
+  if (!firebaseReady) {
+    return res.json({ success: true, message: 'Crédit simulé' });
+  }
+  try {
+    const { userId, amount } = req.body;
+    if (!userId || !amount) {
+      return res.status(400).json({ success: false, message: 'userId et amount requis' });
+    }
+    const userRef = db.collection('users').doc(userId);
+    const userDoc = await userRef.get();
+    const currentBalance = userDoc.data()?.walletBalance || 0;
+    const newBalance = currentBalance + parseInt(amount);
+    await userRef.update({ walletBalance: newBalance });
+    await db.collection('transactions').add({
+      userId, amount: parseInt(amount), type: 'deposit', status: 'completed',
+      description: 'Crédit manuel admin', createdAt: new Date()
+    });
+    res.json({ success: true, newBalance });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
