@@ -700,7 +700,7 @@
     });
 
     // 
-    // ORDERS - CORRIGÉ (plus d'erreur d'affectation)
+    // ORDERS - CORRIGÉ (L'ERREUR ÉTAIT ICI)
     // 
     function loadOrders() {
         if (!currentUserId) return;
@@ -709,7 +709,7 @@
             .then(function(orders) {
                 var container = document.getElementById('ordersList');
                 var empty = document.getElementById('emptyOrders');
-                // ✅ ICI : on vérifie avec =, pas avec =
+                // ✅ COMPARAISON, PAS AFFECTATION
                 if (orders = null || orders = undefined || !Array.isArray(orders) || orders.length = 0) {
                     container.innerHTML = '';
                     empty.style.display = 'block';
@@ -787,7 +787,7 @@
 
     // 
     // PUBLIER UN ARTICLE
-    // ==
+    // 
     document.getElementById('btnPublish').addEventListener('click', function() {
         var html = '<h3>📤 Publier un article</h3>';
         html += '<input type="text" id="pubTitle" placeholder="Titre" style="width:100%; padding:12px; margin-bottom:8px; border:1px solid #ddd; border-radius:10px;">';
