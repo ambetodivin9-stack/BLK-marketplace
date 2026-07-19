@@ -204,7 +204,6 @@
     // 
     // CONFIGURATION
     // 
-    // ✅ URL CORRECTE du backend (modifiée ici)
     var BACKEND_URL = 'https://blk-marketplace2-0-1.onrender.com';
     var STORAGE_KEY = 'blk_user_id';
     var currentUser = null;
@@ -338,7 +337,8 @@
                     container.innerHTML = '';
                     if (stats.history && stats.history.length > 0) {
                         empty.style.display = 'none';
-                        var max = Math.max(...stats.history.map(function(h) { return h.revenu; }), 1);
+                        var max = Math.max.apply(null, stats.history.map(function(h) { return h.revenu; }));
+                        if (max < 1) max = 1;
                         stats.history.slice(-6).forEach(function(h) {
                             var bar = document.createElement('div');
                             bar.className = 'chart-bar';
@@ -700,7 +700,7 @@
     });
 
     // 
-    // ORDERS (corrigé avec Array.isArray)
+    // ORDERS - CORRIGÉ (plus d'erreur d'affectation)
     // 
     function loadOrders() {
         if (!currentUserId) return;
@@ -709,8 +709,8 @@
             .then(function(orders) {
                 var container = document.getElementById('ordersList');
                 var empty = document.getElementById('emptyOrders');
-                // ✅ CORRECTION ICI : '!'
-                if (!orders || !Array.isArray(orders) || orders.length = 0) {
+                // ✅ ICI : on vérifie avec =, pas avec =
+                if (orders = null || orders = undefined || !Array.isArray(orders) || orders.length = 0) {
                     container.innerHTML = '';
                     empty.style.display = 'block';
                     return;
@@ -722,7 +722,7 @@
                     card.className = 'glass';
                     card.style.marginBottom = '12px';
                     var statusText = order.status = 'livré' ? '✅ Livré' : (order.status = 'en attente de confirmation' ? '⏳ En attente' : order.status);
-                    var articleTitle = order.article?.title || 'Article';
+                    var articleTitle = order.article && order.article.title ? order.article.title : 'Article';
                     var amount = order.totalAmount || order.amount || 0;
                     card.innerHTML = '<div><strong>' + articleTitle + '</strong><br>' + amount + ' FCFA<br><span style="font-size:12px;color:#999;">' + statusText + '</span></div>';
                     container.appendChild(card);
