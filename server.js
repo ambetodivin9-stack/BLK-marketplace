@@ -65,7 +65,7 @@ console.log(`💳 Yabetoo Secret: ${YABETOO_SECRET ? 'OK' : 'MANQUANT'}`);
 console.log(`🔥 Firebase: ${firebaseReady ? 'OK' : 'DÉGRADÉ (SIMULATION)'}`);
 
 // ============================================================
-// HELPER - Formater un numéro pour Yabetoo
+// HELPER
 // ============================================================
 function formatPhoneForYabetoo(phone) {
   let formatted = String(phone).trim().replace(/\s/g, '').replace(/\+/g, '');
@@ -200,7 +200,7 @@ app.post('/api/articles/view/:id', async (req, res) => {
 });
 
 // ============================================================
-// UPLOAD IMAGE (ImgBB)
+// UPLOAD IMAGE
 // ============================================================
 app.post('/api/upload', async (req, res) => {
     try {
@@ -255,21 +255,6 @@ app.post('/api/upload', async (req, res) => {
         console.error('❌ Erreur upload:', error.message);
         res.status(500).json({ success: false, message: 'Erreur serveur: ' + error.message });
     }
-});
-
-// ============================================================
-// UPLOAD AUDIO
-// ============================================================
-app.post('/api/upload-audio', async (req, res) => {
-  try {
-    const { base64 } = req.body;
-    if (!base64) return res.status(400).json({ success: false, message: 'Aucun audio' });
-    const audioUrl = `data:audio/webm;base64,${base64}`;
-    res.json({ success: true, url: audioUrl });
-  } catch (error) {
-    console.error('Audio Upload Error:', error.message);
-    res.status(500).json({ success: false, message: 'Erreur upload audio' });
-  }
 });
 
 // ============================================================
@@ -497,52 +482,68 @@ app.post('/api/payment/initiate', async (req, res) => {
 });
 
 // ============================================================
-// YABETOO - WEBHOOK
+// ✅ YABETOO - WEBHOOK (100% réel)
 // ============================================================
 app.post('/api/payment/callback', async (req, res) => {
   try {
     console.log('📥 Webhook Yabetoo reçu:', JSON.stringify(req.body, null, 2));
 
-    const payload = req.body.data || req.body;
-    const { id, status, amount, reference } = payload;
+    // ✅ Répondre immédiatement à Yabetoo pour confirmer la réception
+    res.status(200).json({ success: true });
 
-    if (!firebaseReady) {
-      return res.json({ success: true });
-    }
+    // ⚠️ IMPORTANT : le traitement du webhook doit se faire APRÈS la réponse
+    // pour éviter les timeouts. On utilise setImmediate ou on traite en arrière-plan.
+    setImmediate(async () => {
+      try {
+        const payload = req.body.data || req.body;
+        const { id, status, amount, reference } = payload;
 
-    let snapshot = await db.collection('transactions').where('yabetooId', '==', id).get();
-    if (snapshot.empty && reference) {
-      snapshot = await db.collection('transactions').where('reference', '==', reference).get();
-    }
-    if (snapshot.empty) {
-      console.warn('⚠️ Transaction non trouvée pour id:', id);
-      return res.status(404).json({ success: false });
-    }
+        if (!firebaseReady) {
+          console.warn('⚠️ Firebase non disponible, webhook ignoré');
+          return;
+        }
 
-    const transactionDoc = snapshot.docs[0];
-    const transactionData = transactionDoc.data();
+        // Chercher la transaction par yabetooId
+        let snapshot = await db.collection('transactions').where('yabetooId', '==', id).get();
+        if (snapshot.empty && reference) {
+          snapshot = await db.collection('transactions').where('reference', '==', reference).get();
+        }
+        if (snapshot.empty) {
+          console.warn('⚠️ Transaction non trouvée pour id:', id);
+          return;
+        }
 
-    if (transactionData.status === 'completed') {
-      console.log('↩️ Transaction déjà complétée, ignorée:', id);
-      return res.json({ success: true, duplicate: true });
-    }
+        const transactionDoc = snapshot.docs[0];
+        const transactionData = transactionDoc.data();
 
-    if (status === 'success' || status === 'completed' || status === 'succeeded') {
-      const userRef = db.collection('users').doc(transactionData.userId);
-      const userDoc = await userRef.get();
-      const currentBalance = userDoc.data()?.walletBalance || 0;
-      const creditAmount = parseInt(amount || transactionData.amount);
-      const newBalance = currentBalance + creditAmount;
+        // Vérifier que la transaction n'est pas déjà complétée
+        if (transactionData.status === 'completed') {
+          console.log('↩️ Transaction déjà complétée, ignorée:', id);
+          return;
+        }
 
-      await userRef.update({ walletBalance: newBalance });
-      await transactionDoc.ref.update({ status: 'completed', completedAt: new Date() });
+        // Si le paiement est réussi, créditer le wallet
+        if (status === 'success' || status === 'completed' || status === 'succeeded') {
+          const userRef = db.collection('users').doc(transactionData.userId);
+          const userDoc = await userRef.get();
+          const currentBalance = userDoc.data()?.walletBalance || 0;
+          const creditAmount = parseInt(amount || transactionData.amount);
+          const newBalance = currentBalance + creditAmount;
 
-      console.log('✅ Wallet crédité de', creditAmount, 'pour', transactionData.userId);
-    } else {
-      await transactionDoc.ref.update({ status: 'failed', failedAt: new Date() });
-    }
+          await userRef.update({ walletBalance: newBalance });
+          await transactionDoc.ref.update({ status: 'completed', completedAt: new Date() });
 
-    res.json({ success: true });
+          console.log('✅ Wallet crédité de', creditAmount, 'FCFA pour l\'utilisateur', transactionData.userId);
+        } else {
+          // Échec du paiement
+          await transactionDoc.ref.update({ status: 'failed', failedAt: new Date() });
+          console.warn('❌ Paiement échoué:', status);
+        }
+      } catch (error) {
+        console.error('❌ Erreur traitement webhook:', error);
+      }
+    });
+
   } catch (error) {
     console.error('❌ Erreur webhook Yabetoo:', error);
     res.status(500).json({ success: false });
@@ -622,7 +623,7 @@ app.post('/api/wallet/admin-credit', async (req, res) => {
 });
 
 // ============================================================
-// ORDRES (version simplifiée)
+// ORDRES (simplifiés)
 // ============================================================
 app.post('/api/orders/create', async (req, res) => {
   if (!firebaseReady) {
