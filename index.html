@@ -699,7 +699,7 @@
     });
 
     // ============================================================
-    // ORDERS - ✅ VERSION ULTRA-SÉCURISÉE
+    // ORDERS
     // ============================================================
     function loadOrders() {
         if (!currentUserId) {
@@ -714,7 +714,6 @@
                 var container = document.getElementById('ordersList');
                 var empty = document.getElementById('emptyOrders');
 
-                // ✅ VÉRIFICATION SANS AUCUNE AFFECTATION
                 var isValid = false;
                 if (orders !== null && orders !== undefined && Array.isArray(orders) && orders.length > 0) {
                     isValid = true;
