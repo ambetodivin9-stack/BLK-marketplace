@@ -459,7 +459,7 @@ app.post('/api/payment/initiate', async (req, res) => {
     const confirmData = confirmResponse.data;
     console.log('✅ Réponse confirmation Yabetoo:', JSON.stringify(confirmData, null, 2));
 
-    // Enregistrer la transaction (pending)
+    // Enregistrer la transaction en attente
     const transactionRef = await db.collection('transactions').add({
       userId,
       amount: parseInt(amount),
@@ -476,7 +476,7 @@ app.post('/api/payment/initiate', async (req, res) => {
       status: confirmData.status || 'pending'
     });
 
-    // Si Yabetoo confirme immédiatement
+    // Si Yabetoo confirme immédiatement (rare pour momo)
     if (confirmData.status === 'succeeded' && confirmData.captured) {
       const currentBalance = userDoc.data()?.walletBalance || 0;
       await userRef.update({ walletBalance: currentBalance + parseInt(amount) });
@@ -488,7 +488,6 @@ app.post('/api/payment/initiate', async (req, res) => {
       });
     }
 
-    // Sinon, on attend le webhook
     res.json({
       success: true,
       message: 'Demande envoyée. Confirmez le paiement sur votre téléphone.',
@@ -496,12 +495,11 @@ app.post('/api/payment/initiate', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Erreur Yabetoo (détails complets):');
+    console.error('❌❌❌ ERREUR YABETOO (100% réel, pas de fallback) ❌❌❌');
     console.error('Message:', error.message);
     console.error('Réponse:', JSON.stringify(error.response?.data, null, 2));
     console.error('Status:', error.response?.status);
 
-    // ✅ PAS DE FALLBACK : on renvoie l'erreur réelle
     res.status(500).json({
       success: false,
       message: 'Erreur lors de l\'initiation du paiement',
@@ -512,11 +510,11 @@ app.post('/api/payment/initiate', async (req, res) => {
 });
 
 // ============================================================
-// YABETOO - WEBHOOK
+// YABETOO - WEBHOOK (crédite le wallet en cas de succès)
 // ============================================================
 app.post('/api/payment/callback', async (req, res) => {
   try {
-    console.log('📥 Webhook Yabetoo reçu:', JSON.stringify(req.body));
+    console.log('📥 Webhook Yabetoo reçu:', JSON.stringify(req.body, null, 2));
 
     const payload = req.body.data || req.body;
     const { id, status, amount, reference } = payload;
@@ -525,6 +523,7 @@ app.post('/api/payment/callback', async (req, res) => {
       return res.json({ success: true });
     }
 
+    // Chercher la transaction par yabetooId
     let snapshot = await db.collection('transactions').where('yabetooId', '==', id).get();
     if (snapshot.empty && reference) {
       snapshot = await db.collection('transactions').where('reference', '==', reference).get();
@@ -537,11 +536,13 @@ app.post('/api/payment/callback', async (req, res) => {
     const transactionDoc = snapshot.docs[0];
     const transactionData = transactionDoc.data();
 
+    // Vérifier que la transaction n'est pas déjà complétée
     if (transactionData.status === 'completed') {
       console.log('↩️ Transaction déjà complétée, ignorée:', id);
       return res.json({ success: true, duplicate: true });
     }
 
+    // Si le paiement est réussi, créditer le wallet
     if (status === 'success' || status === 'completed' || status === 'succeeded') {
       const userRef = db.collection('users').doc(transactionData.userId);
       const userDoc = await userRef.get();
@@ -552,9 +553,11 @@ app.post('/api/payment/callback', async (req, res) => {
       await userRef.update({ walletBalance: newBalance });
       await transactionDoc.ref.update({ status: 'completed', completedAt: new Date() });
 
-      console.log('✅ Wallet crédité de', creditAmount, 'pour', transactionData.userId);
+      console.log('✅ Wallet crédité de', creditAmount, 'FCFA pour l\'utilisateur', transactionData.userId);
     } else {
+      // Échec du paiement
       await transactionDoc.ref.update({ status: 'failed', failedAt: new Date() });
+      console.warn('❌ Paiement échoué:', status);
     }
 
     res.json({ success: true });
@@ -1120,3 +1123,4 @@ app.listen(PORT, () => {
   console.log(`📱 Admin: ${ADMIN_PHONE}`);
   console.log(`💰 Commissions: ${COMMISSION_BUYER*100}% (buyer) + ${COMMISSION_SELLER*100}% (seller)`);
 });
+```
