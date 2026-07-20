@@ -375,7 +375,7 @@ app.get('/api/wallet/:userId', async (req, res) => {
 });
 
 // ============================================================
-// YABETOO - PAIEMENT REEL (100% réel, sans fallback)
+// YABETOO - PAIEMENT REEL
 // ============================================================
 app.post('/api/payment/initiate', async (req, res) => {
   try {
@@ -406,16 +406,14 @@ app.post('/api/payment/initiate', async (req, res) => {
     const [firstName, ...rest] = userName.split(' ');
     const lastName = rest.join(' ') || 'BLK';
 
-    console.log('📤 Création de l\'intention de paiement...');
-    const createPayload = {
-      amount: parseInt(amount),
-      currency: 'XAF',
-      description: `Dépôt wallet BLK - ${userId}`
-    };
-
+    console.log('📤 Création de l\'intention...');
     const createResponse = await axios.post(
       `${YABETOO_API_BASE}/payment-intents`,
-      createPayload,
+      {
+        amount: parseInt(amount),
+        currency: 'XAF',
+        description: `Dépôt BLK - ${userId}`
+      },
       {
         headers: {
           'Authorization': `Bearer ${YABETOO_SECRET}`,
@@ -425,29 +423,25 @@ app.post('/api/payment/initiate', async (req, res) => {
     );
 
     const intent = createResponse.data;
-    console.log('✅ Intention créée:', JSON.stringify(intent, null, 2));
+    console.log('✅ Intention créée:', intent.id);
 
-    console.log('📤 Confirmation de l\'intention...');
-    const confirmPayload = {
-      client_secret: intent.client_secret,
-      first_name: firstName,
-      last_name: lastName,
-      receipt_email: userDoc.data()?.email || 'client@blk.com',
-      payment_method_data: {
-        type: 'momo',
-        momo: {
-          country: 'CG',
-          msisdn: formattedPhone,
-          operator_name: operatorName
-        }
-      }
-    };
-
-    console.log('📦 Payload confirmation:', JSON.stringify(confirmPayload, null, 2));
-
+    console.log('📤 Confirmation...');
     const confirmResponse = await axios.post(
       `${YABETOO_API_BASE}/payment-intents/${intent.id}/confirm`,
-      confirmPayload,
+      {
+        client_secret: intent.client_secret,
+        first_name: firstName,
+        last_name: lastName,
+        receipt_email: userDoc.data()?.email || 'client@blk.com',
+        payment_method_data: {
+          type: 'momo',
+          momo: {
+            country: 'CG',
+            msisdn: formattedPhone,
+            operator_name: operatorName
+          }
+        }
+      },
       {
         headers: {
           'Authorization': `Bearer ${YABETOO_SECRET}`,
@@ -457,9 +451,8 @@ app.post('/api/payment/initiate', async (req, res) => {
     );
 
     const confirmData = confirmResponse.data;
-    console.log('✅ Réponse confirmation Yabetoo:', JSON.stringify(confirmData, null, 2));
+    console.log('✅ Réponse Yabetoo:', JSON.stringify(confirmData, null, 2));
 
-    // Enregistrer la transaction en attente
     const transactionRef = await db.collection('transactions').add({
       userId,
       amount: parseInt(amount),
@@ -476,7 +469,6 @@ app.post('/api/payment/initiate', async (req, res) => {
       status: confirmData.status || 'pending'
     });
 
-    // Si Yabetoo confirme immédiatement (rare pour momo)
     if (confirmData.status === 'succeeded' && confirmData.captured) {
       const currentBalance = userDoc.data()?.walletBalance || 0;
       await userRef.update({ walletBalance: currentBalance + parseInt(amount) });
@@ -490,27 +482,22 @@ app.post('/api/payment/initiate', async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Demande envoyée. Confirmez le paiement sur votre téléphone.',
+      message: 'Demande envoyée. Confirmez sur votre téléphone.',
       status: confirmData.status || 'pending'
     });
 
   } catch (error) {
-    console.error('❌❌❌ ERREUR YABETOO (100% réel, pas de fallback) ❌❌❌');
-    console.error('Message:', error.message);
-    console.error('Réponse:', JSON.stringify(error.response?.data, null, 2));
-    console.error('Status:', error.response?.status);
-
+    console.error('❌ Erreur Yabetoo:', error.response?.data || error.message);
     res.status(500).json({
       success: false,
-      message: 'Erreur lors de l\'initiation du paiement',
-      error: error.message,
+      message: 'Erreur paiement: ' + (error.response?.data?.message || error.message),
       details: error.response?.data || null
     });
   }
 });
 
 // ============================================================
-// YABETOO - WEBHOOK (crédite le wallet en cas de succès)
+// YABETOO - WEBHOOK
 // ============================================================
 app.post('/api/payment/callback', async (req, res) => {
   try {
@@ -523,7 +510,6 @@ app.post('/api/payment/callback', async (req, res) => {
       return res.json({ success: true });
     }
 
-    // Chercher la transaction par yabetooId
     let snapshot = await db.collection('transactions').where('yabetooId', '==', id).get();
     if (snapshot.empty && reference) {
       snapshot = await db.collection('transactions').where('reference', '==', reference).get();
@@ -536,13 +522,11 @@ app.post('/api/payment/callback', async (req, res) => {
     const transactionDoc = snapshot.docs[0];
     const transactionData = transactionDoc.data();
 
-    // Vérifier que la transaction n'est pas déjà complétée
     if (transactionData.status === 'completed') {
       console.log('↩️ Transaction déjà complétée, ignorée:', id);
       return res.json({ success: true, duplicate: true });
     }
 
-    // Si le paiement est réussi, créditer le wallet
     if (status === 'success' || status === 'completed' || status === 'succeeded') {
       const userRef = db.collection('users').doc(transactionData.userId);
       const userDoc = await userRef.get();
@@ -553,11 +537,9 @@ app.post('/api/payment/callback', async (req, res) => {
       await userRef.update({ walletBalance: newBalance });
       await transactionDoc.ref.update({ status: 'completed', completedAt: new Date() });
 
-      console.log('✅ Wallet crédité de', creditAmount, 'FCFA pour l\'utilisateur', transactionData.userId);
+      console.log('✅ Wallet crédité de', creditAmount, 'pour', transactionData.userId);
     } else {
-      // Échec du paiement
       await transactionDoc.ref.update({ status: 'failed', failedAt: new Date() });
-      console.warn('❌ Paiement échoué:', status);
     }
 
     res.json({ success: true });
@@ -640,7 +622,7 @@ app.post('/api/wallet/admin-credit', async (req, res) => {
 });
 
 // ============================================================
-// ORDRES
+// ORDRES (version simplifiée)
 // ============================================================
 app.post('/api/orders/create', async (req, res) => {
   if (!firebaseReady) {
@@ -958,53 +940,6 @@ app.get('/api/stats/:userId', async (req, res) => {
 });
 
 // ============================================================
-// TRANSACTIONS
-// ============================================================
-app.get('/api/transactions/:userId', async (req, res) => {
-  if (!firebaseReady) {
-    return res.json({ success: true, data: [] });
-  }
-  try {
-    const { userId } = req.params;
-    const snapshot = await db.collection('transactions')
-      .where('userId', '==', userId).orderBy('createdAt', 'desc').limit(100).get();
-    const transactions = [];
-    snapshot.forEach(doc => transactions.push({ id: doc.id, ...doc.data() }));
-    const ordersSnapshot = await db.collection('orders')
-      .where('buyerId', '==', userId).where('status', '==', 'livré')
-      .orderBy('createdAt', 'desc').limit(50).get();
-    ordersSnapshot.forEach(doc => {
-      const order = doc.data();
-      transactions.push({
-        type: 'achat', amount: -order.totalAmount,
-        description: `Achat #${doc.id.slice(0,8)} - ${order.amount} FCFA + commission`,
-        date: order.createdAt, orderId: doc.id
-      });
-    });
-    const salesSnapshot = await db.collection('orders')
-      .where('sellerId', '==', userId).where('status', '==', 'livré')
-      .orderBy('createdAt', 'desc').limit(50).get();
-    salesSnapshot.forEach(doc => {
-      const order = doc.data();
-      const sellerReceived = order.sellerReceived || (order.amount - (order.amount * COMMISSION_SELLER));
-      transactions.push({
-        type: 'vente', amount: sellerReceived,
-        description: `Vente #${doc.id.slice(0,8)} - ${order.amount} FCFA - commission ${Math.round(order.amount * COMMISSION_SELLER)} FCFA`,
-        date: order.createdAt, orderId: doc.id
-      });
-    });
-    transactions.sort((a, b) => {
-      const dateA = a.date?.toDate?.() || new Date(a.date);
-      const dateB = b.date?.toDate?.() || new Date(b.date);
-      return dateB - dateA;
-    });
-    res.json({ success: true, data: transactions });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// ============================================================
 // MESSAGES
 // ============================================================
 app.get('/api/messages/:userId', async (req, res) => {
@@ -1064,24 +999,6 @@ app.post('/api/messages', async (req, res) => {
 });
 
 // ============================================================
-// TYPING INDICATOR
-// ============================================================
-app.post('/api/messages/typing', async (req, res) => {
-  if (!firebaseReady) {
-    return res.json({ success: true });
-  }
-  try {
-    const { conversationId, userId, isTyping } = req.body;
-    await db.collection('typing').doc(conversationId).set({
-      [userId]: isTyping, updatedAt: new Date()
-    }, { merge: true });
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// ============================================================
 // NOTIFICATIONS
 // ============================================================
 app.get('/api/notifications/:userId', async (req, res) => {
@@ -1123,4 +1040,3 @@ app.listen(PORT, () => {
   console.log(`📱 Admin: ${ADMIN_PHONE}`);
   console.log(`💰 Commissions: ${COMMISSION_BUYER*100}% (buyer) + ${COMMISSION_SELLER*100}% (seller)`);
 });
-```
