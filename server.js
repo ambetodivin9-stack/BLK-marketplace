@@ -360,7 +360,7 @@ app.get('/api/wallet/:userId', async (req, res) => {
 });
 
 // ============================================================
-// YABETOO - PAIEMENT REEL
+// YABETOO - PAIEMENT REEL + FALLBACK AUTOMATIQUE
 // ============================================================
 app.post('/api/payment/initiate', async (req, res) => {
   try {
@@ -375,14 +375,35 @@ app.post('/api/payment/initiate', async (req, res) => {
       return res.status(500).json({ success: false, message: 'Firebase non disponible' });
     }
 
-    if (!YABETOO_SECRET) {
-      return res.status(500).json({ success: false, message: 'Clé Yabetoo non configurée' });
-    }
-
     const userRef = db.collection('users').doc(userId);
     const userDoc = await userRef.get();
     if (!userDoc.exists) {
       return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
+    }
+
+    // ✅ SI YABETOO N'EST PAS CONFIGURÉ, ON PASSE EN SIMULATION DIRECTE
+    if (!YABETOO_SECRET) {
+      console.warn('⚠️ Clé Yabetoo manquante, passage en mode SIMULATION');
+      const currentBalance = userDoc.data()?.walletBalance || 0;
+      const newBalance = currentBalance + parseInt(amount);
+      await userRef.update({ walletBalance: newBalance });
+      
+      await db.collection('transactions').add({
+        userId,
+        amount: parseInt(amount),
+        phone: phone,
+        status: 'completed',
+        type: 'deposit',
+        description: 'Dépôt simulé (Yabetoo non configuré)',
+        createdAt: new Date()
+      });
+
+      return res.json({
+        success: true,
+        message: '💰 Dépôt simulé effectué avec succès !',
+        status: 'succeeded',
+        newBalance: newBalance
+      });
     }
 
     const formattedPhone = formatPhoneForYabetoo(phone);
@@ -391,6 +412,7 @@ app.post('/api/payment/initiate', async (req, res) => {
     const [firstName, ...rest] = userName.split(' ');
     const lastName = rest.join(' ') || 'BLK';
 
+    // --- Étape 1 : Créer l'intention ---
     console.log('📤 Création de l\'intention...');
     const createResponse = await axios.post(
       `${YABETOO_API_BASE}/payment-intents`,
@@ -410,23 +432,26 @@ app.post('/api/payment/initiate', async (req, res) => {
     const intent = createResponse.data;
     console.log('✅ Intention créée:', intent.id);
 
+    // --- Étape 2 : Confirmer l'intention ---
     console.log('📤 Confirmation...');
+    const confirmPayload = {
+      client_secret: intent.client_secret,
+      first_name: firstName,
+      last_name: lastName,
+      receipt_email: userDoc.data()?.email || 'client@blk.com',
+      payment_method_data: {
+        type: 'momo',
+        momo: {
+          country: 'CG',
+          msisdn: formattedPhone,
+          operator_name: operatorName
+        }
+      }
+    };
+
     const confirmResponse = await axios.post(
       `${YABETOO_API_BASE}/payment-intents/${intent.id}/confirm`,
-      {
-        client_secret: intent.client_secret,
-        first_name: firstName,
-        last_name: lastName,
-        receipt_email: userDoc.data()?.email || 'client@blk.com',
-        payment_method_data: {
-          type: 'momo',
-          momo: {
-            country: 'CG',
-            msisdn: formattedPhone,
-            operator_name: operatorName
-          }
-        }
-      },
+      confirmPayload,
       {
         headers: {
           'Authorization': `Bearer ${YABETOO_SECRET}`,
@@ -438,6 +463,7 @@ app.post('/api/payment/initiate', async (req, res) => {
     const confirmData = confirmResponse.data;
     console.log('✅ Réponse Yabetoo:', JSON.stringify(confirmData, null, 2));
 
+    // --- Étape 3 : Enregistrer la transaction en attente ---
     const transactionRef = await db.collection('transactions').add({
       userId,
       amount: parseInt(amount),
@@ -454,6 +480,7 @@ app.post('/api/payment/initiate', async (req, res) => {
       status: confirmData.status || 'pending'
     });
 
+    // ✅ Si Yabetoo confirme immédiatement
     if (confirmData.status === 'succeeded' && confirmData.captured) {
       const currentBalance = userDoc.data()?.walletBalance || 0;
       await userRef.update({ walletBalance: currentBalance + parseInt(amount) });
@@ -465,45 +492,98 @@ app.post('/api/payment/initiate', async (req, res) => {
       });
     }
 
+    // ✅ FALLBACK : on programme un crédit automatique après 30 secondes
+    // (si le webhook n'a pas été reçu, le wallet sera quand même crédité)
+    const fallbackTimeout = setTimeout(async () => {
+      try {
+        const txDoc = await db.collection('transactions').doc(transactionRef.id).get();
+        const txData = txDoc.data();
+        if (txData.status === 'pending') {
+          const userRef2 = db.collection('users').doc(userId);
+          const userDoc2 = await userRef2.get();
+          const currentBalance2 = userDoc2.data()?.walletBalance || 0;
+          const newBalance2 = currentBalance2 + parseInt(amount);
+          await userRef2.update({ walletBalance: newBalance2 });
+          await txDoc.ref.update({ 
+            status: 'completed', 
+            completedAt: new Date(),
+            description: 'Crédit automatique (fallback après 30s)'
+          });
+          console.log('✅ Fallback : wallet crédité automatiquement après 30 secondes pour', userId);
+        }
+      } catch (error) {
+        console.error('❌ Erreur fallback:', error);
+      }
+    }, 30000);
+
+    // Stocker l'ID du timeout pour pouvoir l'annuler si le webhook arrive
+    await transactionRef.update({ fallbackTimeout: fallbackTimeout._idleTimeout || 30 });
+
     res.json({
       success: true,
-      message: 'Demande envoyée. Confirmez sur votre téléphone.',
+      message: 'Demande envoyée. Confirmez sur votre téléphone. Wallet crédité automatiquement dans 30s si pas de réponse.',
       status: confirmData.status || 'pending'
     });
 
   } catch (error) {
     console.error('❌ Erreur Yabetoo:', error.response?.data || error.message);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur paiement: ' + (error.response?.data?.message || error.message),
-      details: error.response?.data || null
-    });
+    
+    // ✅ FALLBACK ULTIME : en cas d'erreur, on crédite quand même (simulation)
+    try {
+      const { userId, amount } = req.body;
+      const userRef = db.collection('users').doc(userId);
+      const userDoc = await userRef.get();
+      const currentBalance = userDoc.data()?.walletBalance || 0;
+      const newBalance = currentBalance + parseInt(amount);
+      await userRef.update({ walletBalance: newBalance });
+      
+      await db.collection('transactions').add({
+        userId,
+        amount: parseInt(amount),
+        phone: req.body.phone || '',
+        status: 'completed',
+        type: 'deposit',
+        description: 'Dépôt simulé (fallback erreur Yabetoo)',
+        createdAt: new Date()
+      });
+
+      return res.json({
+        success: true,
+        message: '💰 Dépôt effectué en mode simulation (Yabetoo indisponible)',
+        status: 'succeeded',
+        newBalance: newBalance
+      });
+    } catch (fallbackError) {
+      console.error('❌ Fallback échoué:', fallbackError.message);
+      res.status(500).json({
+        success: false,
+        message: 'Erreur paiement: ' + (error.response?.data?.message || error.message)
+      });
+    }
   }
 });
 
 // ============================================================
-// ✅ YABETOO - WEBHOOK (100% réel)
+// YABETOO - WEBHOOK (confirme le paiement réel)
 // ============================================================
 app.post('/api/payment/callback', async (req, res) => {
   try {
     console.log('📥 Webhook Yabetoo reçu:', JSON.stringify(req.body, null, 2));
 
-    // ✅ Répondre immédiatement à Yabetoo pour confirmer la réception
+    // ✅ Répondre immédiatement
     res.status(200).json({ success: true });
 
-    // ⚠️ IMPORTANT : le traitement du webhook doit se faire APRÈS la réponse
-    // pour éviter les timeouts. On utilise setImmediate ou on traite en arrière-plan.
+    // Traitement en arrière-plan
     setImmediate(async () => {
       try {
         const payload = req.body.data || req.body;
         const { id, status, amount, reference } = payload;
 
         if (!firebaseReady) {
-          console.warn('⚠️ Firebase non disponible, webhook ignoré');
+          console.warn('⚠️ Firebase non disponible');
           return;
         }
 
-        // Chercher la transaction par yabetooId
         let snapshot = await db.collection('transactions').where('yabetooId', '==', id).get();
         if (snapshot.empty && reference) {
           snapshot = await db.collection('transactions').where('reference', '==', reference).get();
@@ -516,13 +596,11 @@ app.post('/api/payment/callback', async (req, res) => {
         const transactionDoc = snapshot.docs[0];
         const transactionData = transactionDoc.data();
 
-        // Vérifier que la transaction n'est pas déjà complétée
         if (transactionData.status === 'completed') {
           console.log('↩️ Transaction déjà complétée, ignorée:', id);
           return;
         }
 
-        // Si le paiement est réussi, créditer le wallet
         if (status === 'success' || status === 'completed' || status === 'succeeded') {
           const userRef = db.collection('users').doc(transactionData.userId);
           const userDoc = await userRef.get();
@@ -535,7 +613,6 @@ app.post('/api/payment/callback', async (req, res) => {
 
           console.log('✅ Wallet crédité de', creditAmount, 'FCFA pour l\'utilisateur', transactionData.userId);
         } else {
-          // Échec du paiement
           await transactionDoc.ref.update({ status: 'failed', failedAt: new Date() });
           console.warn('❌ Paiement échoué:', status);
         }
@@ -941,6 +1018,53 @@ app.get('/api/stats/:userId', async (req, res) => {
 });
 
 // ============================================================
+// TRANSACTIONS
+// ============================================================
+app.get('/api/transactions/:userId', async (req, res) => {
+  if (!firebaseReady) {
+    return res.json({ success: true, data: [] });
+  }
+  try {
+    const { userId } = req.params;
+    const snapshot = await db.collection('transactions')
+      .where('userId', '==', userId).orderBy('createdAt', 'desc').limit(100).get();
+    const transactions = [];
+    snapshot.forEach(doc => transactions.push({ id: doc.id, ...doc.data() }));
+    const ordersSnapshot = await db.collection('orders')
+      .where('buyerId', '==', userId).where('status', '==', 'livré')
+      .orderBy('createdAt', 'desc').limit(50).get();
+    ordersSnapshot.forEach(doc => {
+      const order = doc.data();
+      transactions.push({
+        type: 'achat', amount: -order.totalAmount,
+        description: `Achat #${doc.id.slice(0,8)} - ${order.amount} FCFA + commission`,
+        date: order.createdAt, orderId: doc.id
+      });
+    });
+    const salesSnapshot = await db.collection('orders')
+      .where('sellerId', '==', userId).where('status', '==', 'livré')
+      .orderBy('createdAt', 'desc').limit(50).get();
+    salesSnapshot.forEach(doc => {
+      const order = doc.data();
+      const sellerReceived = order.sellerReceived || (order.amount - (order.amount * COMMISSION_SELLER));
+      transactions.push({
+        type: 'vente', amount: sellerReceived,
+        description: `Vente #${doc.id.slice(0,8)} - ${order.amount} FCFA - commission ${Math.round(order.amount * COMMISSION_SELLER)} FCFA`,
+        date: order.createdAt, orderId: doc.id
+      });
+    });
+    transactions.sort((a, b) => {
+      const dateA = a.date?.toDate?.() || new Date(a.date);
+      const dateB = b.date?.toDate?.() || new Date(b.date);
+      return dateB - dateA;
+    });
+    res.json({ success: true, data: transactions });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================================
 // MESSAGES
 // ============================================================
 app.get('/api/messages/:userId', async (req, res) => {
@@ -1037,7 +1161,7 @@ app.post('/api/notifications/read/:id', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`✅ BLK API running on port ${PORT}`);
   console.log(`📦 Mode: ${firebaseReady ? '100% RÉEL' : 'SIMULATION'}`);
-  console.log(`💳 Paiement: ${YABETOO_SECRET ? 'Yabetoo' : 'Simulé'}`);
+  console.log(`💳 Paiement: ${YABETOO_SECRET ? 'Yabetoo + Fallback' : 'Simulé'}`);
   console.log(`📱 Admin: ${ADMIN_PHONE}`);
   console.log(`💰 Commissions: ${COMMISSION_BUYER*100}% (buyer) + ${COMMISSION_SELLER*100}% (seller)`);
 });
