@@ -44,27 +44,35 @@ try {
 }
 
 // ============================================================
-// CONFIGURATION - CORRIGÉE
+// CONFIGURATION
 // ============================================================
 const IMG_BB_KEY = process.env.IMG_BB_KEY || '2b3e869d8b6f382027e70cd216f65580';
 const ADMIN_PHONE = process.env.ADMIN_PHONE || '065918166';
 
-// ✅ Récupération directe de la clé (nom exact sur Render)
-const YABETOO_SECRET = process.env.YABETOO_SECRET_KEY;
+// ✅ Clé Yabetoo en dur pour le test (à remplacer par process.env.YABETOO_SECRET_KEY après)
+const YABETOO_SECRET = 'sk_live_gVGlszHgjMABT5uSUSPIS88d3Zz1WfZ6WhkpOr2V4if7XfDN0oShBygL';
 
 // ✅ URL Yabetoo (production / sandbox)
 const YABETOO_API_BASE = process.env.NODE_ENV === 'production'
-  ? 'https://pay.api.yabetooapp.com/v1'
-  : 'https://pay.sandbox.yabetooapp.com/v1';
+  ? 'https://pay.api.yabetoopay.com/v1'
+  : 'https://pay.sandbox.yabetoopay.com/v1';
+
+const COMMISSION_BUYER = 0.03;
+const COMMISSION_SELLER = 0.04;
+
+const ALLOWED_CATEGORIES = [
+  'vêtements', 'chaussures', 'sacs', 'bijoux', 'accessoires'
+];
 
 console.log(`📱 Admin Phone: ${ADMIN_PHONE}`);
 console.log(`🖼️  ImgBB: ${IMG_BB_KEY ? 'OK' : 'MANQUANT'}`);
 console.log(`💳 Yabetoo Secret: ${YABETOO_SECRET ? 'OK' : 'MANQUANT'}`);
 console.log(`🌐 Yabetoo API Base: ${YABETOO_API_BASE}`);
 console.log(`🔧 NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
+console.log(`🔥 Firebase: ${firebaseReady ? 'OK' : 'DÉGRADÉ (SIMULATION)'}`);
 
 // ============================================================
-// HELPER
+// HELPER - Formater un numéro pour Yabetoo
 // ============================================================
 function formatPhoneForYabetoo(phone) {
   let formatted = String(phone).trim().replace(/\s/g, '').replace(/\+/g, '');
@@ -199,7 +207,7 @@ app.post('/api/articles/view/:id', async (req, res) => {
 });
 
 // ============================================================
-// UPLOAD IMAGE
+// UPLOAD IMAGE (ImgBB)
 // ============================================================
 app.post('/api/upload', async (req, res) => {
     try {
@@ -359,12 +367,8 @@ app.get('/api/wallet/:userId', async (req, res) => {
 });
 
 // ============================================================
-// YABETOO - PAIEMENT 100% RÉEL
+// YABETOO - PAIEMENT 100% RÉEL (sans fallback)
 // ============================================================
-const ALLOWED_CATEGORIES = [
-  'vêtements', 'chaussures', 'sacs', 'bijoux', 'accessoires'
-];
-
 app.post('/api/payment/initiate', async (req, res) => {
   try {
     const { userId, amount, phone, operator } = req.body;
@@ -395,6 +399,7 @@ app.post('/api/payment/initiate', async (req, res) => {
     const [firstName, ...rest] = userName.split(' ');
     const lastName = rest.join(' ') || 'BLK';
 
+    // --- Étape 1 : Créer l'intention ---
     console.log('📤 Création de l\'intention...');
     const createResponse = await axios.post(
       `${YABETOO_API_BASE}/payment-intents`,
@@ -422,6 +427,7 @@ app.post('/api/payment/initiate', async (req, res) => {
       return res.status(500).json({ success: false, message: 'client_secret manquant' });
     }
 
+    // --- Étape 2 : Confirmer l'intention ---
     console.log('📤 Confirmation...');
     const confirmPayload = {
       client_secret: clientSecret,
@@ -454,7 +460,7 @@ app.post('/api/payment/initiate', async (req, res) => {
     const confirmData = confirmResponse.data;
     console.log('✅ Réponse Yabetoo:', JSON.stringify(confirmData, null, 2));
 
-    // Enregistrer la transaction
+    // --- Étape 3 : Enregistrer la transaction ---
     const transactionRef = await db.collection('transactions').add({
       userId,
       amount: parseInt(amount),
@@ -471,11 +477,13 @@ app.post('/api/payment/initiate', async (req, res) => {
       status: confirmData.status || 'pending'
     });
 
+    // --- Étape 4 : Gérer le statut ---
     if (confirmData.status === 'succeeded') {
       const currentBalance = userDoc.data()?.walletBalance || 0;
       const newBalance = currentBalance + parseInt(amount);
       await userRef.update({ walletBalance: newBalance });
       await transactionRef.update({ status: 'completed', completedAt: new Date() });
+
       return res.json({
         success: true,
         message: '✅ Dépôt confirmé et wallet crédité !',
@@ -500,6 +508,7 @@ app.post('/api/payment/initiate', async (req, res) => {
     console.error('Réponse:', JSON.stringify(error.response?.data, null, 2));
     console.error('Status:', error.response?.status);
 
+    // ✅ PAS DE FALLBACK : on renvoie l'erreur réelle
     res.status(500).json({
       success: false,
       message: 'Erreur lors de l\'initiation du paiement',
@@ -510,20 +519,25 @@ app.post('/api/payment/initiate', async (req, res) => {
 });
 
 // ============================================================
-// YABETOO - WEBHOOK
+// YABETOO - WEBHOOK (crédite le wallet en cas de succès)
 // ============================================================
 app.post('/api/payment/callback', async (req, res) => {
   try {
     console.log('📥 Webhook Yabetoo reçu:', JSON.stringify(req.body, null, 2));
 
+    // ✅ Répondre immédiatement
     res.status(200).json({ success: true });
 
+    // Traitement en arrière-plan
     setImmediate(async () => {
       try {
         const payload = req.body.data || req.body;
         const { id, status, amount, reference } = payload;
 
-        if (!firebaseReady) return;
+        if (!firebaseReady) {
+          console.warn('⚠️ Firebase non disponible');
+          return;
+        }
 
         let snapshot = await db.collection('transactions').where('yabetooId', '==', id).get();
         if (snapshot.empty && reference) {
@@ -537,7 +551,10 @@ app.post('/api/payment/callback', async (req, res) => {
         const transactionDoc = snapshot.docs[0];
         const transactionData = transactionDoc.data();
 
-        if (transactionData.status === 'completed') return;
+        if (transactionData.status === 'completed') {
+          console.log('↩️ Transaction déjà complétée, ignorée:', id);
+          return;
+        }
 
         if (status === 'success' || status === 'completed' || status === 'succeeded') {
           const userRef = db.collection('users').doc(transactionData.userId);
@@ -549,7 +566,7 @@ app.post('/api/payment/callback', async (req, res) => {
           await userRef.update({ walletBalance: newBalance });
           await transactionDoc.ref.update({ status: 'completed', completedAt: new Date() });
 
-          console.log('✅ Wallet crédité de', creditAmount, 'FCFA pour', transactionData.userId);
+          console.log('✅ Wallet crédité de', creditAmount, 'FCFA pour l\'utilisateur', transactionData.userId);
         } else {
           await transactionDoc.ref.update({ status: 'failed', failedAt: new Date() });
           console.warn('❌ Paiement échoué:', status);
@@ -566,7 +583,7 @@ app.post('/api/payment/callback', async (req, res) => {
 });
 
 // ============================================================
-// WALLET - RETRAIT (simulation)
+// WALLET - RETRAIT (simulation - à remplacer plus tard)
 // ============================================================
 app.post('/api/wallet/withdraw', async (req, res) => {
   if (!firebaseReady) {
@@ -640,9 +657,411 @@ app.post('/api/wallet/admin-credit', async (req, res) => {
 // ============================================================
 // ORDRES (simplifiés)
 // ============================================================
-// ... (je garde les routes ordres, messages, flames, stats, etc. identiques)
-// Pour éviter de surcharger, je les réécris brièvement mais ils sont identiques à avant
-// Je mets les routes essentielles ici, mais vous pouvez garder votre code existant
+app.post('/api/orders/create', async (req, res) => {
+  if (!firebaseReady) {
+    return res.json({
+      success: true, orderId: 'mock-' + Date.now(), message: 'Commande créée (simulée)',
+      totalAmount: 15450, buyerCommission: 450, sellerCommission: 600,
+      expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000)
+    });
+  }
+  try {
+    const { articleId, buyerId, sellerId, amount, buyerPhone } = req.body;
+    if (!articleId || !buyerId || !sellerId || !amount) {
+      return res.status(400).json({ success: false, message: 'Champs requis manquants' });
+    }
+
+    const buyerDoc = await db.collection('users').doc(buyerId).get();
+    const blockedUsers = buyerDoc.data()?.blockedUsers || [];
+    if (blockedUsers.includes(sellerId)) {
+      return res.status(403).json({ success: false, message: 'Vous avez bloqué ce vendeur' });
+    }
+
+    const buyerBalance = buyerDoc.data()?.walletBalance || 0;
+    const buyerCommission = Math.round(amount * COMMISSION_BUYER);
+    const totalAmount = amount + buyerCommission;
+
+    if (buyerBalance < totalAmount) {
+      return res.status(400).json({
+        success: false, message: '❌ Solde insuffisant',
+        balance: buyerBalance, required: totalAmount, difference: totalAmount - buyerBalance
+      });
+    }
+    await buyerDoc.ref.update({ walletBalance: buyerBalance - totalAmount });
+
+    const order = {
+      articleId, buyerId, sellerId,
+      buyerPhone: buyerPhone || buyerDoc.data()?.phone || '',
+      amount: parseInt(amount), buyerCommission, totalAmount,
+      sellerCommission: Math.round(amount * COMMISSION_SELLER),
+      status: 'en attente de confirmation', buyerConfirmed: false, buyerConfirmedAt: null,
+      flamesGiven: false, expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000), createdAt: new Date()
+    };
+
+    const orderRef = await db.collection('orders').add(order);
+    const orderId = orderRef.id;
+
+    await db.collection('notifications').add({
+      userId: sellerId, message: `🛒 Nouvelle commande #${orderId.slice(0,8)} - ${amount} FCFA`,
+      type: 'new_order', read: false, orderId, createdAt: new Date()
+    });
+
+    res.json({
+      success: true, orderId, message: '✅ Commande créée avec succès ! Livre dans les 12h.',
+      totalAmount, buyerCommission, sellerCommission: Math.round(amount * COMMISSION_SELLER),
+      expiresAt: order.expiresAt
+    });
+  } catch (error) {
+    console.error('Order Error:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.post('/api/orders/confirm', async (req, res) => {
+  if (!firebaseReady) {
+    return res.json({ success: true, message: 'Commande confirmée (simulée)' });
+  }
+  try {
+    const { orderId, buyerId, confirmations } = req.body;
+    if (!orderId || !buyerId || !confirmations) {
+      return res.status(400).json({ success: false, message: 'Champs requis' });
+    }
+
+    const required = ['recu', 'bon_etat', 'confirme'];
+    for (const key of required) {
+      if (!confirmations[key]) {
+        return res.status(400).json({ success: false, message: '❌ Tu dois cocher les 3 cases pour confirmer' });
+      }
+    }
+
+    const orderRef = db.collection('orders').doc(orderId);
+    const orderDoc = await orderRef.get();
+    if (!orderDoc.exists) {
+      return res.status(404).json({ success: false, message: 'Commande non trouvée' });
+    }
+
+    const order = orderDoc.data();
+    if (order.buyerId !== buyerId) {
+      return res.status(403).json({ success: false, message: 'Non autorisé' });
+    }
+    if (order.status !== 'en attente de confirmation') {
+      return res.status(400).json({ success: false, message: 'Commande déjà traitée' });
+    }
+
+    const now = new Date();
+    const expiresAt = order.expiresAt.toDate ? order.expiresAt.toDate() : new Date(order.expiresAt);
+    if (now > expiresAt) {
+      return res.status(400).json({ success: false, message: '⏰ Délai expiré, remboursement automatique' });
+    }
+
+    const sellerCommission = order.sellerCommission || Math.round(order.amount * COMMISSION_SELLER);
+    const buyerCommission = order.buyerCommission || Math.round(order.amount * COMMISSION_BUYER);
+    const amountToSeller = order.amount - sellerCommission;
+    const adminTotal = buyerCommission + sellerCommission;
+
+    const sellerRef = db.collection('users').doc(order.sellerId);
+    const sellerDoc = await sellerRef.get();
+    const sellerBalance = sellerDoc.data()?.walletBalance || 0;
+    await sellerRef.update({ walletBalance: sellerBalance + amountToSeller });
+
+    const articleRef = db.collection('products').doc(order.articleId);
+    await articleRef.update({ status: 'sold', soldAt: new Date(), soldTo: buyerId, orderId });
+
+    await orderRef.update({
+      status: 'livré', buyerConfirmed: true, buyerConfirmedAt: new Date(), confirmations,
+      sellerReceived: amountToSeller, adminCommission: adminTotal
+    });
+
+    await db.collection('notifications').add({
+      userId: order.sellerId, message: `💰 Vente confirmée ! ${amountToSeller} FCFA crédités sur ton wallet.`,
+      type: 'sale_confirmed', read: false, orderId, createdAt: new Date()
+    });
+
+    await db.collection('notifications').add({
+      userId: order.buyerId, message: `✅ Commande #${orderId.slice(0,8)} confirmée avec succès.`,
+      type: 'order_confirmed', read: false, orderId, createdAt: new Date()
+    });
+
+    res.json({
+      success: true, message: '✅ Commande confirmée !',
+      sellerReceived: amountToSeller, adminCommission: adminTotal, sellerBalance: sellerBalance + amountToSeller
+    });
+  } catch (error) {
+    console.error('Confirm Error:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.get('/api/orders/:userId', async (req, res) => {
+  if (!firebaseReady) {
+    return res.json([]);
+  }
+  try {
+    const { userId } = req.params;
+    const orders = [];
+    const buyerSnapshot = await db.collection('orders')
+      .where('buyerId', '==', userId).orderBy('createdAt', 'desc').get();
+    for (const doc of buyerSnapshot.docs) {
+      const order = doc.data();
+      const articleDoc = await db.collection('products').doc(order.articleId).get();
+      const article = articleDoc.data();
+      const sellerDoc = await db.collection('users').doc(order.sellerId).get();
+      const seller = sellerDoc.data();
+      orders.push({
+        id: doc.id, ...order,
+        article: article ? { title: article.title, image: article.image, price: article.price } : null,
+        seller: seller ? { name: seller.name, photo: seller.photo || '' } : null
+      });
+    }
+    const sellerSnapshot = await db.collection('orders')
+      .where('sellerId', '==', userId).orderBy('createdAt', 'desc').get();
+    for (const doc of sellerSnapshot.docs) {
+      const order = doc.data();
+      if (!orders.find(o => o.id === doc.id)) {
+        const articleDoc = await db.collection('products').doc(order.articleId).get();
+        const article = articleDoc.data();
+        const buyerDoc = await db.collection('users').doc(order.buyerId).get();
+        const buyer = buyerDoc.data();
+        orders.push({
+          id: doc.id, ...order,
+          article: article ? { title: article.title, image: article.image, price: article.price } : null,
+          buyer: buyer ? { name: buyer.name, photo: buyer.photo || '' } : null
+        });
+      }
+    }
+    orders.sort((a, b) => {
+      const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt);
+      const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt);
+      return dateB - dateA;
+    });
+    res.json(orders);
+  } catch (error) {
+    console.error('Orders Error:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.post('/api/orders/cancel/:orderId', async (req, res) => {
+  if (!firebaseReady) {
+    return res.json({ success: true, message: 'Commande annulée (simulée)' });
+  }
+  try {
+    const { orderId } = req.params;
+    const { userId } = req.body;
+    const orderRef = db.collection('orders').doc(orderId);
+    const orderDoc = await orderRef.get();
+    if (!orderDoc.exists) {
+      return res.status(404).json({ success: false, message: 'Commande non trouvée' });
+    }
+    const order = orderDoc.data();
+    if (order.buyerId !== userId && order.sellerId !== userId) {
+      return res.status(403).json({ success: false, message: 'Non autorisé' });
+    }
+    const now = new Date();
+    const createdAt = order.createdAt.toDate ? order.createdAt.toDate() : new Date(order.createdAt);
+    const hoursSinceCreation = (now - createdAt) / (1000 * 60 * 60);
+    if (hoursSinceCreation > 2) {
+      return res.status(400).json({ success: false, message: '⏰ Délai de 2h dépassé. Annulation impossible.' });
+    }
+    const buyerRef = db.collection('users').doc(order.buyerId);
+    const buyerDoc = await buyerRef.get();
+    const buyerBalance = buyerDoc.data()?.walletBalance || 0;
+    await buyerRef.update({ walletBalance: buyerBalance + order.totalAmount });
+    const articleRef = db.collection('products').doc(order.articleId);
+    await articleRef.update({ status: 'active' });
+    await orderRef.update({ status: 'annulé', cancelledAt: new Date(), cancelledBy: userId });
+    res.json({ success: true, message: '✅ Commande annulée et remboursée', refunded: order.totalAmount });
+  } catch (error) {
+    console.error('Cancel Error:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================================
+// FLAMMES
+// ============================================================
+app.post('/api/flames', async (req, res) => {
+  if (!firebaseReady) {
+    return res.json({ success: true, flames: 5 });
+  }
+  try {
+    const { sellerId, buyerId } = req.body;
+    if (!sellerId || !buyerId) {
+      return res.status(400).json({ success: false, message: 'sellerId et buyerId requis' });
+    }
+    const existing = await db.collection('flames')
+      .where('sellerId', '==', sellerId).where('buyerId', '==', buyerId).get();
+    if (!existing.empty) {
+      return res.status(400).json({ success: false, message: 'Flamme déjà donnée' });
+    }
+    await db.collection('flames').add({ sellerId, buyerId, createdAt: new Date() });
+    const userRef = db.collection('users').doc(sellerId);
+    const userDoc = await userRef.get();
+    const currentFlames = userDoc.data()?.flames || 0;
+    await userRef.update({ flames: currentFlames + 1 });
+    res.json({ success: true, flames: currentFlames + 1 });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.get('/api/flames/:userId', async (req, res) => {
+  if (!firebaseReady) {
+    return res.json({ flames: 3 });
+  }
+  try {
+    const { userId } = req.params;
+    const doc = await db.collection('users').doc(userId).get();
+    res.json({ flames: doc.data()?.flames || 0 });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================================
+// STATISTIQUES
+// ============================================================
+app.get('/api/stats/:userId', async (req, res) => {
+  if (!firebaseReady) {
+    return res.json({
+      success: true,
+      data: { totalArticles: 0, totalSales: 0, totalRevenue: 0, totalPurchases: 0, totalSpent: 0, history: [] }
+    });
+  }
+  try {
+    const { userId } = req.params;
+    const articlesSnapshot = await db.collection('products')
+      .where('sellerId', '==', userId).where('status', '==', 'active').get();
+    const ordersSnapshot = await db.collection('orders')
+      .where('sellerId', '==', userId).where('status', '==', 'livré').get();
+    let totalSales = 0, totalRevenue = 0;
+    ordersSnapshot.forEach(doc => {
+      const order = doc.data();
+      totalSales++;
+      totalRevenue += order.sellerReceived || (order.amount - (order.amount * COMMISSION_SELLER));
+    });
+    const purchasesSnapshot = await db.collection('orders')
+      .where('buyerId', '==', userId).where('status', '==', 'livré').get();
+    let totalPurchases = 0, totalSpent = 0;
+    purchasesSnapshot.forEach(doc => {
+      const order = doc.data();
+      totalPurchases++;
+      totalSpent += order.totalAmount || order.amount;
+    });
+    const history = {};
+    ordersSnapshot.forEach(doc => {
+      const order = doc.data();
+      const date = order.createdAt?.toDate?.() || new Date(order.createdAt);
+      const month = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+      if (!history[month]) history[month] = { ventes: 0, revenu: 0 };
+      history[month].ventes++;
+      history[month].revenu += order.sellerReceived || (order.amount - (order.amount * COMMISSION_SELLER));
+    });
+    const historyArray = Object.keys(history).sort().map(month => ({
+      month, ventes: history[month].ventes, revenu: Math.round(history[month].revenu)
+    }));
+    res.json({
+      success: true,
+      data: {
+        totalArticles: articlesSnapshot.size, totalSales, totalRevenue: Math.round(totalRevenue),
+        totalPurchases, totalSpent, history: historyArray
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================================
+// MESSAGES
+// ============================================================
+app.get('/api/messages/:userId', async (req, res) => {
+  if (!firebaseReady) {
+    return res.json({ success: true, data: [] });
+  }
+  try {
+    const { userId } = req.params;
+    const snapshot = await db.collection('messages')
+      .where('participants', 'array-contains', userId).orderBy('createdAt', 'desc').limit(100).get();
+    const messages = [];
+    snapshot.forEach(doc => messages.push({ id: doc.id, ...doc.data() }));
+    for (const msg of messages) {
+      if (msg.receiverId === userId && !msg.read) {
+        await db.collection('messages').doc(msg.id).update({ read: true });
+      }
+    }
+    res.json({ success: true, data: messages });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.post('/api/messages', async (req, res) => {
+  if (!firebaseReady) {
+    return res.json({ success: true, id: 'mock-' + Date.now() });
+  }
+  try {
+    const { senderId, receiverId, text, senderName, senderPhoto, audioUrl, audioDuration } = req.body;
+    if (!senderId || !receiverId || (!text && !audioUrl)) {
+      return res.status(400).json({ success: false, message: 'Message ou audio requis' });
+    }
+
+    const receiverDoc = await db.collection('users').doc(receiverId).get();
+    const blockedUsers = receiverDoc.data()?.blockedUsers || [];
+    if (blockedUsers.includes(senderId)) {
+      return res.status(403).json({ success: false, message: 'Vous êtes bloqué par ce destinataire' });
+    }
+
+    const message = {
+      senderId, receiverId, text: text || '', audioUrl: audioUrl || '', audioDuration: audioDuration || 0,
+      senderName: senderName || 'Anonyme', senderPhoto: senderPhoto || '',
+      participants: [senderId, receiverId], read: false, createdAt: new Date()
+    };
+
+    const docRef = await db.collection('messages').add(message);
+
+    await db.collection('notifications').add({
+      userId: receiverId, message: `💬 Nouveau message de ${senderName || 'Anonyme'}`,
+      type: 'new_message', read: false, messageId: docRef.id, createdAt: new Date()
+    });
+
+    res.json({ success: true, id: docRef.id });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+app.get('/api/notifications/:userId', async (req, res) => {
+  if (!firebaseReady) {
+    return res.json({ success: true, data: [] });
+  }
+  try {
+    const { userId } = req.params;
+    const snapshot = await db.collection('notifications')
+      .where('userId', '==', userId).orderBy('createdAt', 'desc').limit(50).get();
+    const notifications = [];
+    snapshot.forEach(doc => notifications.push({ id: doc.id, ...doc.data() }));
+    res.json({ success: true, data: notifications });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.post('/api/notifications/read/:id', async (req, res) => {
+  if (!firebaseReady) {
+    return res.json({ success: true });
+  }
+  try {
+    const { id } = req.params;
+    await db.collection('notifications').doc(id).update({ read: true });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 // ============================================================
 // DÉMARRAGE
@@ -652,4 +1071,5 @@ app.listen(PORT, () => {
   console.log(`📦 Mode: ${firebaseReady ? '100% RÉEL' : 'SIMULATION'}`);
   console.log(`💳 Paiement: ${YABETOO_SECRET ? 'Yabetoo' : 'Simulé'}`);
   console.log(`📱 Admin: ${ADMIN_PHONE}`);
+  console.log(`💰 Commissions: ${COMMISSION_BUYER*100}% (buyer) + ${COMMISSION_SELLER*100}% (seller)`);
 });
