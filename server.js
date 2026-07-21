@@ -47,11 +47,16 @@ try {
 // CONFIGURATION
 // ============================================================
 const IMG_BB_KEY = process.env.IMG_BB_KEY || '2b3e869d8b6f382027e70cd216f65580';
-const YABETOO_SECRET = process.env.YABETOO_SECRET_KEY || '';
 const ADMIN_PHONE = process.env.ADMIN_PHONE || '065918166';
 
-// ✅ URL CORRECTE SELON LA DOC YABETOO
-const YABETOO_API_BASE = 'https://pay-api.yabetoopay.com/v1';
+// ✅ Séparation claire test / production
+const YABETOO_API_BASE = process.env.NODE_ENV === 'production'
+  ? 'https://pay.api.yabetooapp.com/v1'
+  : 'https://pay.sandbox.yabetooapp.com/v1';
+
+const YABETOO_SECRET = process.env.NODE_ENV === 'production'
+  ? process.env.YABETOO_LIVE_SECRET_KEY
+  : process.env.YABETOO_TEST_SECRET_KEY;
 
 const COMMISSION_BUYER = 0.03;
 const COMMISSION_SELLER = 0.04;
@@ -63,14 +68,14 @@ const ALLOWED_CATEGORIES = [
 console.log(`📱 Admin Phone: ${ADMIN_PHONE}`);
 console.log(`🖼️  ImgBB: ${IMG_BB_KEY ? 'OK' : 'MANQUANT'}`);
 console.log(`💳 Yabetoo Secret: ${YABETOO_SECRET ? 'OK' : 'MANQUANT'}`);
-console.log(`🔥 Firebase: ${firebaseReady ? 'OK' : 'DÉGRADÉ (SIMULATION)'}`);
 console.log(`🌐 Yabetoo API Base: ${YABETOO_API_BASE}`);
+console.log(`🔧 NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
+console.log(`🔥 Firebase: ${firebaseReady ? 'OK' : 'DÉGRADÉ (SIMULATION)'}`);
 
 // ============================================================
-// HELPER
+// HELPER - Formater un numéro pour Yabetoo
 // ============================================================
 function formatPhoneForYabetoo(phone) {
-  // ✅ Nettoie le numéro : enlève espaces, +, et le 0 initial si présent
   let formatted = String(phone).trim().replace(/\s/g, '').replace(/\+/g, '');
   if (formatted.startsWith('0')) {
     formatted = formatted.substring(1);
@@ -363,7 +368,7 @@ app.get('/api/wallet/:userId', async (req, res) => {
 });
 
 // ============================================================
-// YABETOO - PAIEMENT REEL (AVEC FALLBACK OPTIONNEL)
+// YABETOO - PAIEMENT 100% RÉEL (SANS FALLBACK)
 // ============================================================
 app.post('/api/payment/initiate', async (req, res) => {
   try {
@@ -378,18 +383,21 @@ app.post('/api/payment/initiate', async (req, res) => {
       return res.status(500).json({ success: false, message: 'Firebase non disponible' });
     }
 
+    if (!YABETOO_SECRET) {
+      return res.status(500).json({ success: false, message: 'Clé Yabetoo non configurée' });
+    }
+
     const userRef = db.collection('users').doc(userId);
     const userDoc = await userRef.get();
     if (!userDoc.exists) {
       return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
     }
 
-    // ✅ FORMAT DU NUMERO : selon la doc Yabetoo, on utilise le msisdn sans préfixe
-    // Ils attendent un numéro comme 242065918166 (sans +)
     const formattedPhone = formatPhoneForYabetoo(phone);
     const operatorName = (operator || 'mtn').toUpperCase();
-
-    console.log('📱 Numéro formaté pour Yabetoo:', formattedPhone);
+    const userName = userDoc.data()?.name || 'Client BLK';
+    const [firstName, ...rest] = userName.split(' ');
+    const lastName = rest.join(' ') || 'BLK';
 
     // --- Étape 1 : Créer l'intention ---
     console.log('📤 Création de l\'intention...');
@@ -413,18 +421,26 @@ app.post('/api/payment/initiate', async (req, res) => {
     const intent = createResponse.data;
     console.log('✅ Intention créée:', JSON.stringify(intent, null, 2));
 
+    const clientSecret = intent.client_secret;
+    const intentId = intent.id;
+
+    if (!clientSecret) {
+      console.error('❌ client_secret manquant dans la réponse Yabetoo');
+      return res.status(500).json({ success: false, message: 'client_secret manquant' });
+    }
+
     // --- Étape 2 : Confirmer l'intention ---
     console.log('📤 Confirmation...');
     const confirmPayload = {
-      client_secret: intent.client_secret,
-      first_name: 'Client',
-      last_name: 'BLK',
+      client_secret: clientSecret,
+      first_name: firstName,
+      last_name: lastName,
       receipt_email: userDoc.data()?.email || 'client@blk.com',
       payment_method_data: {
         type: 'momo',
         momo: {
           country: 'CG',
-          msisdn: formattedPhone,
+          msisdn: `+${formattedPhone}`, // ✅ Format international avec +
           operator_name: operatorName
         }
       }
@@ -433,7 +449,7 @@ app.post('/api/payment/initiate', async (req, res) => {
     console.log('📦 Payload confirm:', JSON.stringify(confirmPayload, null, 2));
 
     const confirmResponse = await axios.post(
-      `${YABETOO_API_BASE}/payment-intents/${intent.id}/confirm`,
+      `${YABETOO_API_BASE}/payment-intents/${intentId}/confirm`,
       confirmPayload,
       {
         headers: {
@@ -446,109 +462,66 @@ app.post('/api/payment/initiate', async (req, res) => {
     const confirmData = confirmResponse.data;
     console.log('✅ Réponse Yabetoo:', JSON.stringify(confirmData, null, 2));
 
-    // --- Étape 3 : Enregistrer la transaction en attente ---
+    // --- Étape 3 : Enregistrer la transaction ---
     const transactionRef = await db.collection('transactions').add({
       userId,
       amount: parseInt(amount),
       phone: formattedPhone,
       operator: operatorName,
-      yabetooId: intent.id,
+      yabetooId: intentId,
       status: 'pending',
       type: 'deposit',
       createdAt: new Date()
     });
 
     await transactionRef.update({
-      transactionId: confirmData.transactionId || confirmData.intentId || intent.id,
+      transactionId: confirmData.transactionId || confirmData.intentId || intentId,
       status: confirmData.status || 'pending'
     });
 
-    // ✅ Si Yabetoo confirme immédiatement
-    if (confirmData.status === 'succeeded' && confirmData.captured) {
+    // --- Étape 4 : Gérer le statut ---
+    if (confirmData.status === 'succeeded') {
       const currentBalance = userDoc.data()?.walletBalance || 0;
-      await userRef.update({ walletBalance: currentBalance + parseInt(amount) });
+      const newBalance = currentBalance + parseInt(amount);
+      await userRef.update({ walletBalance: newBalance });
       await transactionRef.update({ status: 'completed', completedAt: new Date() });
+
       return res.json({
         success: true,
         message: '✅ Dépôt confirmé et wallet crédité !',
         status: 'succeeded'
       });
+    } else if (confirmData.status === 'pending' || confirmData.status === 'processing') {
+      return res.json({
+        success: true,
+        message: 'Demande envoyée. En attente de confirmation sur votre téléphone.',
+        status: confirmData.status
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Échec du paiement: ' + (confirmData.message || 'Statut inconnu')
+      });
     }
-
-    // ✅ FALLBACK : on crédite automatiquement après 30 secondes
-    // Cela permet de tester l'application même si le webhook n'arrive pas
-    setTimeout(async () => {
-      try {
-        const txDoc = await db.collection('transactions').doc(transactionRef.id).get();
-        const txData = txDoc.data();
-        if (txData.status === 'pending') {
-          const userRef2 = db.collection('users').doc(userId);
-          const userDoc2 = await userRef2.get();
-          const currentBalance2 = userDoc2.data()?.walletBalance || 0;
-          const newBalance2 = currentBalance2 + parseInt(amount);
-          await userRef2.update({ walletBalance: newBalance2 });
-          await txDoc.ref.update({ 
-            status: 'completed', 
-            completedAt: new Date(),
-            description: 'Crédit automatique (fallback)'
-          });
-          console.log('✅ Fallback : wallet crédité automatiquement pour', userId);
-        }
-      } catch (error) {
-        console.error('❌ Erreur fallback:', error);
-      }
-    }, 30000);
-
-    res.json({
-      success: true,
-      message: 'Demande envoyée. Wallet sera crédité automatiquement dans 30s.',
-      status: confirmData.status || 'pending'
-    });
 
   } catch (error) {
     console.error('❌ ERREUR YABETOO (détails complets):');
     console.error('Message:', error.message);
     console.error('Réponse:', JSON.stringify(error.response?.data, null, 2));
     console.error('Status:', error.response?.status);
-    console.error('Headers:', error.response?.headers);
 
-    // ✅ ULTIME FALLBACK : en cas d'erreur, on crédite quand même (simulation)
-    try {
-      const { userId, amount } = req.body;
-      const userRef = db.collection('users').doc(userId);
-      const userDoc = await userRef.get();
-      const currentBalance = userDoc.data()?.walletBalance || 0;
-      const newBalance = currentBalance + parseInt(amount);
-      await userRef.update({ walletBalance: newBalance });
-      
-      await db.collection('transactions').add({
-        userId,
-        amount: parseInt(amount),
-        phone: req.body.phone || '',
-        status: 'completed',
-        type: 'deposit',
-        description: 'Dépôt (fallback ultime)',
-        createdAt: new Date()
-      });
-
-      return res.json({
-        success: true,
-        message: '💰 Dépôt effectué (simulation)',
-        status: 'succeeded',
-        newBalance: newBalance
-      });
-    } catch (fallbackError) {
-      console.error('❌ Fallback échoué:', fallbackError.message);
-      res.status(500).json({
-        success: false,
-        message: 'Erreur paiement: ' + (error.response?.data?.message || error.message)
-      });
-    }
+    // ✅ PAS DE FALLBACK : on renvoie l'erreur réelle
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de l\'initiation du paiement',
+      error: error.message,
+      details: error.response?.data || null
+    });
   }
 });
 
 // ============================================================
-// YABETOO - WEBHOOK
+// YABETOO - WEBHOOK (crédite le wallet en cas de succès)
 // ============================================================
 app.post('/api/payment/callback', async (req, res) => {
   try {
@@ -612,7 +585,7 @@ app.post('/api/payment/callback', async (req, res) => {
 });
 
 // ============================================================
-// WALLET - RETRAIT (SIMULATION)
+// WALLET - RETRAIT (SIMULATION - à remplacer plus tard)
 // ============================================================
 app.post('/api/wallet/withdraw', async (req, res) => {
   if (!firebaseReady) {
